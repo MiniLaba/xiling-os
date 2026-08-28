@@ -42,7 +42,7 @@ function WorkspaceApp() {
   const [commandQuery, setCommandQuery] = useState("");
   const projectMenuRef = useRef<HTMLDivElement>(null);
   const { projects, activeProject, activeProjectId, setActiveProjectId, refreshProjects, loading, error } = useWorkspace();
-  const { sessions, activeSessionId, loading: sessionsLoading, selectSession, startNewConversation } = useConversations();
+  const { sessions, activeSessionId, loading: sessionsLoading, selectSession, startNewConversation, deleteSession } = useConversations();
 
   useEffect(() => {
     if (!projectMenuOpen) return;
@@ -78,7 +78,7 @@ function WorkspaceApp() {
             <button className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}><svg viewBox="0 0 20 20" aria-hidden="true">{icons[item]}</svg>{labels[item]}</button>
           ))}
         </nav>
-        <div className="recent-work"><header><small>对话历史</small>{sessions.length ? <span>{sessions.length}</span> : null}</header>{sessionsLoading ? <p>正在恢复…</p> : sessions.length ? sessions.map((session) => <button className={view === "chat" && session.id === activeSessionId ? "active" : ""} key={session.id} onClick={() => { selectSession(session.id); setView("chat"); }}><i>○</i><span><b>{session.title}</b><small>{formatSessionTime(session.updatedAt)} · {session.messageCount} 条</small></span></button>) : <p>这个项目还没有对话</p>}</div>
+        <div className="recent-work"><header><small>对话历史</small>{sessions.length ? <span>{sessions.length}</span> : null}</header>{sessionsLoading ? <p>正在恢复…</p> : sessions.length ? sessions.map((session) => <div className={`session-item ${view === "chat" && session.id === activeSessionId ? "active" : ""}`} key={session.id}><button onClick={() => { selectSession(session.id); setView("chat"); }}><i>○</i><span><b>{session.title}</b><small>{formatSessionTime(session.updatedAt)} · {session.messageCount} 条</small></span></button><button className="session-delete" aria-label={`删除对话「${session.title}」`} title="删除对话" onClick={(event) => { event.stopPropagation(); if (window.confirm(`确定删除对话「${session.title}」吗？删除后不可恢复。`)) void deleteSession(session.id); }}>✕</button></div>) : <p>这个项目还没有对话</p>}</div>
         <button className="settings-entry" onClick={() => { settingsReturnView.current = view; setView("settings"); }}><svg viewBox="0 0 20 20" aria-hidden="true">{icons.settings}</svg><span>设置</span></button>
       </aside> : null}
       <section className={`workspace workspace-${view}`}>

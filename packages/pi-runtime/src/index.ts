@@ -435,8 +435,8 @@ export function listRecommendedModels(): ModelCatalogEntry[] {
     const provider = providerFactories[providerId]();
     const models = new Map(provider.getModels().map((model) => [model.id, model]));
     const preferred = preferredModels[providerId].map((id) => models.get(id)).filter((model): model is Model<any> => Boolean(model));
-    const fallback = provider.getModels().filter((model) => model.input.includes("text") && !/realtime|audio|image/i.test(model.id));
-    return [...new Map([...preferred, ...fallback].map((model) => [model.id, model])).values()].slice(0, 2).map((model) => describeModel(providerId, model));
+    const fallback = provider.getModels().filter((model) => model.input.includes("text") && !/realtime|audio|image/i.test(model.id) && !model.id.endsWith(":batch"));
+    return [...new Map([...preferred, ...fallback].map((model) => [model.id, model])).values()].slice(0, 24).map((model) => describeModel(providerId, model));
   });
 }
 

@@ -62,8 +62,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .agent-activity { max-width: 780px; overflow-x: auto; min-height: 36px; align-items: center; white-space: nowrap; }
 .chat-save-actions button { min-height: 34px; }
 .scientific-markdown { display: grid; gap: 10px; }
-.scientific-markdown p, .scientific-markdown ul { margin: 0; }
-.scientific-markdown ul { padding-left: 22px; }
+.scientific-markdown p, .scientific-markdown ul, .scientific-markdown ol { margin: 0; }
+.scientific-markdown ul, .scientific-markdown ol { padding-left: 22px; }
+.scientific-markdown li { margin: 2px 0; }
+.scientific-markdown table { border-collapse: collapse; font-size: 13px; }
+.scientific-markdown th, .scientific-markdown td { padding: 6px 10px; border: 1px solid var(--hf-line); text-align: left; vertical-align: top; }
+.scientific-markdown th { background: #f2f5f6; font-weight: 600; }
 .scientific-markdown h2, .scientific-markdown h3, .scientific-markdown h4, .scientific-markdown h5 { margin: 12px 0 0; line-height: 1.35; }
 .scientific-markdown h2 { font-size: 20px; }.scientific-markdown h3 { font-size: 17px; }.scientific-markdown h4, .scientific-markdown h5 { font-size: 15px; }
 .scientific-markdown code { padding: 2px 5px; border-radius: 4px; background: #eef2f3; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }

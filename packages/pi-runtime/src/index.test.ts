@@ -50,8 +50,14 @@ describe("PiRuntimeAdapter", () => {
   it("exposes a bounded Pi-owned model catalog and accepts future model ids", () => {
     const models = listRecommendedModels();
     expect(models.length).toBeGreaterThanOrEqual(16);
-    expect(models.length).toBeLessThanOrEqual(24);
-    expect(new Set(models.map((model) => model.providerId))).toEqual(new Set(["openai", "anthropic", "google", "openrouter", "deepseek", "xai", "mistral", "moonshotai", "zai", "groq"]));
+    const perProvider = new Map<string, string[]>();
+    for (const model of models) perProvider.set(model.providerId, [...(perProvider.get(model.providerId) ?? []), model.id]);
+    expect(new Set(perProvider.keys())).toEqual(new Set(["openai", "anthropic", "google", "openrouter", "deepseek", "xai", "mistral", "moonshotai", "zai", "groq"]));
+    for (const ids of perProvider.values()) {
+      expect(ids.length).toBeLessThanOrEqual(24);
+      expect(ids.some((id) => id.endsWith(":batch"))).toBe(false);
+    }
+    expect(perProvider.get("openai")!.length).toBeGreaterThan(2);
     expect(() => createLiveRoute(models[0]!.providerId, models[0]!.id, "")).toThrow("credential");
     expect(createLiveRoute("openai", "future-model-id", "fixture-key").modelId).toBe("future-model-id");
   });

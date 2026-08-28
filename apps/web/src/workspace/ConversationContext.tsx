@@ -10,6 +10,7 @@ type ConversationState = {
   startNewConversation: () => void;
   createConversation: (firstPrompt: string) => Promise<ChatSessionSummary>;
   ensureSession: (firstPrompt: string) => Promise<ChatSessionSummary>;
+  deleteSession: (id: string) => Promise<void>;
   refreshSessions: (preferredId?: string) => Promise<void>;
 };
 
@@ -68,8 +69,18 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     const current = sessions.find((session) => session.id === currentId);
     return current ?? createConversation(firstPrompt);
   }, [activeProjectId, createConversation, selectedByProject, sessions]);
+  const deleteSession = useCallback(async (id: string) => {
+    const response = await fetch(`/api/gate4/chat-sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (!response.ok) throw new Error(`删除会话失败：${response.status}`);
+    setSelectedByProject((current) => {
+      const next = { ...current };
+      if (next[activeProjectId] === id) { delete next[activeProjectId]; localStorage.removeItem(sessionStorageKey(activeProjectId)); }
+      return next;
+    });
+    await refreshSessions();
+  }, [activeProjectId, refreshSessions]);
 
-  const value = useMemo<ConversationState>(() => ({ sessions, activeSessionId, loading, selectSession, startNewConversation, createConversation, ensureSession, refreshSessions }), [sessions, activeSessionId, loading, selectSession, startNewConversation, createConversation, ensureSession, refreshSessions]);
+  const value = useMemo<ConversationState>(() => ({ sessions, activeSessionId, loading, selectSession, startNewConversation, createConversation, ensureSession, deleteSession, refreshSessions }), [sessions, activeSessionId, loading, selectSession, startNewConversation, createConversation, ensureSession, deleteSession, refreshSessions]);
   return <ConversationContext.Provider value={value}>{children}</ConversationContext.Provider>;
 }
 

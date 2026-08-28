@@ -315,8 +315,8 @@ body { min-width: 1080px; background: var(--wash); -webkit-font-smoothing: antia
 button { color: inherit; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid rgba(61,126,224,.58); outline-offset: 2px; }
 * { scrollbar-color: #c8d3e1 transparent; scrollbar-width: thin; }
-.shell { grid-template-columns: 238px minmax(0, 1fr); background: var(--paper); }
-.sidebar { position: relative; overflow: visible; padding: 18px 13px 14px; color: var(--ink); background: linear-gradient(180deg, #fbfdff 0%, #f8faff 52%, #fbfcfe 100%); border-right: 1px solid #dde5f0; }
+.shell { grid-template-columns: 238px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); background: var(--paper); }
+.sidebar { position: relative; min-height: 0; overflow: hidden; padding: 18px 13px 14px; color: var(--ink); background: linear-gradient(180deg, #fbfdff 0%, #f8faff 52%, #fbfcfe 100%); border-right: 1px solid #dde5f0; }
 .sidebar::before { content: ""; position: absolute; width: 180px; height: 180px; top: -108px; left: -80px; border-radius: 50%; background: radial-gradient(circle, rgba(91,215,238,.18), transparent 68%); pointer-events: none; }
 .brand { position: relative; gap: 10px; margin: 0 7px 18px; font-size: 19px; font-weight: 650; letter-spacing: -.03em; }
 .brand > span { width: 40px; height: 40px; overflow: hidden; display: grid; place-items: center; border-radius: 13px; color: white; background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(235,246,255,.88)); border: 1px solid rgba(168,205,239,.56); box-shadow: 0 8px 24px rgba(47,129,210,.13); }
@@ -380,6 +380,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .recent-work button:hover { background: #f0f4f9; }.recent-work button.active { color: #255e9e; background: #eaf3fd; }
 .recent-work button > i { padding-top: 1px; color: #9ba6b2; font-size: 8px; font-style: normal; }.recent-work button > span { min-width: 0; display: grid; gap: 3px; }
 .recent-work button b, .recent-work button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.recent-work button b { font-size: 9px; font-weight: 560; }.recent-work button small { color: #97a1ad; font-size: 7px; }
+.recent-work .session-item { position: relative; }
+.recent-work .session-item > button:first-child { padding-right: 22px; }
+.recent-work .session-item.active > button:first-child { color: #255e9e; background: #eaf3fd; }
+.recent-work .session-delete { position: absolute; top: 50%; right: 5px; display: none; width: 18px; min-height: 18px; height: 18px; grid-template-columns: none; place-items: center; padding: 0; border-radius: 5px; color: #9aa3ae; background: transparent; font-size: 9px; line-height: 1; }
+.recent-work .session-item:hover .session-delete, .recent-work .session-delete:focus-visible { display: grid; }
+.recent-work .session-delete:hover { color: #b3402f; background: #fdecea; }
 .settings-entry { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px 10px; border: 0; border-radius: 7px; color: #5d5d58; background: transparent; text-align: left; font-size: 12px; }
 .settings-entry:hover, .settings-entry.active { color: #245ea8; background: linear-gradient(100deg, #e8f3ff, #f0f1ff); }
 .settings-entry svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
