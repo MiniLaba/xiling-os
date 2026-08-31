@@ -45,7 +45,8 @@ export function App() {
 
 function WorkspaceApp() {
   const [view, setView] = useState<View>("chat");
-  const settingsReturnView = useRef<Exclude<View, "settings">>("chat");
+  const [viewHistory, setViewHistory] = useState<View[]>([]);
+  const lastViewRef = useRef<View>("chat");
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
@@ -63,6 +64,19 @@ function WorkspaceApp() {
     const shortcut = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "k") { event.preventDefault(); setCommandOpen((open) => !open); } if (event.key === "Escape") setCommandOpen(false); };
     window.addEventListener("keydown", shortcut); return () => window.removeEventListener("keydown", shortcut);
   }, []);
+  // 视图导航历史：任何视图切换都把来源视图压栈，顶栏返回键据此回到上一视图
+  useEffect(() => {
+    if (view === lastViewRef.current) return;
+    setViewHistory((history) => [...history.slice(-19), lastViewRef.current]);
+    lastViewRef.current = view;
+  }, [view]);
+  const goBack = () => {
+    const previous = viewHistory[viewHistory.length - 1];
+    if (previous === undefined) return;
+    lastViewRef.current = previous;
+    setViewHistory((history) => history.slice(0, -1));
+    setView(previous);
+  };
 
   if (loading && !activeProject) return <main className="shell"><div className="view-loading">正在恢复科研工作区…</div></main>;
   if (!activeProject) return <main className="shell"><div className="view-loading">{error ?? "没有可用科研项目"}</div></main>;
@@ -117,7 +131,7 @@ function WorkspaceApp() {
           <button className="new-conversation-btn" onClick={() => { startNewConversation(); setView("chat"); }}>
             <span>＋</span><span>新建对话</span>
           </button>
-          <button className="settings-btn" onClick={() => { settingsReturnView.current = view; setView("settings"); }} aria-label="设置">
+          <button className="settings-btn" onClick={() => setView("settings")} aria-label="设置">
             <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true" style={{stroke:"currentColor",fill:"none",strokeWidth:"1.8",strokeLinecap:"round",strokeLinejoin:"round"}}><circle cx="10" cy="10" r="2.5"/><path d="M10 2.5v2m0 11v2m7.5-7.5h-2m-11 0h-2m12.8-5.3-1.4 1.4M6.1 13.9l-1.4 1.4m10.6 0-1.4-1.4M6.1 6.1 4.7 4.7"/></svg>
           </button>
         </div>
@@ -125,7 +139,7 @@ function WorkspaceApp() {
       <section className="workspace">
         <header className="workspace-header">
           <div className="workspace-title">
-            {view === "settings" ? <button aria-label="返回" onClick={() => setView(settingsReturnView.current)}>‹</button> : null}
+            <button aria-label="返回上一视图" title="返回上一视图" disabled={!viewHistory.length} onClick={goBack}>‹</button>
             <strong>{labels[view]}</strong>
             <span>{activeProject.name}</span>
           </div>
@@ -160,7 +174,7 @@ function WorkspaceApp() {
           <section>
             <small>工作区</small>
             {(Object.keys(labels) as View[]).filter((target) => labels[target].includes(commandQuery.trim()) || !commandQuery.trim()).map((target) => (
-              <button key={target} onClick={() => { if (target === "settings") settingsReturnView.current = view === "settings" ? "chat" : view; setView(target); setCommandOpen(false); setCommandQuery(""); }}>
+              <button key={target} onClick={() => { setView(target); setCommandOpen(false); setCommandQuery(""); }}>
                 <svg viewBox="0 0 20 20">{icons[target]}</svg>
                 <span>{labels[target]}</span>
                 <em>打开</em>
