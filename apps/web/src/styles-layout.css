@@ -2106,3 +2106,33 @@
 
 /* ─── 科研画布：三栏布局下恢复画布高度（父容器为 block，画布壳需要显式高度） ─── */
 .workspace-body .scientific-canvas-shell { height: 100%; flex: 1; min-height: 0; }
+
+/* ─── 会话搜索：输入框与内容匹配结果 ─── */
+.session-search {
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--lx-border);
+  border-radius: var(--lx-radius-sm);
+  background: var(--lx-input-bg);
+  color: var(--lx-text);
+  font-size: 11px;
+  outline: 0;
+}
+
+.session-search:focus { border-color: var(--lx-primary); }
+
+.session-match .session-snippet {
+  white-space: normal;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* 非对话视图（科研画布、Wiki、文献图等）不渲染右侧产出面板，去掉预留的第三列，避免右侧大片空白 */
+.shell.shell-wide { grid-template-columns: var(--lx-sidebar-w) minmax(0, 1fr); }
+
+/* 降级态追问输入条：任何容器内都不悬浮遮挡画布 */
+.execution-canvas-composer-degraded { position: static !important; right: auto; transform: none; width: auto; margin: 10px 14px 14px; }
+.execution-canvas-composer-degraded textarea { min-height: 40px; }

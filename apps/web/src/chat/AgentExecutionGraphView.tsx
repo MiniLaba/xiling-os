@@ -313,7 +313,7 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
           zoomOnScroll={false}
           fitView
         ><Background color="#dde3e8" gap={34} size={1} /><Controls position="bottom-left" /></ReactFlow> : <div className="execution-graph-empty"><b>这段对话还没有运行节点</b><span>回到对话发送研究问题后，这里会形成可继续和引用的脉络。</span></div>}
-        <ComposerBridgeBoundary fallback={<div className="execution-canvas-composer"><div><textarea disabled placeholder="追问输入已停用：当前视图未接入会话上下文，请返回对话页提问…" /><button aria-label="从运行画布发送" disabled>↑</button></div><footer><span>返回对话页可继续追问</span><div /></footer></div>}>
+        <ComposerBridgeBoundary fallback={<div className="execution-canvas-composer execution-canvas-composer-degraded"><div><textarea disabled placeholder="追问输入已停用：当前视图未接入会话上下文，请返回对话页提问…" /><button aria-label="从运行画布发送" disabled>↑</button></div><footer><span>返回对话页可继续追问</span><div /></footer></div>}>
           <CanvasComposerSection projectId={projectId} activeSessionId={activeSessionId} nodes={nodes} activeNodeId={activeNodeId} quotedNodeIds={quotedNodeIds} interactionMode={interactionMode} displayLabel={displayLabel} onClearSelection={clearSelection} onQuote={quote} onInspect={(sourceNode) => setInspected(sourceNode)} onReturnToChat={onReturnToChat} />
         </ComposerBridgeBoundary>
       </div>
@@ -333,7 +333,7 @@ class ComposerBridgeBoundary extends Component<{ fallback: ReactNode; children: 
   }
   render() {
     if (this.state.rethrow) throw this.state.rethrow;
-    return this.state.unavailable ? <div className="execution-canvas-composer"><div><textarea disabled placeholder="追问输入已停用：当前视图未接入会话上下文，请返回对话页提问…" /><button aria-label="从运行画布发送" disabled>↑</button></div><footer><span>返回对话页可继续追问</span><div /></footer></div> : this.props.children;
+    return this.state.unavailable ? <div className="execution-canvas-composer execution-canvas-composer-degraded"><div><textarea disabled placeholder="追问输入已停用：当前视图未接入会话上下文，请返回对话页提问…" /><button aria-label="从运行画布发送" disabled>↑</button></div><footer><span>返回对话页可继续追问</span><div /></footer></div> : this.props.children;
   }
 }
 
