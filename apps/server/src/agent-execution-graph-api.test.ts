@@ -2,7 +2,12 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createApp } from "./app.js";
+import { createApp as createAppBase } from "./app.js";
+
+const createApp = (options: Parameters<typeof createAppBase>[0] = {}) => createAppBase({
+  ...options,
+  additionalProjects: [{ id: "ocean-heatwave", name: "海洋领域测试", description: "test fixture", researchQuestion: "层结如何变化？", domainIds: ["general-science", "ocean-climate"] }],
+});
 
 describe("Agent Execution Graph API", () => {
   it("serves project and current-session projections from the durable Agent Store", async () => {

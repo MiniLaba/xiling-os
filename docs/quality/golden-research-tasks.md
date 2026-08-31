@@ -77,7 +77,7 @@ Director 委派文献检索、执行审计和 Blind Reviewer。Reviewer 只获�
 
 ## G7：第二科学领域
 
-接入一个数据形态和分析方法不同于海洋 NetCDF 的参考领域。
+接入一个数据形态和分析方法不同于海洋 NetCDF 的独立领域模块。
 
 验收：
 
@@ -105,7 +105,7 @@ R0 本地基线：
 - 测试项：145
 - 依赖合规扫描：401 个包
 - G2：海洋 Workflow 继续覆盖未审批拒绝、计划绑定、下载/分析/Reviewer 与 Artifact 注册。
-- G3：表格实验参考领域覆盖计划哈希不匹配、CSV 输入物化、确定性统计、幂等重试和内容寻址输出。
+- G3：表格实验领域覆盖计划哈希不匹配、CSV 输入物化、确定性统计、幂等重试和内容寻址输出。
 - G4：Context trace 新增 token 组成、精确来源覆盖率和重复历史合并计数。
 - G5：严格 JSON Handoff、Manifest allowlist、盲审/执行隔离、工具预算、超时和父级取消已覆盖。
 - G6：“需要关注”聚合审批、失败 Workflow、证据定位缺口、Research Graph proposal 与 Agent 失败。

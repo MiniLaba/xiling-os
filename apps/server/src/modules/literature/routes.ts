@@ -1,10 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { literatureQuerySchema, paperParamsSchema, paperSchema, projectIdQuerySchema, scopedPaperSchema, toPaperRecord } from "@xiling/api-contracts";
+import { literatureQuerySchema, projectIdQuerySchema, scopedPaperSchema, toPaperRecord } from "@xiling/api-contracts";
 import type { EvidenceStore } from "@xiling/knowledge";
-import { buildLiteratureGraph, createOceanHeatwaveFixture, type LiteratureSearchService } from "@xiling/literature";
+import { buildLiteratureGraph, type LiteratureSearchService } from "@xiling/literature";
 
 export function registerLiteratureRoutes(app: FastifyInstance, dependencies: { literature: LiteratureSearchService; credentialsReady: Promise<unknown>; evidence: EvidenceStore; validateClaimRevision(projectId: string, entityId: string): Promise<boolean> }): void {
-  app.get("/api/v1/literature/demo", async () => { const fixture = createOceanHeatwaveFixture(); return buildLiteratureGraph(fixture.papers, fixture.seedIds, { fetchedAt: "2026-08-23T00:00:00.000Z" }); });
   app.get("/api/v1/literature/search", async (request, reply) => {
     const parsed = literatureQuerySchema.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
@@ -31,13 +30,6 @@ export function registerLiteratureRoutes(app: FastifyInstance, dependencies: { l
       },
       ));
     }
-    const legacy = paperSchema.safeParse(request.body);
-    return legacy.success ? reply.code(201).send(dependencies.evidence.saveEvidence("ocean-heatwave", toPaperRecord(legacy.data))) : reply.code(400).send({ error: scoped.error.issues });
-  });
-  app.post("/api/v1/evidence/:paperId", async (request, reply) => {
-    const params = paperParamsSchema.safeParse(request.params); const query = projectIdQuerySchema.safeParse(request.query);
-    if (!params.success || !query.success) return reply.code(400).send({ error: "invalid evidence request" });
-    const paper = createOceanHeatwaveFixture().papers.find((item) => item.id === params.data.paperId);
-    return paper ? reply.code(201).send(dependencies.evidence.saveEvidence(query.data.projectId, paper)) : reply.code(404).send({ error: "Paper not found" });
+    return reply.code(400).send({ error: scoped.error.issues });
   });
 }

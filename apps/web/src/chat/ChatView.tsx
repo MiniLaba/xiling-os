@@ -29,7 +29,7 @@ type UiMessage = {
   runId?: string;
   attachments?: Array<AgentInputAttachment & { url: string }>;
 };
-const welcomeMessage = (project: ResearchProject): UiMessage => ({ id: `welcome-${project.id}`, role: "assistant", text: project.id === FREE_EXPLORATION_PROJECT_ID ? "已进入「自由探索」模式。你可以直接询问任何物理海洋学问题——环流、层结、混合、热浪、内波、潮汐、数据与方法等，不需要围绕某个固定研究问题。工具与文献检索仍然可用，涉及写入或下载的操作依旧需要你确认。" : `已进入项目“${project.name}”。当前研究问题：${project.researchQuestion}`, status: "complete" });
+const welcomeMessage = (project: ResearchProject): UiMessage => ({ id: `welcome-${project.id}`, role: "assistant", text: project.id === FREE_EXPLORATION_PROJECT_ID ? "已进入「自由探索」模式。你可以从任何科学领域提出研究问题，开展文献与证据检索、数据和方法规划、计算分析或复现审查。需要学科专用连接器、校验规则或执行环境时，请创建或切换到启用相应领域模块的项目；涉及写入、下载或计算的操作仍需你确认。" : `已进入项目“${project.name}”。当前研究问题：${project.researchQuestion}`, status: "complete" });
 type ToolActivity = { callId: string; name: string; status: "running" | "complete" | "failed" };
 
 const CHOICE_FENCE_COMPLETE = /```xiling-choices\s*\n([\s\S]*?)```/g;

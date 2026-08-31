@@ -46,7 +46,7 @@ import { createTabularExecutionRunner, registerTabularExecutionRoutes } from "./
 import { createInstalledScienceDomainRegistry } from "./installed-domains.js";
 import { selectModelRoute } from "./model-route-selection.js";
 
-export function createApp(options: { dataRoot?: string; webRoot?: string; literatureFetch?: typeof fetch; literatureSleep?: (ms: number, signal?: AbortSignal) => Promise<void>; connectorProbe?: ConnectorMetadataProbe; connectorDownloader?: ConnectorDownloader; connectorMode?: "fixture" | "live"; projectAnalysisRunner?: ProjectAnalysisRunner; artifactStore?: ArtifactRegistry; fixtureModel?: boolean } = {}) {
+export function createApp(options: { dataRoot?: string; webRoot?: string; literatureFetch?: typeof fetch; literatureSleep?: (ms: number, signal?: AbortSignal) => Promise<void>; connectorProbe?: ConnectorMetadataProbe; connectorDownloader?: ConnectorDownloader; connectorMode?: "fixture" | "live"; projectAnalysisRunner?: ProjectAnalysisRunner; artifactStore?: ArtifactRegistry; fixtureModel?: boolean; additionalProjects?: Array<{ id: string; name: string; description: string; researchQuestion: string; domainIds: string[] }> } = {}) {
   const app = Fastify({ logger: false });
   void app.register(cors, { origin: /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/ });
   const webRoot = options.webRoot ?? resolve(dirname(fileURLToPath(import.meta.url)), "../../web/dist");
@@ -72,11 +72,12 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
     knowledge.createProject({
       id: FREE_EXPLORATION_PROJECT_ID,
       name: "自由探索",
-      description: "内置开放问答模式：不绑定单一研究事件，可自由咨询物理海洋学各类问题。",
-      researchQuestion: "开放问答：自由探讨物理海洋学问题（环流、层结、混合、热浪、内波、潮汐、数据与方法等），不限定单一事件或海域。",
-      domainIds: ["general-science", "ocean-climate"],
+      description: "不绑定单一学科或研究事件的通用科研入口。",
+      researchQuestion: "提出研究问题，检索和核对证据，规划数据与方法，并将结果沉淀为可追溯的科研对象。",
+      domainIds: ["general-science"],
     });
   }
+  for (const project of options.additionalProjects ?? []) if (!knowledge.getProject(project.id)) knowledge.createProject(project);
   artifactStore = options.artifactStore ?? new LocalArtifactStore(resolve(workspaceRoot, "artifacts.sqlite"), resolve(workspaceRoot, "artifact-blobs"));
   if (!options.artifactStore) app.addHook("onClose", async () => (artifactStore as LocalArtifactStore).close());
   registerArtifactRoutes(app, artifactStore, (projectId) => Boolean(knowledge.getProject(projectId)));
@@ -285,7 +286,7 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
         "你是汐灵 OS 的科学研究 Agent。",
         ...activeDomain.promptFragments,
         ...(freeExploration
-          ? ["当前处于自由探索模式：不绑定单一研究事件，可回答物理海洋学的任何问题（环流、层结、混合、热浪、内波、潮汐、海气相互作用、数据与方法等），也可引用其他项目积累的知识；涉及具体项目时先调用 read_project_context。"]
+          ? ["当前处于自由探索模式：不绑定单一学科或研究事件，可协助广泛科学领域的问题形成、文献与证据检索、数据和方法规划、计算分析与复现审查。涉及特定学科能力时，应建议用户创建或切换到启用相应领域模块的项目；涉及已有项目时先调用 read_project_context。"]
           : ["只处理当前项目；需要项目细节时先调用 read_project_context。"]),
         "只在用户问题确实需要时调用其余已激活工具；不得假装工具已经运行。",
         "MCP 只允许先搜索/描述后调用；若工具返回需要审批，必须停止并请用户在设置中显式信任对应服务器后重试，不得规避审批。",

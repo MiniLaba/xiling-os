@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { ResearchProject } from "@xiling/contracts";
+import { FREE_EXPLORATION_PROJECT_ID, type ResearchProject } from "@xiling/contracts";
 
 type WorkspaceState = {
   projects: ResearchProject[];
@@ -16,7 +16,7 @@ const storageKey = "xiling.activeProjectId";
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<ResearchProject[]>([]);
-  const [activeProjectId, setActiveProjectIdState] = useState(() => localStorage.getItem(storageKey) ?? "ocean-heatwave");
+  const [activeProjectId, setActiveProjectIdState] = useState(() => localStorage.getItem(storageKey) ?? FREE_EXPLORATION_PROJECT_ID);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 

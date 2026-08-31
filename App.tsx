@@ -34,7 +34,7 @@ const icons: Record<View, ReactNode> = {
 };
 
 const navigationGroups = [
-  { title: "海洋科研工作台", items: ["chat", "attention", "canvas"] },
+  { title: "科研工作台", items: ["chat", "attention", "canvas"] },
   { title: "科研知识库", items: ["project", "wiki", "papers"] },
 ] as const;
 
@@ -71,7 +71,7 @@ function WorkspaceApp() {
       {view !== "settings" ? <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-mark"><img src="/brand/xiling-mark.png" alt="" /></div>
-          <div className="brand-text"><b>汐灵</b><small>OCEAN SCIENCE</small></div>
+          <div className="brand-text"><b>汐灵</b><small>SCIENCE OS</small></div>
         </div>
         <nav className="sidebar-nav">
           {navigationGroups.map((group) => (

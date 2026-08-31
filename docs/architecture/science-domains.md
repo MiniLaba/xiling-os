@@ -31,7 +31,8 @@ Server 必须为 tool name 注册明确 adapter。不存在 adapter 时启动或
 ## 当前内置包
 
 - `general-science`：通用科研原则、跨学科文献检索、证据审查、复现审计和反方审稿。
-- `ocean-climate`：海洋数据切片、海洋数据规划、物理海洋分析、ERDDAP/Argo/Copernicus/NASA 连接器及地理空间 Artifact。
+- `ocean-climate`：当前优先完成的官方领域模块，提供海洋数据切片、海洋数据规划、物理海洋分析、ERDDAP/Argo/Copernicus/NASA 连接器及地理空间 Artifact。
+- `tabular-experiment`：已接入的表格实验领域模块，提供表格数据导入、通用 Recipe、确定性执行和结果审查，并持续验证核心 Execution/Artifact/Review 链不依赖海洋类型。
 
 ## 新领域接入清单
 

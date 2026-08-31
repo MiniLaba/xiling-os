@@ -1,11 +1,11 @@
 import { z } from "zod";
-import type { PaperRecord, ResourceUri } from "@xiling/contracts";
+import { FREE_EXPLORATION_PROJECT_ID, type PaperRecord, type ResourceUri } from "@xiling/contracts";
 import type { OceanSubsetRequest } from "@xiling/domain-ocean";
 
 export const projectIdSchema = z.string().min(1).max(120);
 export const sessionIdSchema = z.string().min(1).max(160);
 export const idParamsSchema = z.object({ id: sessionIdSchema });
-export const projectIdQuerySchema = z.object({ projectId: projectIdSchema.default("ocean-heatwave") });
+export const projectIdQuerySchema = z.object({ projectId: projectIdSchema.default(FREE_EXPLORATION_PROJECT_ID) });
 export const researchGraphProjectParamsSchema = z.object({ projectId: projectIdSchema });
 export const researchGraphProjectionQuerySchema = z.object({ view: z.enum(["all", "literature", "evidence", "provenance", "artifacts"]).default("all") });
 export const scientificCanvasLayoutSchema = z.object({
@@ -27,7 +27,7 @@ export const branchContextSchema = z.object({
 });
 
 export const projectionSchema = branchContextSchema.extend({
-  projectId: projectIdSchema.default("ocean-heatwave"),
+  projectId: projectIdSchema.default(FREE_EXPLORATION_PROJECT_ID),
   capabilityQuery: z.string().max(10_000).optional(),
 });
 
@@ -63,7 +63,6 @@ export const wikiRevisionSchema = wikiCreateSchema.pick({ markdown: true, artifa
 export const wikiSearchSchema = z.object({ projectId: projectIdSchema, q: z.string().trim().min(1).max(160), limit: z.coerce.number().int().min(1).max(50).default(20) });
 export const wikiRevisionParamsSchema = idParamsSchema.extend({ version: z.coerce.number().int().positive() });
 
-export const paperParamsSchema = z.object({ paperId: z.string().min(1).max(240) });
 export const paperSchema = z.object({ id: z.string().min(1).max(240), title: z.string().min(1).max(1_000), year: z.number().int().min(0).max(3_000), authors: z.array(z.string().min(1).max(240)).max(200), citationCount: z.number().int().min(0), references: z.array(z.string().min(1).max(240)).max(10_000), source: z.enum(["semantic-scholar", "openalex", "fixture"]), url: z.string().url().optional(), abstract: z.string().max(50_000).optional() });
 export const scopedPaperSchema = z.object({
   projectId: projectIdSchema,

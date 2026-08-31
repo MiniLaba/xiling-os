@@ -83,6 +83,29 @@ const migrations: Array<{ version: number; sql: string }> = [{
     DROP INDEX IF EXISTS chat_messages_session_created;
     DROP TABLE IF EXISTS chat_messages;
   `,
+}, {
+  version: 8,
+  sql: `
+    -- Remove the development-era ocean demonstration project. A generic
+    -- free-exploration system project is seeded after this migration.
+    DELETE FROM wiki_search WHERE page_id IN (SELECT id FROM wiki_pages WHERE project_id = 'ocean-heatwave');
+    DELETE FROM wiki_revisions WHERE page_id IN (SELECT id FROM wiki_pages WHERE project_id = 'ocean-heatwave');
+    DELETE FROM wiki_pages WHERE project_id = 'ocean-heatwave';
+    DELETE FROM chat_session_contexts WHERE session_id IN (SELECT id FROM chat_sessions WHERE project_id = 'ocean-heatwave');
+    DELETE FROM chat_sessions WHERE project_id = 'ocean-heatwave';
+    DELETE FROM context_capsules WHERE project_id = 'ocean-heatwave';
+    DELETE FROM evidence WHERE project_id = 'ocean-heatwave';
+    DELETE FROM project_items WHERE project_id = 'ocean-heatwave';
+    DELETE FROM research_projection_outbox WHERE project_id = 'ocean-heatwave';
+    DELETE FROM projects WHERE id = 'ocean-heatwave';
+
+    UPDATE projects SET
+      name = '自由探索',
+      description = '不绑定单一学科或研究事件的通用科研入口。',
+      research_question = '提出研究问题，检索和核对证据，规划数据与方法，并将结果沉淀为可追溯的科研对象。',
+      domain_ids = '["general-science"]'
+      WHERE id = 'free-exploration';
+  `,
 }];
 
 export const KNOWLEDGE_SCHEMA_VERSION = migrations.at(-1)?.version ?? 0;

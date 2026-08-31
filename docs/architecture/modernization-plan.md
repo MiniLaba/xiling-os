@@ -1,6 +1,6 @@
-# 架构现代化执行计划（2026-08-24）
+# 架构现代化执行状态与历史计划
 
-> 2026-08-26 更新：Canvas/科研事实与持久化部分已由 [ADR 0025](../adr/0025-research-graph-database.md)、[ADR 0026](../adr/0026-agent-execution-graph-in-chat.md)、[ADR 0027](../adr/0027-durable-research-graph-projection.md) 和 [Research Graph 架构](research-graph.md)替代。RG-2 已完成 durable projection chain 并退役 Workflow JSON/旧文件级 settlement。当前开发期不迁移旧数据，也不保留双写兼容；其他模块化单体与 Pi Harness 边界继续有效。
+> 状态核对：2026-08-31。本文保留 R0–R8 的执行背景和验收状态；当前架构事实以根目录 [`DESIGN.md`](../../DESIGN.md) 为准。Canvas/科研事实与持久化部分已由 [ADR 0025](../adr/0025-research-graph-database.md)、[ADR 0026](../adr/0026-agent-execution-graph-in-chat.md)、[ADR 0027](../adr/0027-durable-research-graph-projection.md) 和 [Research Graph 架构](research-graph.md)替代。当前开发期不迁移旧数据，也不保留双写兼容。
 
 ## 评估结论
 
@@ -44,19 +44,19 @@
 - 固定 token 数字只保留为安全和模型窗口保护；优化目标是上下文拓扑、去重、按需加载与可观测性。
 - Gate 5 源码候选与本地架构收口已完成；[Gate 4.5](../gate-4.5-agent-center-correction.md) 已把短命 Agent、前端结果持久化、Compaction 和旧 Canvas 来源截断问题收拢到服务端 Research Agent Harness。后续不再设置普通开发确认点，真实 Windows + Docker、签名和外部发布权限仍按发布门禁处理。
 
-## Gate 4.5 补充阶段
+## Gate 4.5 补充阶段（历史）
 
-1. **事实样例**：核对固定 Pi 版本的 Agent、Session、Compaction 与 Harness 实际能力，不按目标文档假设实现已经可用。
+1. **事实验证**：核对固定 Pi 版本的 Agent、Session、Compaction 与 Harness 实际能力，不按目标文档假设实现已经可用。
 2. **服务端中枢**：建立耐久 session/run/operation、单写者、snapshot/event subscription、取消与恢复。
 3. **双层上下文**：Pi Compaction 管理对话和工具轨迹；Scientific Capsule 管理科研语义和证据引用。
 4. **无损引用**：Canvas 展示摘要通过 source entry 引用完整消息，不复制截断正文作为事实源。
 5. **主路径切换**：Web 不再持久化 Agent 结果或编排工具业务状态；迁移必须先 dry-run、备份并经用户确认。
 
-详细确认点、迁移顺序和验收矩阵以 Gate 4.5 文档为准。
+本节解释 Agent 中枢形成过程，不是当前迁移要求。当前实现和数据所有权以 DESIGN 为准；详细历史确认点见 Gate 4.5 文档。
 
 ## 完成标准
 
 - 架构依赖门禁通过；共享包可独立构建。
 - Chat、画布、项目、Wiki、文献、连接器与 Workflow 现有集成测试不回退。
-- 并发画布更新不会静默覆盖；旧数据库与旧画布文件可读取。
+- 并发画布更新不会静默覆盖；开发期已删除的数据格式不保留兼容读取或双写。
 - 文档中的类型、主闭环和发布状态与代码一致。
