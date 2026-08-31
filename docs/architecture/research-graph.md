@@ -125,7 +125,7 @@ Research Graph 的价值之一是从机制上减少上下文：
 
 ## 9. Windows 与发布
 
-Windows 11 首版仍在 WSL2 Linux 后端运行 Linux x86_64 二进制，数据库必须位于 WSL ext4，不得放在 `/mnt/c` 或 OneDrive。PowerShell Doctor 检查数据库目录、磁盘、可写性和 Native Addon 加载。macOS Apple Silicon、Linux x86_64 和 Windows/WSL2 都必须运行同一离线 smoke。
+Windows 11 原生加载 `@ladybugdb/core-win32-x64`，数据库位于 `%LOCALAPPDATA%\XiLingOS\workspace`，不得放在 OneDrive 或网络共享。PowerShell Doctor 检查数据目录、磁盘与可写性；macOS Apple Silicon、Linux x86_64 和 Windows x86_64 都必须运行同一离线 smoke。
 
 ## 10. RG-0～RG-5 验收
 
@@ -145,4 +145,4 @@ RG-3 已接入顶层 Scientific Canvas：五种受限投影、自由拖动、纵
 
 RG-4 已完成文献闭环：真实 Provider 摘要、原文入口、阅读标注、原文摘录、精确定位、解释、局限、立场和置信度随 Evidence 捕获记录持久化；同一论文可产生多条证据。Knowledge outbox 投影 `Paper HAS_FRAGMENT SourceFragment`、`EvidenceAssertion BASED_ON SourceFragment`、`EvidenceAssertion ASSERTS ClaimRevision` 与 `EvidenceAssertion EVALUATES ResearchQuestion`。Claim 新建/修订先生成待审 proposal，用户接受后才写入不可变 ClaimRevision。
 
-RG-5 本地架构与体验收口包括：旧 Canvas/Gate 3 产品面删除，Wiki 读统一项目概览与 Research Graph，科研画布提供自由拖动、纵向层级整理、一跳聚焦、关系筛选和来源跳转；文献发现图保持临时，只有显式证据捕获进入科研图。Hosted Linux/macOS CI 在源码候选提交后复验；真实 Windows 11/WSL2 仍是正式 Beta 发布门禁。
+RG-5 本地架构与体验收口包括：旧 Canvas/Gate 3 产品面删除，Wiki 读统一项目概览与 Research Graph，科研画布提供自由拖动、纵向层级整理、一跳聚焦、关系筛选和来源跳转；文献发现图保持临时，只有显式证据捕获进入科研图。Hosted Linux/macOS/Windows CI 在源码候选提交后复验；真实 Windows 11 + Docker Desktop 仍是正式 Beta 发布门禁。

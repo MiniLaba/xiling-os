@@ -53,8 +53,10 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
   void app.register(fastifyStatic, { root: webRoot, wildcard: false });
   const defaultDataRoot = process.env.VITEST || process.env.NODE_ENV === "test"
     ? resolve(tmpdir(), `xiling-app-test-${randomUUID()}`)
-    : resolve(dirname(fileURLToPath(import.meta.url)), "../../../data");
-  const dataRoot = options.dataRoot ?? defaultDataRoot;
+    : process.platform === "win32" && process.env.LOCALAPPDATA
+      ? resolve(process.env.LOCALAPPDATA, "XiLingOS")
+      : resolve(dirname(fileURLToPath(import.meta.url)), "../../../data");
+  const dataRoot = options.dataRoot ?? process.env.XILING_DATA_ROOT ?? defaultDataRoot;
   const workspaceRoot = resolve(dataRoot, "workspace");
   let artifactStore: ArtifactRegistry;
   const readManagedArtifact = async (projectId: string, uri: string, offsetBytes: number, maxBytes: number) => {
@@ -567,7 +569,8 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
     status: "ok",
     service: "xiling-server",
     pi: "0.84.2",
-    runner: "external-health-check",
+    runner: "docker-sandbox",
+    sandbox: { engine: "docker", isolation: "least-privilege", networkDefault: "none" },
   }));
 
   app.post("/api/context/project", async (request, reply) => {

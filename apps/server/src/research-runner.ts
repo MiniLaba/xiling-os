@@ -8,6 +8,7 @@ import type { ProjectResearchWorkflow } from "@xiling/domain-ocean";
 import type { ProjectAnalysisRunner } from "./project-workflow.js";
 import type { WorkflowArtifactRegistrar } from "./project-workflow.js";
 import type { ArtifactRegistry } from "@xiling/artifacts";
+import { dockerSandboxArgs } from "@xiling/execution";
 
 const executeFile = promisify(execFile);
 
@@ -71,7 +72,7 @@ export class DockerProjectAnalysisRunner implements ProjectAnalysisRunner {
     const request = workflow.request;
     const plan = { id: workflow.id, datasetUri: workflow.datasetArtifact.uri, variables: request.variables, region: request.region, depth: request.depth ?? { min: 0, max: 2_000 }, time: request.time, estimatedBytes: workflow.datasetArtifact.bytes, targetUri: `artifact://workflow/${workflow.id}` as ResourceUri, planHash: createHash("sha256").update(JSON.stringify(request)).digest("hex") };
     const planPath = join(runRoot, "plan.json"); await writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`, "utf8");
-    const created = await executeFile("docker", ["create", "--network", "none", "--memory", "4g", "--cpus", "2", this.image, "python", "run_ocean_analysis.py", "--plan", "/workspace/plan.json", "--input", "/workspace/input.nc", "--workspace", "/workspace"], { signal, timeout: 15_000, maxBuffer: 1024 * 1024 });
+    const created = await executeFile("docker", ["create", ...dockerSandboxArgs({ network: "none", memoryBytes: 4 * 1024 ** 3, cpu: 2 }), this.image, "python", "run_ocean_analysis.py", "--plan", "/workspace/plan.json", "--input", "/workspace/input.nc", "--workspace", "/workspace"], { signal, timeout: 15_000, maxBuffer: 1024 * 1024 });
     const containerId = created.stdout.trim(); if (!containerId) throw new Error("Docker did not return a container id");
     try {
       await executeFile("docker", ["cp", planPath, `${containerId}:/workspace/plan.json`], { signal, timeout: 15_000 });

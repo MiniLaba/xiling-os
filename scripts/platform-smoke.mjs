@@ -7,7 +7,7 @@ const required = [
   "scripts/windows/xiling-import.ps1",
   "scripts/windows/xiling-start.ps1",
   "scripts/windows/xiling-stop.ps1",
-  "scripts/windows-import.sh",
+  "scripts/start.mjs",
   "scripts/smoke.sh",
   "scripts/xiling-start.sh",
 ];
@@ -19,8 +19,22 @@ for (const path of required) {
 }
 
 const doctor = readFileSync("scripts/windows/xiling-doctor.ps1", "utf8");
-for (const check of ["wsl.exe", "docker.exe", "Get-NetTCPConnection", "Get-PSDrive", "VirtualizationFirmwareEnabled", "docker-linux", "network-config"]) {
+for (const check of ["node.exe", "pnpm.cmd", "docker.exe", "Get-NetTCPConnection", "Get-PSDrive", "VirtualizationFirmwareEnabled", "docker-linux", "data-root", "network-config"]) {
   if (!doctor.includes(check)) throw new Error(`Windows Doctor is missing ${check}`);
+}
+for (const path of required.filter((path) => path.startsWith("scripts/windows/"))) {
+  if (/\bwsl(?:\.exe)?\b/i.test(readFileSync(path, "utf8"))) throw new Error(`${path} must not depend on WSL`);
+}
+
+const launcher = readFileSync("scripts/start.mjs", "utf8");
+for (const behavior of ["waitUntilHealthy", "browserCommand", "XILING_NO_BROWSER", "xiling-server.pid"]) {
+  if (!launcher.includes(behavior)) throw new Error(`Cross-platform launcher is missing ${behavior}`);
+}
+
+for (const path of ["apps/server/src/research-runner.ts", "apps/server/src/connector-runner.ts"]) {
+  const source = readFileSync(path, "utf8");
+  if (!source.includes("dockerSandboxArgs")) throw new Error(`${path} must use the shared scientific sandbox policy`);
+  if (source.includes('"--cap-drop"') || source.includes('"--security-opt"')) throw new Error(`${path} must not duplicate sandbox flags`);
 }
 
 console.log("Cross-platform entrypoint smoke: ok");

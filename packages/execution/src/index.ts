@@ -24,6 +24,42 @@ export interface ExecutionRecord { id: string; projectId: string; specHash: stri
 export interface ExecutionRunner { execute(spec: ExecutionSpec, signal: AbortSignal): Promise<ExecutionResult>; }
 export interface ExecutionRepository { getByKey(projectId: string, idempotencyKey: string): ExecutionRecord | undefined; save(record: ExecutionRecord): void; }
 
+export interface DockerSandboxPolicy {
+  network: "none" | "egress";
+  cpu: number;
+  memoryBytes: number;
+  pidsLimit?: number;
+  tmpBytes?: number;
+  user?: `${number}:${number}`;
+}
+
+/**
+ * Builds the mandatory isolation envelope shared by every scientific Docker
+ * runner. Workspace write access is intentionally supplied by the caller so
+ * the policy can become read-only later without coupling it to data layout.
+ */
+export function dockerSandboxArgs(policy: DockerSandboxPolicy): string[] {
+  if (!Number.isFinite(policy.cpu) || policy.cpu <= 0 || policy.cpu > 64) throw new Error("Sandbox CPU limit must be between 0 and 64");
+  if (!Number.isSafeInteger(policy.memoryBytes) || policy.memoryBytes < 128 * 1024 * 1024) throw new Error("Sandbox memory limit must be at least 128 MiB");
+  const pidsLimit = policy.pidsLimit ?? 256;
+  const tmpBytes = policy.tmpBytes ?? 256 * 1024 * 1024;
+  if (!Number.isSafeInteger(pidsLimit) || pidsLimit < 16 || pidsLimit > 4096) throw new Error("Sandbox PID limit is invalid");
+  if (!Number.isSafeInteger(tmpBytes) || tmpBytes < 16 * 1024 * 1024) throw new Error("Sandbox tmpfs limit is invalid");
+  return [
+    "--network", policy.network === "none" ? "none" : "bridge",
+    "--memory", String(policy.memoryBytes),
+    "--cpus", String(policy.cpu),
+    "--pids-limit", String(pidsLimit),
+    "--cap-drop", "ALL",
+    "--security-opt", "no-new-privileges:true",
+    "--ipc", "none",
+    "--ulimit", "nofile=1024:1024",
+    "--tmpfs", `/tmp:rw,noexec,nosuid,nodev,size=${tmpBytes}`,
+    "--user", policy.user ?? "10001:10001",
+    "--label", "org.xiling.sandbox=true",
+  ];
+}
+
 function canonical(value: JsonValue): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;

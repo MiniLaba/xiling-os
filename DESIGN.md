@@ -3,7 +3,7 @@
 > 本文档是汐灵 OS 当前产品与软件架构的首要入口（living design document）。
 >
 > - 状态：有效
-> - 最后核对：2026-08-28
+> - 最后核对：2026-08-31
 > - 对应版本：Research OS Modernization R0–R7 本地实现；通用执行内核、内容寻址 Artifact、隔离多智能体、上下文质量观测和第二科学领域已接入
 > - 代码事实源：`packages/contracts`、`packages/api-contracts` 与各模块的公开接口
 > - 架构宪法：[科研内核架构宪法](docs/architecture/research-os-constitution.md)
@@ -38,7 +38,7 @@
 4. **证据优先**：摘要和模型输出不是证据；结论必须回链到论文、数据或 Artifact。
 5. **天然节省上下文**：依靠上下文拓扑、按需能力、内容寻址、缓存和结构化交接减少重复，而不是为正常科研任务强行设置统一 token 上限。
 6. **模块化单体**：在确有独立扩缩容或故障隔离需求前，不用微服务增加本地安装成本。
-7. **跨平台边界清晰**：macOS/Linux 直接运行；Windows 11 使用原生启动层 + WSL2 Linux 后端。
+7. **跨平台边界清晰**：macOS、Linux、Windows 11 原生运行控制面；不可信科研执行统一进入 Docker Linux 沙箱。
 
 ## 3. 总体架构
 
@@ -133,7 +133,7 @@ packages/
 ├── literature/                  # 文献 Provider、缓存和图算法
 ├── connectors/                  # 数据连接器契约、预检、审批状态机
 ├── credentials/                 # 加密凭据存储
-└── platform/                    # Windows/WSL 与路径适配
+└── platform/                    # Windows 原生路径与导入适配
 services/runner/                 # Python 科学计算与容器执行
 scripts/                         # smoke、架构、合规和跨平台检查
 docs/adr/                        # 已接受或被替代的架构决策
@@ -314,7 +314,7 @@ Wiki 的目的不是独立笔记编辑器，而是项目的百科入口：用户
 - 设置页管理 HTTP/stdio Server、用途关键词、none/Bearer/OAuth 鉴权、启停、信任级别与连通性测试。
 - Bearer Token 进入 AES-256-GCM 凭据库；JSON 配置和浏览器 API 只保存/返回配置状态。
 - `pi-mcp-adapter` 与 `pi-coding-agent` 只运行在 `@xiling/pi-runtime` 管理的独立子进程；Server 通过 JSONL port 调用，不加载任意 Extension。
-- Host 不扫描 Cursor、Claude、Codex 或用户 Pi 配置；外部 stdio 进程使用 `shell: false`，Windows 在 WSL2 后端执行。
+- Host 不扫描 Cursor、Claude、Codex 或用户 Pi 配置；外部 stdio 进程使用 `shell: false`，Windows 由原生受控 Host 执行。
 - Agent 常规轮次没有 MCP schema。任务命中 Server 名称、用途或关键词后，只激活一个固定 `mcp` 代理工具；具体 schema 通过 search/describe 按需读取。
 - 默认只允许发现和测试；实际工具调用由 adapter 硬性要求审批。用户显式信任某个 Server 才解除该拦截。
 - 输出有字节、行数和 details 上限；长结果应进入 Artifact。Host 失败不会阻断没有使用 MCP 的 Chat、Canvas、Wiki 或项目功能。
@@ -324,7 +324,7 @@ Wiki 的目的不是独立笔记编辑器，而是项目的百科入口：用户
 ## 9. 安全与执行边界
 
 - 服务默认只绑定 `127.0.0.1`。
-- 科研代码和官方客户端在非 root、有限 CPU/内存的 Linux 容器中运行。
+- 科研代码和官方客户端通过 `@xiling/execution` 的统一策略，在非 root、移除 capabilities、禁止提权且限制 CPU/内存/PID/IPC/tmpfs 的 Linux 容器中运行。
 - 凭据通过受控通道注入单次运行，不进入 argv、Artifact、计划 JSON 或模型上下文。
 - MCP Bearer Token 只在隔离 Host 配置时读取，不回传 Web；默认 Server 工具调用需审批。
 - 下载审批锁定请求哈希、元数据来源哈希、变量、区域、时间、深度、体积和目标。
@@ -334,12 +334,12 @@ Wiki 的目的不是独立笔记编辑器，而是项目的百科入口：用户
 
 ## 10. Windows 兼容策略
 
-- 正式支持 Windows 11 x86_64，后端运行于独立 WSL2 环境。
-- SQLite、Git、`node_modules`、Python 环境和活动科研数据位于 WSL ext4。
-- NTFS/OneDrive 文件先预检并导入项目存储，分析期间不直接在 `/mnt/c` 高频随机读写。
-- PowerShell 负责 Doctor、启动、停止、路径导入和浏览器打开，不承载科研业务逻辑。
-- 文本统一 UTF-8/LF；Shell 与 PowerShell 分别有入口。
-- Windows 11 + WSL2 + Docker Desktop 的完整发布验证必须在真实专机执行，不能由普通 GitHub Runner 的嵌套虚拟化替代。
+- 正式支持 Windows 11 x86_64 原生控制面：Node、Web、SQLite、LadybugDB、项目和 Artifact 位于 `%LOCALAPPDATA%\XiLingOS`。
+- Python、官方数据客户端和模型生成科研代码只在 Docker Desktop Linux 沙箱运行；汐灵不安装或调用 WSL。
+- NTFS/OneDrive 文件先预检并复制为内容寻址项目快照；任意 Host 路径不得直接暴露给科研容器。
+- PowerShell 负责 Doctor、安装、启动、停止和路径导入；跨平台 Node 启动器在 `/health` 通过后打开浏览器。
+- 文本统一 UTF-8/LF；Shell 与 PowerShell 分别有入口，`windows-latest` 是合并测试矩阵的一部分。
+- Windows 11 + Docker Desktop 的完整发布验证仍须在真实专机执行；hosted CI 不能替代安装、休眠、代理与大文件验收。
 
 ## 11. 持久化、一致性与恢复
 
@@ -393,7 +393,7 @@ Agent SQLite、Knowledge SQLite、Workflow SQLite、Scientific Canvas Layout SQL
 3. 在 `apps/server/src/installed-domains.ts` 注册安装项；有副作用的工具必须显式注册 adapter，并沿用审批与 capability token；Manifest 不能携带任意执行代码。
 4. 领域依赖进入独立 Runner 环境，不进入 Agent 核心或 Node Server 常驻上下文。
 5. 未选择该领域的项目不得看到其工具、角色、Skill 正文或凭据。
-6. 按 [科学领域扩展架构](docs/architecture/science-domains.md) 提供离线 fixture、smoke、许可证和 Windows/WSL2 验证。
+6. 按 [科学领域扩展架构](docs/architecture/science-domains.md) 提供离线 fixture、smoke、许可证和 Windows 原生/Docker 验证。
 
 ### 新增海洋数据连接器
 
@@ -450,7 +450,7 @@ pnpm compliance    # 依赖许可证检查
 | 批量科研图变更尚无通用 Patch 历史 | Claim 新建/修订已有 proposal 接受/拒绝与不可变版本；布局用 revision 防覆盖 | 开放 Agent 批量实体/关系修改前扩展通用 ChangeSet 预览与撤销 |
 | LadybugDB 仍是较新的嵌入式图后端 | `ResearchGraphStore` 隔离、精确锁版本、事务/恢复 smoke；RG-2 已接主路径但仍受跨平台发布门禁约束 | 任一发布平台、WAL 恢复或 Node Native Addon 门禁失败即切换 Neo4j Community 适配器 |
 | Research Graph 与 Agent/Knowledge/Workflow 跨库一致性 | RG-2 已实现 durable outbox/journal、幂等 projector、目标 ledger 与 reconcile | 多实例 Server 前进一步引入 lease/queue，不做分布式事务 |
-| Windows 完整链路未在专机验收 | 保留 PowerShell/WSL smoke | Gate 5 发布前必须通过真实机器矩阵 |
+| Windows 完整链路未在专机验收 | 原生 hosted CI + PowerShell 静态门禁 | Gate 5 发布前必须通过 Windows 11 + Docker Desktop 真实机器矩阵 |
 | 旧 API 错误格式不完全一致 | 前端 ApiError 兼容 | 逐模块版本化统一错误 envelope |
 | 单进程内存中的活动取消状态 | 重启后持久任务显式恢复 | 引入后台队列或多实例 Server |
 
@@ -478,7 +478,7 @@ R0–R8 现代化开发同时受[科研内核架构宪法](docs/architecture/res
 
 ## 16. 相关决策与资料
 
-- [ADR 0002：Windows WSL2 后端](docs/adr/0002-windows-wsl2-backend.md)
+- [ADR 0002：Windows WSL2 后端（已替代）](docs/adr/0002-windows-wsl2-backend.md)
 - [ADR 0004：Flowith 式上下文画布](docs/adr/0004-flowith-style-context-canvas.md)
 - [ADR 0005：上下文经济](docs/adr/0005-context-economy.md)
 - [ADR 0015：可扩展多模态模型连接器](docs/adr/0015-extensible-multimodal-model-connectors.md)
@@ -500,7 +500,8 @@ R0–R8 现代化开发同时受[科研内核架构宪法](docs/architecture/res
 - [ADR 0035：通用执行内核与领域组合边界](docs/adr/0035-generic-execution-and-domain-composition.md)
 - [ADR 0036：隔离子智能体与结构化 Handoff](docs/adr/0036-isolated-multi-agent-handoffs.md)
 - [ADR 0037：统一真实模型路由与角色级覆盖](docs/adr/0037-real-model-routing-and-role-overrides.md)
-- [ADR 0038：GitHub 合并门禁与 WSL2 支持边界](docs/adr/0038-github-ci-wsl2-boundary.md)
+- [ADR 0038：GitHub 合并门禁与 WSL2 支持边界（已替代）](docs/adr/0038-github-ci-wsl2-boundary.md)
+- [ADR 0039：原生 Windows 控制面与 Docker 科研沙箱](docs/adr/0039-native-windows-control-plane-and-docker-sandbox.md)
 - [Gate 4.5：Agent 中枢架构纠偏](docs/gate-4.5-agent-center-correction.md)
 - [架构现代化计划](docs/architecture/modernization-plan.md)
 - [开源复用与许可证矩阵](docs/oss-evaluation.md)
@@ -509,6 +510,7 @@ R0–R8 现代化开发同时受[科研内核架构宪法](docs/architecture/res
 
 ## 17. 变更记录
 
+- **2026-08-31**：以 ADR 0039 替代全量 WSL2 后端：Windows 控制面、SQLite、Research Graph 与项目数据改为原生运行；科研执行收敛到统一最小权限 Docker 沙箱；新增健康检查后自动打开 Web 的跨平台启动器，并恢复 `windows-latest` 合并门禁。
 - **2026-08-28**：进入 Research OS Modernization R0/R1：建立科研内核架构宪法、黄金科研任务和确定性离线门禁；正式 Workspace API 切换为 `/api/v1`，项目契约改名为 `ResearchProject`；删除 Gate 3 Snapshot、Knowledge `chat_messages`、旧消息回退/导入和 Gate 4.5-C 迁移备份路径，Chat 消息只由 Agent Store 持有。
 - **2026-08-28**：完成 R2 Artifact 基础：新增独立内容寻址 Registry、项目级元数据和生命周期；Workflow 的 Dataset、分析输出和 RO-Crate 在提交前统一注册为 `artifact://sha256/...`，Web/API/Agent 不再读取 Workflow 临时目录。
 - **2026-08-28**：完成 R3–R7 本地架构切片：新增通用 Execution Plan/Spec/Approval/Receipt 与 SQLite 幂等协调；上下文 trace 记录 token 组成、来源覆盖和历史去重；盲审/执行子智能体改为严格 ContextManifest 与 JSON Handoff；新增“需要关注”视图；以表格实验领域验证核心不依赖海洋类型。确定性离线门禁现为 17 个包、33 个测试文件、145 项测试。

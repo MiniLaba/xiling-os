@@ -96,7 +96,7 @@ R0 本地基线：
 - 依赖合规扫描：401 个包
 - Research Graph fixture：19 节点、20 关系
 - 本地 Docker Runner：未验收，Docker daemon 不可用
-- 真实 Windows 11/WSL2：未验收，属于发布阻塞项
+- 真实 Windows 11 + Docker Desktop：未验收，属于发布阻塞项
 
 2026-08-28 R7 本地回归：
 
@@ -111,6 +111,6 @@ R0 本地基线：
 - G6：“需要关注”聚合审批、失败 Workflow、证据定位缺口、Research Graph proposal 与 Agent 失败。
 - G7：`domain-tabular` 在不修改核心类型、Harness 或图存储的情况下注册并通过纵向切片。
 - macOS arm64 Docker Desktop 29.5.3 已从固定基础镜像构建 Runner，并以 `--network none` 通过基础 xarray/RO-Crate、Argo 8-profile 分析/Reviewer 和四连接器适配器 smoke。
-- 真实 Windows 11/WSL2、签名介质和真实科研任务仍未验收，不能由 macOS 容器回归替代。
+- 真实 Windows 11 + Docker Desktop、签名介质和真实科研任务仍未验收，不能由 macOS 容器回归替代。
 
 后续 Gate 不得只更新数字；需要说明新增覆盖了哪个黄金任务和哪个失败路径。

@@ -6,7 +6,7 @@
 
 原 Gate 计划正确建立了产品闭环、审批、容器、跨平台和上下文经济原则，但“按 Gate 追加功能”的实现方式已经不适合继续扩展。主要风险是：单一 Server 文件承载过多领域、前后端重复协议、JSON 画布并发覆盖、SQLite 无显式迁移、KnowledgeService 暴露面过宽，以及开发时 workspace 源码/产物混用。
 
-本轮选择模块化单体，不改成微服务。原因是汐灵仍是本地优先的个人科研工作台，拆服务会增加 Windows/WSL2 安装、端口、升级和故障诊断成本，却不能解决现阶段的边界问题。
+本轮选择模块化单体，不改成微服务。原因是汐灵仍是本地优先的个人科研工作台，拆服务会增加跨平台安装、端口、升级和故障诊断成本，却不能解决现阶段的边界问题。
 
 ## 执行阶段
 
@@ -31,7 +31,7 @@
 | R5 多智能体隔离 | 完成本地验收 | 独立 Session、Manifest allowlist、严格 JSON Handoff、工具/时间/成本预算、父取消 | 真实 Provider 并发与限流需凭据验收 |
 | R6 Attention UX | 完成代码与集成测试 | 审批、失败、证据缺口、待审提案和 Agent 异常聚合到“需要关注” | 发布前仍需正式可用性走查 |
 | R7 第二科学领域 | 完成参考纵向切片 | 表格实验 Manifest、CSV/TSV 导入、统计 Recipe、Viewer 描述、失败测试和 Artifact 输出 | 安装/禁用/升级 UI 仍是后续插件化能力 |
-| R8 发布级验证 | 部分完成 | 确定性离线检查全部通过；macOS arm64 上构建固定基础镜像并以 `--network none` 通过基础、Argo 和四连接器 smoke | 真实 Windows 11/WSL2、签名安装介质和真实科研任务仍是发布阻塞项 |
+| R8 发布级验证 | 部分完成 | 确定性离线检查全部通过；macOS arm64 上构建固定基础镜像并以 `--network none` 通过基础、Argo 和四连接器 smoke | 真实 Windows 11 + Docker Desktop、签名安装介质和真实科研任务仍是发布阻塞项 |
 
 收口规则：本地测试通过不能替代 R8 外部环境验证；同样，R8 的平台工作不能反向引入领域分支、双写或把大 payload 放回上下文。
 
@@ -42,7 +42,7 @@
 - “SQLite/Drizzle”修订为“SQLite + 明确 Repository/Port 边界”。当前实际适配器使用 Node SQLite；在没有迁移收益前不强行引入第二套 ORM。
 - 旧 Canvas 项目图文档已经删除；Scientific Canvas 是 Research Graph 的表现投影，布局保存不能伪装成科研事实版本史。
 - 固定 token 数字只保留为安全和模型窗口保护；优化目标是上下文拓扑、去重、按需加载与可观测性。
-- Gate 5 源码候选与本地架构收口已完成；[Gate 4.5](../gate-4.5-agent-center-correction.md) 已把短命 Agent、前端结果持久化、Compaction 和旧 Canvas 来源截断问题收拢到服务端 Research Agent Harness。后续不再设置普通开发确认点，真实 Windows/WSL2、签名和外部发布权限仍按发布门禁处理。
+- Gate 5 源码候选与本地架构收口已完成；[Gate 4.5](../gate-4.5-agent-center-correction.md) 已把短命 Agent、前端结果持久化、Compaction 和旧 Canvas 来源截断问题收拢到服务端 Research Agent Harness。后续不再设置普通开发确认点，真实 Windows + Docker、签名和外部发布权限仍按发布门禁处理。
 
 ## Gate 4.5 补充阶段
 

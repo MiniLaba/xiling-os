@@ -30,7 +30,7 @@
 | 数据库 | SQLite/Drizzle/FTS5 | Public Domain/Apache | 元数据、迁移、全文搜索 | 采用 |
 | Research Graph | LadybugDB | MIT | 嵌入式类型化属性图、Cypher、ACID/WAL 与图算法；RG-0 技术门禁通过后采用 | 有条件采用（0.19.1） |
 | Research Graph 回退 | Neo4j Community | GPL-3.0 | 仅在 Ladybug 跨平台或恢复门禁失败时作为隔离容器适配器，不与默认实现同时维护 | 备选 |
-| Windows 后端 | WSL2 + Docker Engine API | 平台组件/Apache Go SDK | 运行环境和控制接口 | 采用 |
+| Windows 后端 | 原生 Node + Docker Desktop Engine API | 平台组件/Apache Go SDK | 原生控制面与隔离科研执行 | 采用 |
 
 ## 明确自研项及原因
 
@@ -41,7 +41,7 @@
 | Unified Research Model | 现有项目/Wiki/文献系统没有统一科研溯源对象 | REST schema + domain package | CRUD、迁移、重启恢复 |
 | Canvas Context Projection | XYFlow 不理解对话分支、跨节点引用和上下文胶囊 | `CanvasContextResolver` | Follow-up、Quote、分支合并、胶囊失效 |
 | Canvas Patch Approval | XYFlow 不提供 Agent 覆盖修改审批语义 | `CanvasPatch` | 覆盖修改预览、拒绝、确认、撤销 |
-| Windows Path Bridge | 需在浏览器、Windows、WSL、容器间保持稳定资源 URI | `ResourceUri`、`ImportPort` | 中文、空格、盘符、非法名、越界 |
+| Windows Path Bridge | 需在浏览器、Windows 与容器间保持稳定资源 URI | `ResourceUri`、`ImportPort` | 中文、空格、盘符、非法名、越界 |
 | Token Ledger | 需统一不同提供商、检索与工具 schema 成本 | `UsageRecord` | 预算、缓存、费用计算 |
 | MCP Host Boundary | 需把 Pi Extension 与外部 stdio 进程隔离在 Server 之外，并适配汐灵凭据、路由和生命周期 | `PiMcpGatewayManager` JSONL port | 真实离线 MCP 连接、搜索、调用、取消和清理 |
 

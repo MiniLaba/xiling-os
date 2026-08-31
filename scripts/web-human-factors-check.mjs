@@ -11,7 +11,7 @@ const app = read("apps/web/src/App.tsx");
 const checks = [
   [chat.includes("ResizeObserver") && chat.includes("ArtifactViewer"), "Chat must resize with the real Artifact viewer"],
   [chat.includes("artifact-overlay") && styles.includes(".artifact-overlay .artifact-panel"), "narrow Chat must use an Artifact drawer"],
-  [chat.includes('window.innerWidth >= 1_200'), "narrow Chat must not start behind the Artifact drawer"],
+  [chat.includes("workbenchWidth >= 1_040") && chat.includes("artifact-overlay"), "narrow Chat must not start behind the Artifact drawer"],
   [!chat.includes('setArtifactOpen(project.id ==='), "project selection must not force the Artifact drawer over narrow Chat"],
   [agentFlow.includes("buildConversationCanvas") && agentFlow.includes("hiddenDetailCount"), "Agent flow must fold execution details into conversational nodes"],
   [agentFlow.includes("沿节点继续") && agentFlow.includes("组合引用") && agentFlow.includes("unstable_useComposerInput"), "Agent flow must support follow-up and multi-node quote interaction through the shared Composer"],

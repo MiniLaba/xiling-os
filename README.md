@@ -45,9 +45,9 @@
 - **可恢复的 Agent 中枢**：Pi Runtime 负责模型、流式事件、工具循环和压缩；`@xiling/agent-harness` 负责耐久 Session、Run、Operation、Entry、Usage、取消和重连。
 - **Research Graph**：使用 LadybugDB 保存类型化实体与关系；论文、证据断言、数据集、运行、Artifact 和 Wiki 通过稳定 ID、版本和内容哈希连接。
 - **天然节省上下文**：上下文按项目、当前任务和显式选中的图邻域组装；Skill 只加载索引命中项，MCP 只通过一个惰性代理接入，完整 PDF/NetCDF/日志只以 Artifact URI 流动。
-- **科学执行隔离**：Python、xarray、Dask、SciPy、Cartopy、Jupyter Kernel Gateway 等运行在受控 Linux 容器中，Server 不直接执行科研代码。
+- **科学执行沙箱**：Python、xarray、Dask、SciPy、Cartopy、Jupyter Kernel Gateway 等运行在统一的最小权限 Linux 容器中；Server 不直接执行科研代码。
 - **领域可扩展**：`packages/science-domains` 以 Manifest 注册领域能力、角色、连接器和查看器；通用内核不复制，未选择的领域不会进入当前项目上下文。
-- **跨平台边界**：macOS/Linux 直接运行；Windows 11 采用原生 PowerShell 启动体验 + WSL2 Linux 后端，活动项目和数据库位于 WSL ext4。
+- **跨平台边界**：macOS、Linux 和 Windows 11 均原生运行 Web/Node/SQLite；三平台的科研计算统一进入 Docker Linux 沙箱。
 
 详细的模块所有权、数据模型、不变量和演进规则以 [活设计文档](DESIGN.md) 为准。
 
@@ -86,21 +86,24 @@ pnpm dev
 
 ```sh
 pnpm start
-# 打开 http://127.0.0.1:4317/
+# 健康检查通过后自动打开 http://127.0.0.1:4317/
 ```
+
+无桌面或 CI 环境使用 `pnpm start:no-browser`。
 
 默认连接器使用离线 fixture，不会因为填写凭据就自动访问公网。真实连接器需要显式设置 `XILING_CONNECTOR_MODE=live`，并在应用内完成预检和审批。
 
-### Windows 11（WSL2 后端；不支持原生科研后端）
+### Windows 11（原生应用 + Docker 科研沙箱）
 
-汐灵不把原生 Windows Node/Python/容器执行作为支持目标。Windows 只提供轻量 PowerShell 启动与诊断体验，Node 服务、SQLite、活动项目和科研 Runner 全部运行在 WSL2/Linux 中。不要把活动数据库、`node_modules` 或高频科研数据放在 `/mnt/c`；使用仓库提供的脚本检查并启动：
+Node 服务、Pi Harness、SQLite、Research Graph、项目与 Artifact 原生运行并保存在 `%LOCALAPPDATA%\XiLingOS`，不要求安装或管理 WSL 发行版。Python 科研代码和数据客户端进入 Docker Desktop Linux 容器沙箱。PowerShell 启动后会等待健康检查并自动打开默认浏览器：
 
 ```powershell
 .\scripts\windows\xiling-doctor.ps1
+.\scripts\windows\install.ps1
 .\scripts\windows\xiling-start.ps1
 ```
 
-完整的数据布局、端口、路径、Docker Desktop 和恢复策略见 [Windows/WSL2 部署设计](docs/architecture/deployment.md)。
+完整的数据布局、端口、沙箱和恢复策略见 [跨平台部署设计](docs/architecture/deployment.md)。
 
 ## 验证与开发命令
 
@@ -149,4 +152,4 @@ DESIGN.md                 当前架构与产品决策的首要入口
 
 ## 状态与边界
 
-这是个人研究者优先的本地 Beta 候选，不是云端多租户协作平台。Windows 原生 Python/Node 科研后端不在支持范围内；R、SSH/Slurm、多人协作、中国受限数据源、Windows ARM 和签名/WinGet 正式安装包仍是后续工作。真实 Windows 11 + WSL2 专机验收完成前，不应将本仓库视为生产发布版。
+这是个人研究者优先的本地 Beta 候选，不是云端多租户协作平台。模型生成的科研代码不会在 Windows Host 原生执行；R、SSH/Slurm、多人协作、中国受限数据源、Windows ARM 和签名/WinGet 正式安装包仍是后续工作。真实 Windows 11 + Docker Desktop 专机验收完成前，不应将本仓库视为生产发布版。

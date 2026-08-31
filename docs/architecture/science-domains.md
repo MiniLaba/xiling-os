@@ -40,7 +40,7 @@ Server 必须为 tool name 注册明确 adapter。不存在 adapter 时启动或
 3. 为每个有副作用的 capability 编写 Server adapter、审批披露和 capability token。
 4. Runner 使用独立环境/镜像，不把大型依赖塞入 Node Server。
 5. 提供固定离线 fixture，覆盖最短成功路径、错误输入、取消和资源清理。
-6. 添加许可证、SBOM、Windows/WSL2 路径与容器验证。
+6. 添加许可证、SBOM、Windows 原生路径与 Docker 沙箱验证。
 7. 验证未选择该领域的项目看不到其工具、角色或 Skill 正文。
 
 推荐后续官方包边界：`earth-observation`、`astronomy`、`bioinformatics`、`chemistry-materials`。它们首先共享文献、证据、计算、Artifact 和复现机制，只增加真正领域特有的连接器、查看器、校验与 Runner 环境。
