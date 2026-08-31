@@ -1,8 +1,17 @@
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = "High")]
-param([string]$Distribution = "XiLingOS", [switch]$ForceRecovery)
+param(
+    [string]$DataRoot = (Join-Path $env:LOCALAPPDATA "XiLingOS"),
+    [switch]$ForceRecovery
+)
 
 $ErrorActionPreference = "Stop"
-wsl.exe --distribution $Distribution --exec sh -lc "curl --fail --silent --request POST http://127.0.0.1:4317/api/system/stop || true"
-if ($ForceRecovery -and $PSCmdlet.ShouldProcess($Distribution, "Force terminate the managed WSL distribution after graceful stop failed")) {
-    wsl.exe --terminate $Distribution
+try { Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:4317/api/system/stop" -TimeoutSec 5 | Out-Null }
+catch { Write-Warning "The graceful stop endpoint was unavailable." }
+$pidPath = Join-Path $DataRoot "runtime\xiling-server.pid"
+if ($ForceRecovery -and (Test-Path -LiteralPath $pidPath)) {
+    $serverPid = [int](Get-Content -LiteralPath $pidPath -Raw)
+    if ($PSCmdlet.ShouldProcess("PID $serverPid", "Force terminate Xi Ling OS after graceful stop failed")) {
+        Stop-Process -Id $serverPid -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
+    }
 }

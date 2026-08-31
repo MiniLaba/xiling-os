@@ -77,7 +77,7 @@ Director 委派文献检索、执行审计和 Blind Reviewer。Reviewer 只获�
 
 ## G7：第二科学领域
 
-接入一个数据形态和分析方法不同于海洋 NetCDF 的参考领域。
+接入一个数据形态和分析方法不同于海洋 NetCDF 的独立领域模块。
 
 验收：
 
@@ -96,7 +96,7 @@ R0 本地基线：
 - 依赖合规扫描：401 个包
 - Research Graph fixture：19 节点、20 关系
 - 本地 Docker Runner：未验收，Docker daemon 不可用
-- 真实 Windows 11/WSL2：未验收，属于发布阻塞项
+- 真实 Windows 11 + Docker Desktop：未验收，属于发布阻塞项
 
 2026-08-28 R7 本地回归：
 
@@ -105,12 +105,12 @@ R0 本地基线：
 - 测试项：145
 - 依赖合规扫描：401 个包
 - G2：海洋 Workflow 继续覆盖未审批拒绝、计划绑定、下载/分析/Reviewer 与 Artifact 注册。
-- G3：表格实验参考领域覆盖计划哈希不匹配、CSV 输入物化、确定性统计、幂等重试和内容寻址输出。
+- G3：表格实验领域覆盖计划哈希不匹配、CSV 输入物化、确定性统计、幂等重试和内容寻址输出。
 - G4：Context trace 新增 token 组成、精确来源覆盖率和重复历史合并计数。
 - G5：严格 JSON Handoff、Manifest allowlist、盲审/执行隔离、工具预算、超时和父级取消已覆盖。
 - G6：“需要关注”聚合审批、失败 Workflow、证据定位缺口、Research Graph proposal 与 Agent 失败。
 - G7：`domain-tabular` 在不修改核心类型、Harness 或图存储的情况下注册并通过纵向切片。
 - macOS arm64 Docker Desktop 29.5.3 已从固定基础镜像构建 Runner，并以 `--network none` 通过基础 xarray/RO-Crate、Argo 8-profile 分析/Reviewer 和四连接器适配器 smoke。
-- 真实 Windows 11/WSL2、签名介质和真实科研任务仍未验收，不能由 macOS 容器回归替代。
+- 真实 Windows 11 + Docker Desktop、签名介质和真实科研任务仍未验收，不能由 macOS 容器回归替代。
 
 后续 Gate 不得只更新数字；需要说明新增覆盖了哪个黄金任务和哪个失败路径。

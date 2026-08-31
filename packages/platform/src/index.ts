@@ -9,7 +9,7 @@ export interface WindowsImportPlan {
   platform: "windows";
   originalPath: string;
   displayName: string;
-  wslReadOnlyPath: string;
+  nativeReadOnlyPath: string;
   snapshotObjectName: string;
   importedArtifactUri: ResourceUri;
 }
@@ -31,13 +31,11 @@ export function planWindowsImport(originalPath: string): WindowsImportPlan {
 
   const displayName = path.win32.basename(originalPath);
   const digest = createHash("sha256").update(originalPath.normalize("NFC")).digest("hex");
-  const drive = match[1].toLocaleLowerCase();
-  const posixTail = segments.map(encodeURIComponent).join("/");
   return {
     platform: "windows",
     originalPath,
     displayName,
-    wslReadOnlyPath: `/mnt/${drive}/${posixTail}`,
+    nativeReadOnlyPath: path.win32.normalize(originalPath),
     snapshotObjectName: digest,
     importedArtifactUri: `artifact://${digest}`,
   };

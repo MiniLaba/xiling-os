@@ -1,7 +1,9 @@
 # ADR 0038：GitHub 合并门禁与 WSL2 支持边界
 
-- 状态：Accepted
+- 状态：Superseded by ADR 0039
 - 日期：2026-08-28
+
+> 本文仅保留历史决策。当前 Windows 原生 CI 与部署边界见 [ADR 0039](0039-native-windows-control-plane-and-docker-sandbox.md)。
 
 ## 背景
 

@@ -1,7 +1,9 @@
 # ADR-0002：Windows 11 使用 WSL2 后端
 
-- 状态：Gate 1 待确认
+- 状态：Superseded by ADR 0039
 - 日期：2026-08-23
+
+> 本文仅保留历史决策。当前有效边界见 [ADR 0039](0039-native-windows-control-plane-and-docker-sandbox.md)。
 
 ## 背景
 

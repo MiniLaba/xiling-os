@@ -12,7 +12,7 @@ describe("project-scoped Pi research tools", () => {
   it("activates only capabilities matched by the current prompt", async () => {
     const root = await mkdtemp(join(tmpdir(), "xiling-agent-tools-"));
     const knowledge = new KnowledgeService(join(root, "knowledge.sqlite"));
-    const project = knowledge.getProject("ocean-heatwave")!;
+    const project = knowledge.createProject({ name: "海洋领域测试", description: "fixture", researchQuestion: "层结如何变化？", domainIds: ["ocean-climate"] });
     const fixtureFetch: typeof fetch = async () => new Response(JSON.stringify({ data: [] }), { status: 200 });
     const literature = new LiteratureSearchService(new SemanticScholarProvider(fixtureFetch), new OpenAlexProvider(fixtureFetch), new FileLiteratureCache(join(root, "cache")));
     const services = {

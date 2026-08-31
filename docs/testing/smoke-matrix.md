@@ -22,13 +22,13 @@
 | Project/Wiki | CRUD、版本和重启恢复 | 冲突更新返回明确错误 |
 | Literature Graph | fixture 生成引用/共被引分数 | 缺失论文和重复 DOI 可降级 |
 | Connector | 元数据→计划→模拟下载 | 超时取消且无半成品 |
-| Runner | xarray fixture→PNG/CSV/manifest | 中断内核并回收容器 |
+| Runner Sandbox | xarray fixture→PNG/CSV/manifest；统一验证非 root、降权、资源与网络策略 | 中断执行并回收容器；非法/无界策略拒绝 |
 | Provenance | RO-Crate 写入再读取 | 哈希不符进入 quarantined |
 | Approval | 批准后仅开放声明资源 | 未批准/过期操作被拒绝 |
 | Token Ledger | 记录多组成 token 与费用 | 未知模型保留原始 usage |
-| Windows Doctor | WSL/Docker/端口检查通过 | 缺失组件给出无副作用建议 |
+| Windows Doctor | Node/pnpm/Docker Linux 容器/端口/数据目录检查通过 | 缺失组件给出无副作用建议 |
 | Windows Path Bridge | 中文、空格、C/D 盘导入 | UNC、非法名、越界被阻止 |
-| Import/Export | NTFS→WSL→Artifact→NTFS | 空间不足不留下有效记录 |
+| Import/Export | NTFS→内容寻址项目快照→Artifact→NTFS | 空间不足不留下有效记录 |
 | Stop/Recovery | 优雅停止并再次启动 | Runner 卡死后超时升级 |
 | Encoding | UTF-8/LF 跨平台一致 | 非法编码返回定位信息 |
 | Research Graph | 冲突证据、多跳 Artifact 溯源、分项投影、applied ledger 幂等、Checkpoint 后重开 | 无效端点整体回滚；projection key 内容冲突拒绝；进程非优雅退出后恢复已提交 WAL 且无拓扑变化 |
@@ -40,14 +40,14 @@
 | Multi-Agent Orchestrator | single/parallel/chain 使用独立 child session，父子血缘、ContextManifest hash、结果和 usage 可恢复；UI 只显示低密度任务卡 | 兄弟历史不泄漏、并发/任务/预算上限、禁止递归、父取消级联、部分失败不产生科研事实 |
 | Science Domain Registry | `general-science` 与项目所选领域组合提示、能力、角色、连接器和 Artifact 声明 | 未知/重复领域拒绝；未选择领域的工具不激活；API 不暴露角色 system prompt；Manifest 不自动获得执行权限 |
 
-Gate 4.5 说明：4.5-B 已完成中枢垂直切片；4.5-C 已完成增量 Compaction、正式 Chat/旧 Canvas 切换、`sourceEntryId` 全文覆盖判定、压缩历史按需回读、旧数据逐条幂等迁移、会话归档边界和不可变双数据库备份。4.5-D 已删除旧 Chat 写 API 与 Web retained 真相源，并增加 durable-first Workflow 草稿投影、稳定幂等键、启动 reconcile、项目作用域和 Harness 关闭等待。RG-2 进一步将 Workflow 主仓储切到 SQLite，增加 Knowledge/Workflow outbox、Agent journal 重放、Research Graph applied ledger，并删除旧三处文件级 settlement。`scripts/gate-4.5-b-agent-center-smoke.mjs`、`scripts/gate-4.5-c-migration-smoke.mjs` 与 `scripts/gate-4.5-d-main-path-smoke.mjs` 验证中枢、迁移和主路径。`scripts/mcp-adapter-smoke.mjs` 使用固定离线 stdio fixture 验证独立 Pi MCP Host、宿主元数据命中、惰性目录和真实工具调用。`scripts/research-graph-smoke.mjs` 验证 LadybugDB 类型化科研图、事务、applied ledger、Checkpoint 与异常退出恢复；RG-1 的 Agent Execution Graph 由单元/API 测试覆盖，并通过真实浏览器验证作用域切换、节点详情、拖动、自动整理与面板恢复。真实 Windows 11 + WSL2 专机仍是发布门禁。
+Gate 4.5 说明：4.5-B 已完成中枢垂直切片；4.5-C 已完成增量 Compaction、正式 Chat/旧 Canvas 切换、`sourceEntryId` 全文覆盖判定、压缩历史按需回读、旧数据逐条幂等迁移、会话归档边界和不可变双数据库备份。4.5-D 已删除旧 Chat 写 API 与 Web retained 真相源，并增加 durable-first Workflow 草稿投影、稳定幂等键、启动 reconcile、项目作用域和 Harness 关闭等待。RG-2 进一步将 Workflow 主仓储切到 SQLite，增加 Knowledge/Workflow outbox、Agent journal 重放、Research Graph applied ledger，并删除旧三处文件级 settlement。`scripts/gate-4.5-b-agent-center-smoke.mjs`、`scripts/gate-4.5-c-migration-smoke.mjs` 与 `scripts/gate-4.5-d-main-path-smoke.mjs` 验证中枢、迁移和主路径。`scripts/mcp-adapter-smoke.mjs` 使用固定离线 stdio fixture 验证独立 Pi MCP Host、宿主元数据命中、惰性目录和真实工具调用。`scripts/research-graph-smoke.mjs` 验证 LadybugDB 类型化科研图、事务、applied ledger、Checkpoint 与异常退出恢复；RG-1 的 Agent Execution Graph 由单元/API 测试覆盖。真实 Windows 11 + Docker Desktop 专机仍是发布门禁。
 
 ## CI 矩阵
 
 - Linux：单元、集成、smoke、E2E、许可证、SBOM。
 - macOS：核心、路径、启动和浏览器 smoke。
-- Windows 原生 hosted runner 不属于支持目标，不作为合并门禁。
-- WSL2 自托管 runner（可选）：在 Windows 主机的 WSL2 Linux 环境中运行 TypeScript、路径/编码、SQLite、Docker 和完整闭环；标签为 `xiling-wsl2`。
+- Windows hosted runner：TypeScript、路径/编码、SQLite/LadybugDB、Web 构建、PowerShell 解析与平台 smoke。
+- 真实 Windows 11 + Docker Desktop：发布候选运行原生启动、导入、容器科研闭环、取消与恢复矩阵。
 
 ## 首个科学金标准
 

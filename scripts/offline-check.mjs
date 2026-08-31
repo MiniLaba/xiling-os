@@ -78,4 +78,4 @@ const smokes = [
 for (const script of smokes) run(script, node, [script]);
 
 console.log("\nXiLing deterministic offline check: ok");
-console.log("Runner container and real Windows/WSL2 checks remain separate release gates.");
+console.log("Runner container and real Windows + Docker checks remain separate release gates.");

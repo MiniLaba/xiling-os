@@ -77,7 +77,7 @@
 ### 2.10 本地优先与 Windows 边界
 
 - 系统保持模块化单体；没有已证明的独立扩缩容或故障隔离需求时不得微服务化。
-- Windows 11 使用原生 PowerShell 体验 + WSL2 Linux 后端；活动数据库、依赖和科研数据位于 WSL ext4。
+- Windows 11 原生运行 Node 控制面、数据库和项目数据；科研代码统一进入 Docker Linux 沙箱，不依赖受管 WSL 发行版。
 - NTFS/OneDrive 仅作为受检导入源或显式导出目标。
 
 ## 3. 明确的非目标
@@ -97,7 +97,7 @@
 2. 新增或更新离线 fixture、单元测试、失败路径与 smoke。
 3. `node scripts/offline-check.mjs` 通过；需要容器或真机的项目明确标为未验收，不能用“代码存在”代替通过。
 4. 没有新增事实源回退、跨层深导入、Pi 边界旁路或学科词汇泄漏到通用内核。
-5. 新依赖完成开源、许可证、维护状态和 Windows/WSL2 评估。
+5. 新依赖完成开源、许可证、维护状态和 Windows 原生/Docker 评估。
 6. 破坏性开发期 Schema reset 可以接受，但必须同步删除兼容代码和旧测试。
 
 ## 5. 停止与回退条件
@@ -118,5 +118,4 @@
 - 任意结论和 Artifact 能在 UI 与 API 中追踪至精确来源和运行环境。
 - 多智能体隔离由数据访问层强制，并通过对抗测试。
 - 上下文证据覆盖、重复内容、缓存、成本与降级均可观测。
-- macOS、Linux 和真实 Windows 11/WSL2 发布矩阵通过。
-
+- macOS、Linux 和真实 Windows 11 + Docker Desktop 发布矩阵通过。

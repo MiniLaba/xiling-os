@@ -39,7 +39,7 @@ flowchart LR
 3. 明确更新兼容基线；未更新时 `pnpm pi:compat` 必须失败。
 4. 运行 `pnpm pi:compat`，覆盖流式事件、工具、取消、模型路由、Skill 懒加载、JSONL Session、Compaction 和 Harness 能力探测。
 5. 对 Session 格式变化生成 dry-run 报告；现有数据迁移必须备份、dual-read、可回滚。
-6. 再运行 `pnpm check`、Linux/macOS hosted smoke 与真实 WSL2 发布候选验收；不把原生 Windows hosted runner 当作支持目标。
+6. 再运行 `pnpm check`、Linux/macOS/Windows hosted smoke 与真实 Windows + Docker 发布候选验收。
 
 ## 4. Pi Package 资源分级
 
@@ -93,9 +93,9 @@ interface ResearchExtensionAPI {
 
 不向扩展暴露 Fastify、SQLite connection、Pi Agent 对象、操作系统绝对路径、任意 shell 或长期凭据。
 
-## 7. Windows/WSL
+## 7. Windows
 
-- Package Store、Node 依赖、Skill 和隔离执行目录位于 XiLingOS WSL ext4。
+- Package Store、Node 依赖和 Skill 位于原生 Windows 应用/仓库目录；需要执行代码的扩展进入独立受控 Host 或 Docker 沙箱。
 - Windows 路径只作为导入来源，经路径预检后复制到 staging。
 - npm/git 网络访问遵守代理与自定义 CA 配置；失败不污染已发布版本。
 - Tool Extension 的 smoke 在 Linux 容器中运行，不承诺完全原生 Windows Node Extension。

@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import type { ResourceUri } from "@xiling/contracts";
 import type { ConnectorMetadataSummary, OceanConnectorId, OceanSubsetRequest } from "@xiling/domain-ocean";
 import type { ConnectorDownloader, ConnectorMetadataProbe } from "@xiling/connectors";
+import { dockerSandboxArgs } from "@xiling/execution";
 
 const executeFile = promisify(execFile);
 type CredentialResolver = (connectorId: OceanConnectorId) => Record<string, unknown>;
@@ -63,7 +64,7 @@ export class DockerConnectorRunner implements ConnectorDownloader {
     // is required for the non-root (uid 10001) container process; credentials stay on stdin.
     await writeFile(requestPath, `${JSON.stringify(request, null, 2)}\n`, { encoding: "utf8", mode: 0o644 });
     const created = await executeFile("docker", [
-      "create", "--interactive", "--network", "bridge", "--memory", "4g", "--cpus", "2", this.image,
+      "create", "--interactive", ...dockerSandboxArgs({ network: "egress", memoryBytes: 4 * 1024 ** 3, cpu: 2 }), this.image,
       "python", "run_connector.py", "--request", "/workspace/request.json", "--workspace", "/workspace", "--mode", "download",
     ], { signal, timeout: 15_000, maxBuffer: 1024 * 1024 });
     const containerId = created.stdout.trim(); if (!containerId) throw new Error("Docker did not return a container id");
@@ -110,7 +111,7 @@ export class DockerConnectorProbe implements ConnectorMetadataProbe {
     const requestPath = join(probeRoot, "request.json");
     await writeFile(requestPath, `${JSON.stringify(request, null, 2)}\n`, { encoding: "utf8", mode: 0o644 });
     const created = await executeFile("docker", [
-      "create", "--interactive", "--network", "bridge", "--memory", "1g", "--cpus", "1", this.image,
+      "create", "--interactive", ...dockerSandboxArgs({ network: "egress", memoryBytes: 1024 ** 3, cpu: 1, pidsLimit: 128, tmpBytes: 128 * 1024 ** 2 }), this.image,
       "python", "run_connector.py", "--request", "/workspace/request.json", "--workspace", "/workspace", "--mode", "probe",
     ], { signal, timeout: 15_000, maxBuffer: 1024 * 1024 });
     const containerId = created.stdout.trim(); if (!containerId) throw new Error("Docker did not return a container id");

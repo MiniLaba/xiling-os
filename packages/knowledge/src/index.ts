@@ -4,12 +4,12 @@ import { basename, dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-sqlite";
-import type { CanvasBranchContext, ChatSessionSummary, ContextCapsule, EvidenceRecord, ResearchProject, PaperRecord, ProjectItem, ProjectItemKind, ProjectItemStatus, ProjectStatus, ResourceUri, WikiPageDetail, WikiPageRevision, WikiPageSummary, WikiSearchResult } from "@xiling/contracts";
+import { FREE_EXPLORATION_PROJECT_ID, type CanvasBranchContext, type ChatSessionSummary, type ContextCapsule, type EvidenceRecord, type ResearchProject, type PaperRecord, type ProjectItem, type ProjectItemKind, type ProjectItemStatus, type ProjectStatus, type ResourceUri, type WikiPageDetail, type WikiPageRevision, type WikiPageSummary, type WikiSearchResult } from "@xiling/contracts";
 import { chatSessionContexts, chatSessions, contextCapsules, evidence, projectItems, projects, wikiPages, wikiRevisions } from "./schema.js";
 import { KNOWLEDGE_SCHEMA_VERSION, runKnowledgeMigrations } from "./migrations.js";
 import type { KnowledgeStore, ResearchProjectionOutboxRecord } from "./ports.js";
 
-const DEFAULT_PROJECT_ID = "ocean-heatwave";
+const DEFAULT_PROJECT_ID = FREE_EXPLORATION_PROJECT_ID;
 const now = () => new Date().toISOString();
 
 function slugify(title: string): string {
@@ -358,14 +358,20 @@ export class KnowledgeService implements KnowledgeStore {
   private seed(): void {
     if (this.db.select().from(projects).get()) return;
     const timestamp = now();
-    const project: ResearchProject = { id: DEFAULT_PROJECT_ID, name: "西北太平洋海洋热浪", description: "机制与 Argo 观测验证", researchQuestion: "上层海洋层结是否放大了 2023 年海洋热浪？", domainIds: ["general-science", "ocean-climate"], status: "active", createdAt: timestamp, updatedAt: timestamp };
+    const project: ResearchProject = {
+      id: DEFAULT_PROJECT_ID,
+      name: "自由探索",
+      description: "不绑定单一学科或研究事件的通用科研入口。",
+      researchQuestion: "提出研究问题，检索和核对证据，规划数据与方法，并将结果沉淀为可追溯的科研对象。",
+      domainIds: ["general-science"],
+      status: "active",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
     this.transaction(() => {
       this.db.insert(projects).values({ ...project, domainIds: JSON.stringify(project.domainIds) }).run();
       this.enqueueProjection(project.id, project.id, "knowledge.project.upserted", project, timestamp);
     });
-    this.createItem(DEFAULT_PROJECT_ID, { kind: "milestone", title: "完成物理海洋科研闭环", notes: "数据切片、容器计算、Reviewer 与复现" });
-    const method = this.createWikiPage({ title: "数据与方法", markdown: "# 数据与方法\n\n使用 Argo 温盐剖面验证混合层深度异常。" });
-    this.createWikiPage({ title: "研究总览", markdown: `# 研究总览\n\n当前研究连接到 [[${method.slug}]]。` });
   }
 }
 

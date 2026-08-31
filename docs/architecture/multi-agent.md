@@ -50,4 +50,4 @@ Research Graph 不加入 Delegation 节点。被接受的子结果通过原有�
 
 - MA-3：将动态 Evidence/Reproducibility/Methods rubric 与 proposal/Runner 结果契约进一步结构化连接。
 - MA-4：允许用户从经审计基础角色 + 领域 Skill + capability allowlist 创建一次性动态角色。
-- MA-5：模型多样性、盲审相关性评测、真实 Windows WSL2 负载与恢复验证。
+- MA-5：模型多样性、盲审相关性评测、真实 Windows + Docker 负载与恢复验证。

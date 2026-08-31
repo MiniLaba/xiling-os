@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { createApp } from "./app.js";
+import { createApp as createAppBase } from "./app.js";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LocalArtifactStore } from "@xiling/artifacts";
 
-type TestApp = ReturnType<typeof createApp>;
+const oceanTestProject = { id: "ocean-heatwave", name: "海洋领域测试", description: "test fixture", researchQuestion: "层结如何变化？", domainIds: ["general-science", "ocean-climate"] };
+function createApp(options: Parameters<typeof createAppBase>[0] = {}) {
+  return createAppBase({ ...options, additionalProjects: [...(options.additionalProjects ?? []), oceanTestProject] });
+}
+type TestApp = ReturnType<typeof createAppBase>;
 
 async function createAgentChatSession(app: TestApp, projectId: string, title: string) {
   const response = await app.inject({ method: "POST", url: "/api/v1/chat-sessions", payload: { projectId, title } });
@@ -86,7 +90,7 @@ describe("server vertical slice", () => {
     const projection = await app.inject({
       method: "POST",
       url: "/api/context/project",
-      payload: { activeNodeId: "research-question:ocean-heatwave", quotedNodeIds: ["ocean-heatwave"], capabilityQuery: "分析 Argo 温度" },
+      payload: { projectId: "ocean-heatwave", activeNodeId: "research-question:ocean-heatwave", quotedNodeIds: ["ocean-heatwave"], capabilityQuery: "分析 Argo 温度" },
     });
     expect(projection.statusCode, projection.body).toBe(200);
     expect(projection.json()).toMatchObject({ quotedNodeIds: ["ocean-heatwave"], activatedCapabilities: ["project.read", "ocean.subset.plan"] });
@@ -197,9 +201,7 @@ describe("server vertical slice", () => {
       region: { west: 130, east: 150, south: 10, north: 30 }, time: { start: "2023-07-01", end: "2023-07-31" }, outputFormat: "NetCDF",
     } });
     expect(preflight.json()).toMatchObject({ status: "metadata_required", connector: { id: "erddap" } });
-    const literature = await app.inject({ method: "GET", url: "/api/v1/literature/demo" });
-    expect(literature.json()).toMatchObject({ provider: "fixture", nodes: expect.any(Array), edges: expect.any(Array) });
-    expect(new Set(literature.json().edges.map((edge: { kind: string }) => edge.kind))).toContain("co-citation");
+    expect((await app.inject({ method: "GET", url: "/api/v1/literature/demo" })).statusCode).toBe(404);
     await app.close();
   });
 
@@ -237,8 +239,7 @@ describe("server vertical slice", () => {
     expect((await app.inject({ method: "GET", url: `/api/v1/wiki/pages?projectId=${projectId}` })).json()).toMatchObject([{ projectId, title: "第二项目 Wiki" }]);
     expect((await app.inject({ method: "GET", url: "/api/v1/wiki/pages?projectId=ocean-heatwave" })).body).not.toContain("第二项目 Wiki");
 
-    const graph = await app.inject({ method: "GET", url: "/api/v1/literature/demo" });
-    const paper = graph.json().nodes[0];
+    const paper = { id: "paper-isolation", title: "Independent evidence record", year: 2025, authors: ["Lin"], citationCount: 1, references: [], source: "fixture" };
     expect((await app.inject({ method: "POST", url: "/api/v1/evidence", payload: { projectId, paper } })).statusCode).toBe(201);
     expect((await app.inject({ method: "GET", url: `/api/v1/evidence?projectId=${projectId}` })).json()).toHaveLength(1);
     expect((await app.inject({ method: "GET", url: "/api/v1/evidence?projectId=ocean-heatwave" })).json()).toHaveLength(0);
@@ -342,22 +343,22 @@ describe("server vertical slice", () => {
     const updated = await first.inject({ method: "PATCH", url: `/api/v1/project-items/${item.json().id}`, payload: { status: "running" } });
     expect(updated.json()).toMatchObject({ status: "running" });
 
-    const page = await first.inject({ method: "POST", url: "/api/v1/wiki/pages", payload: { title: "机制证据", markdown: "# 机制证据\n\n初稿" } });
+    const page = await first.inject({ method: "POST", url: "/api/v1/wiki/pages", payload: { projectId: "ocean-heatwave", title: "机制证据", markdown: "# 机制证据\n\n初稿" } });
     expect(page.statusCode).toBe(201);
     const revision = await first.inject({ method: "POST", url: `/api/v1/wiki/pages/${page.json().id}/revisions`, payload: { markdown: "# 机制证据\n\n第二版" } });
     expect(revision.json()).toMatchObject({ revisionCount: 2, currentRevision: { version: 2 } });
     expect((await first.inject({ method: "GET", url: "/api/v1/wiki/search?projectId=ocean-heatwave&q=%E7%AC%AC%E4%BA%8C%E7%89%88" })).json()).toMatchObject([{ pageId: page.json().id, version: 2 }]);
     expect((await first.inject({ method: "POST", url: `/api/v1/wiki/pages/${page.json().id}/revisions/1/restore` })).json()).toMatchObject({ revisionCount: 3, currentRevision: { version: 3, markdown: expect.stringContaining("初稿") } });
 
-    const graph = await first.inject({ method: "GET", url: "/api/v1/literature/demo" });
-    const paperId = graph.json().nodes[0].id as string;
-    expect((await first.inject({ method: "POST", url: `/api/v1/evidence/${paperId}` })).statusCode).toBe(201);
-    expect((await first.inject({ method: "POST", url: `/api/v1/evidence/${paperId}` })).json()).toMatchObject({ paper: { id: paperId }, stance: "insufficient", confidence: 0.5 });
+    const paperId = "paper-persistence";
+    const paper = { id: paperId, title: "Persistent evidence record", year: 2025, authors: ["Lin"], citationCount: 1, references: [], source: "fixture" };
+    expect((await first.inject({ method: "POST", url: "/api/v1/evidence", payload: { projectId: "ocean-heatwave", paper } })).statusCode).toBe(201);
+    expect((await first.inject({ method: "POST", url: "/api/v1/evidence", payload: { projectId: "ocean-heatwave", paper } })).json()).toMatchObject({ paper: { id: paperId }, stance: "insufficient", confidence: 0.5 });
     expect((await first.inject({ method: "POST", url: `/api/v1/canvas/papers/${paperId}` })).statusCode).toBe(404);
     await first.close();
 
     const restored = createApp({ dataRoot });
-    expect((await restored.inject({ method: "GET", url: "/api/v1/evidence" })).json()).toHaveLength(1);
+    expect((await restored.inject({ method: "GET", url: "/api/v1/evidence?projectId=ocean-heatwave" })).json()).toHaveLength(1);
     expect((await restored.inject({ method: "GET", url: `/api/v1/wiki/pages/${page.json().id}` })).json()).toMatchObject({ revisionCount: 3 });
     const projected = await restored.inject({ method: "GET", url: "/api/projects/ocean-heatwave/research-graph?view=evidence" });
     expect(projected.json().nodes).toEqual(expect.arrayContaining([expect.objectContaining({ id: expect.stringContaining("evidence-assertion:"), kind: "EvidenceAssertion", stance: "insufficient", confidence: 0.5 })]));

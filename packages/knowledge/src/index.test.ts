@@ -6,7 +6,19 @@ import { DatabaseSync } from "node:sqlite";
 import { KnowledgeService } from "./index.js";
 import { KNOWLEDGE_SCHEMA_VERSION } from "./migrations.js";
 
+const systemProjectId = "free-exploration";
+
 describe("knowledge service smoke", () => {
+  it("starts with only the generic research entry and no demonstration content", async () => {
+    const root = await mkdtemp(join(tmpdir(), "xiling-generic-seed-"));
+    const service = new KnowledgeService(join(root, "knowledge.sqlite"));
+    expect(service.listProjects()).toMatchObject([{ id: systemProjectId, domainIds: ["general-science"], name: "自由探索" }]);
+    expect(service.listItems(systemProjectId)).toHaveLength(0);
+    expect(service.listWikiPages(systemProjectId)).toHaveLength(0);
+    expect(service.listEvidence(systemProjectId)).toHaveLength(0);
+    service.close();
+  });
+
   it("persists projects, item state, immutable wiki revisions and backlinks", async () => {
     const root = await mkdtemp(join(tmpdir(), "xiling-knowledge-"));
     const path = join(root, "knowledge.sqlite");
@@ -36,8 +48,8 @@ describe("knowledge service smoke", () => {
     const root = await mkdtemp(join(tmpdir(), "xiling-evidence-"));
     const service = new KnowledgeService(join(root, "knowledge.sqlite"));
     const paper = { id: "paper-1", title: "Ocean paper", year: 2024, authors: ["Lin"], citationCount: 4, references: [], source: "fixture" as const };
-    expect(service.saveEvidence("ocean-heatwave", paper).id).toBe(service.saveEvidence("ocean-heatwave", paper).id);
-    service.saveEvidence("ocean-heatwave", paper, "另一主张", "supports", 0.8, { sourceQuote: "Observed warming persisted.", limitations: "regional", claimRevisionId: "claim:2:r1" });
+    expect(service.saveEvidence(systemProjectId, paper).id).toBe(service.saveEvidence(systemProjectId, paper).id);
+    service.saveEvidence(systemProjectId, paper, "另一主张", "supports", 0.8, { sourceQuote: "Observed warming persisted.", limitations: "regional", claimRevisionId: "claim:2:r1" });
     expect(service.listEvidence()).toHaveLength(2);
     service.close();
   });
@@ -66,7 +78,7 @@ describe("knowledge service smoke", () => {
     const session = first.createChatSession(project.id, "检查风应力资料");
     first.setChatSessionContext(session.id, { projectId: project.id, activeNodeId: "response-1", quotedNodeIds: ["paper-1", "paper-1"] });
     expect(first.listChatSessions(project.id)).toMatchObject([{ id: session.id, messageCount: 0, preview: "", canvasContext: { activeNodeId: "response-1", quotedNodeIds: ["paper-1"] } }]);
-    expect(first.listChatSessions("ocean-heatwave")).toHaveLength(0);
+    expect(first.listChatSessions(systemProjectId)).toHaveLength(0);
     first.close();
 
     const restored = new KnowledgeService(path);
@@ -78,14 +90,14 @@ describe("knowledge service smoke", () => {
     const root = await mkdtemp(join(tmpdir(), "xiling-context-capsules-"));
     const path = join(root, "knowledge.sqlite");
     const first = new KnowledgeService(path);
-    const capsule = { id: "node:ocean-heatwave:n1", sourceNodeId: "n1", sourceRevision: "r1", summary: "第一版", claims: ["结论"], artifactUris: ["artifact://plot" as const], layer: "node" as const, coveredNodeIds: ["n1"] };
-    first.upsertContextCapsule("ocean-heatwave", capsule);
-    first.upsertContextCapsule("ocean-heatwave", { ...capsule, sourceRevision: "r2", summary: "第二版" });
+    const capsule = { id: `node:${systemProjectId}:n1`, sourceNodeId: "n1", sourceRevision: "r1", summary: "第一版", claims: ["结论"], artifactUris: ["artifact://plot" as const], layer: "node" as const, coveredNodeIds: ["n1"] };
+    first.upsertContextCapsule(systemProjectId, capsule);
+    first.upsertContextCapsule(systemProjectId, { ...capsule, sourceRevision: "r2", summary: "第二版" });
     first.close();
     const restored = new KnowledgeService(path);
-    expect(restored.listContextCapsules("ocean-heatwave")).toMatchObject([{ sourceRevision: "r2", summary: "第二版" }]);
-    expect(restored.pruneContextCapsules("ocean-heatwave", [])).toBe(1);
-    expect(restored.listContextCapsules("ocean-heatwave")).toHaveLength(0);
+    expect(restored.listContextCapsules(systemProjectId)).toMatchObject([{ sourceRevision: "r2", summary: "第二版" }]);
+    expect(restored.pruneContextCapsules(systemProjectId, [])).toBe(1);
+    expect(restored.listContextCapsules(systemProjectId)).toHaveLength(0);
     restored.close();
   });
 });
