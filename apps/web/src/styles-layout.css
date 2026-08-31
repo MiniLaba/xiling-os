@@ -701,8 +701,10 @@
 }
 
 @media (max-width: 960px) {
-  .shell {
-    grid-template-columns: 0 1fr 0 !important;
+  /* Hidden sidebars must not leave the workspace auto-placed in a zero-width
+     first grid track. Keep the active view as the single visible column. */
+  .shell:not(.settings-mode), .shell.settings-mode {
+    grid-template-columns: 1fr !important;
   }
   .sidebar, .output-panel {
     display: none !important;
