@@ -38,7 +38,8 @@ export function App() {
 
 function WorkspaceApp() {
   const [view, setView] = useState<View>("chat");
-  const settingsReturnView = useRef<Exclude<View, "settings">>("chat");
+  const [viewHistory, setViewHistory] = useState<View[]>([]);
+  const lastViewRef = useRef<View>("chat");
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem("xiling:sidebar-collapsed") === "true");
   const [commandOpen, setCommandOpen] = useState(false);
@@ -57,6 +58,19 @@ function WorkspaceApp() {
     const shortcut = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "k") { event.preventDefault(); setCommandOpen((open) => !open); } if (event.key === "Escape") setCommandOpen(false); };
     window.addEventListener("keydown", shortcut); return () => window.removeEventListener("keydown", shortcut);
   }, []);
+  // 视图导航历史：任何视图切换都把来源视图压栈，顶栏返回键据此回到上一视图
+  useEffect(() => {
+    if (view === lastViewRef.current) return;
+    setViewHistory((history) => [...history.slice(-19), lastViewRef.current]);
+    lastViewRef.current = view;
+  }, [view]);
+  const goBack = () => {
+    const previous = viewHistory[viewHistory.length - 1];
+    if (previous === undefined) return;
+    lastViewRef.current = previous;
+    setViewHistory((history) => history.slice(0, -1));
+    setView(previous);
+  };
 
   if (loading && !activeProject) return <main className="shell"><div className="view-loading">正在恢复科研工作区…</div></main>;
   if (!activeProject) return <main className="shell"><div className="view-loading">{error ?? "没有可用科研项目"}</div></main>;
@@ -82,18 +96,18 @@ function WorkspaceApp() {
           ))}
         </nav>
         <div className="recent-work"><header><small>对话历史</small>{sessions.length ? <span>{sessions.length}</span> : null}</header>{sessionsLoading ? <p>正在恢复…</p> : sessions.length ? sessions.map((session) => <div className={`session-item ${view === "chat" && session.id === activeSessionId ? "active" : ""}`} key={session.id}><button onClick={() => { selectSession(session.id); setView("chat"); }}><i>○</i><span><b>{session.title}</b><small>{formatSessionTime(session.updatedAt)} · {session.messageCount} 条</small></span></button><button className="session-delete" aria-label={`删除对话「${session.title}」`} title="删除对话" onClick={(event) => { event.stopPropagation(); if (window.confirm(`确定删除对话「${session.title}」吗？删除后不可恢复。`)) void deleteSession(session.id); }}>✕</button></div>) : <p>这个项目还没有对话</p>}</div>
-        <button className="settings-entry" onClick={() => { settingsReturnView.current = view; setView("settings"); }}><svg viewBox="0 0 20 20" aria-hidden="true">{icons.settings}</svg><span>设置</span></button>
+        <button className="settings-entry" onClick={() => setView("settings")}><svg viewBox="0 0 20 20" aria-hidden="true">{icons.settings}</svg><span>设置</span></button>
       </aside> : null}
       <section className={`workspace workspace-${view}`}>
         <header>
-          <div className="workspace-title"><button aria-label="返回" onClick={() => { if (view === "settings") setView(settingsReturnView.current); }}>‹</button><strong>{labels[view]}</strong><span>{activeProject.name}</span></div>
+          <div className="workspace-title"><button aria-label="返回上一视图" title="返回上一视图" disabled={!viewHistory.length} onClick={goBack}>‹</button><strong>{labels[view]}</strong><span>{activeProject.name}</span></div>
           {view === "settings" ? <div className="settings-top-status"><i />本地设置 · 凭据不会回传</div> : <div className="workspace-actions"><span className="save-state">✓ 已保存</span><button onClick={() => setCommandOpen(true)}>⌘K 搜索与跳转</button></div>}
         </header>
         <Suspense fallback={<div className="view-loading">按需加载当前视图…</div>}>
           {view === "chat" ? <ChatView project={activeProject} /> : view === "attention" ? <AttentionView projectId={activeProjectId} onNavigate={setView} /> : view === "canvas" ? <ScientificCanvasView projectId={activeProjectId} onNavigate={setView} /> : view === "project" ? <ProjectView projectId={activeProjectId} projects={projects} onProjectChange={setActiveProjectId} onProjectsChange={refreshProjects} /> : view === "wiki" ? <WikiView projectId={activeProjectId} onNavigate={setView} /> : view === "papers" ? <PaperGraphView projectId={activeProjectId} onNavigate={setView} /> : view === "settings" ? <SettingsView /> : <Placeholder title={labels[view]} />}
         </Suspense>
       </section>
-      {commandOpen ? <div className="command-palette" role="dialog" aria-modal="true" aria-label="搜索与跳转"><div><header><input autoFocus placeholder="跳转页面、切换项目或新建对话…" value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} /><kbd>ESC</kbd></header><section><small>工作区</small>{(Object.keys(labels) as View[]).filter((target) => labels[target].includes(commandQuery.trim()) || !commandQuery.trim()).map((target) => <button key={target} onClick={() => { if (target === "settings") settingsReturnView.current = view === "settings" ? "chat" : view; setView(target); setCommandOpen(false); setCommandQuery(""); }}><svg viewBox="0 0 20 20">{icons[target]}</svg><span>{labels[target]}</span><em>打开</em></button>)}</section><section><small>科研项目</small>{projects.filter((project) => `${project.name} ${project.researchQuestion}`.toLocaleLowerCase().includes(commandQuery.trim().toLocaleLowerCase()) || !commandQuery.trim()).map((project) => <button key={project.id} onClick={() => { setActiveProjectId(project.id); setCommandOpen(false); setCommandQuery(""); }}><span>◎ {project.name}</span><em>{project.id === activeProjectId ? "当前" : "切换"}</em></button>)}</section><footer><button onClick={() => { startNewConversation(); setView("chat"); setCommandOpen(false); }}>＋ 新建研究对话</button></footer></div></div> : null}
+      {commandOpen ? <div className="command-palette" role="dialog" aria-modal="true" aria-label="搜索与跳转"><div><header><input autoFocus placeholder="跳转页面、切换项目或新建对话…" value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} /><kbd>ESC</kbd></header><section><small>工作区</small>{(Object.keys(labels) as View[]).filter((target) => labels[target].includes(commandQuery.trim()) || !commandQuery.trim()).map((target) => <button key={target} onClick={() => { setView(target); setCommandOpen(false); setCommandQuery(""); }}><svg viewBox="0 0 20 20">{icons[target]}</svg><span>{labels[target]}</span><em>打开</em></button>)}</section><section><small>科研项目</small>{projects.filter((project) => `${project.name} ${project.researchQuestion}`.toLocaleLowerCase().includes(commandQuery.trim().toLocaleLowerCase()) || !commandQuery.trim()).map((project) => <button key={project.id} onClick={() => { setActiveProjectId(project.id); setCommandOpen(false); setCommandQuery(""); }}><span>◎ {project.name}</span><em>{project.id === activeProjectId ? "当前" : "切换"}</em></button>)}</section><footer><button onClick={() => { startNewConversation(); setView("chat"); setCommandOpen(false); }}>＋ 新建研究对话</button></footer></div></div> : null}
     </main>
   );
 }
