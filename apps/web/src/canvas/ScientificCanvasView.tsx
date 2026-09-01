@@ -4,7 +4,6 @@ import {
   Controls,
   Handle,
   MarkerType,
-  MiniMap,
   Position,
   ReactFlow,
   useEdgesState,
@@ -17,7 +16,7 @@ import {
   type Viewport,
 } from "@xyflow/react";
 import {
-  BookOpen, CheckCircle2, ClipboardCheck, Cpu, Database, FileText, FolderKanban, HelpCircle, Layers, MessageSquareQuote, Package, Search, User, X,
+  BookOpen, CheckCircle2, ClipboardCheck, Cpu, Database, FileText, FolderKanban, GripHorizontal, HelpCircle, Layers, MessageSquareQuote, Package, Search, User, X,
 } from "lucide-react";
 import type { ResearchGraphEntity, ResearchGraphProjection, ResearchGraphProposal, ResearchGraphView, ResearchRelationKind, ScientificCanvasLayout } from "@xiling/contracts";
 import { apiJson, jsonInit } from "../lib/api-client.js";
@@ -83,7 +82,7 @@ function ScientificNodeCard({ data, selected }: NodeProps<ScientificNode>) {
     );
   }
   return (
-    <article className={`scientific-node ${selected ? "selected" : ""} ${data.refTier === 2 ? "ref-tier-2" : data.refTier === 1 ? "ref-tier-1" : ""}`} style={{ borderLeftColor: entityColor }}>
+    <article className={`scientific-node ${selected ? "selected" : ""} ${data.refTier === 2 ? "ref-tier-2" : data.refTier === 1 ? "ref-tier-1" : ""}`}>
       <Handle type="target" position={Position.Top} isConnectable={false} />
       <header>
         <span className="scientific-kind" style={{ color: entityColor }}>{kindIcon[data.kind] ?? <Layers size={13} aria-hidden="true" />}{kindLabel[data.kind] ?? data.kind}</span>
@@ -111,6 +110,18 @@ const semanticRank: Record<string, number> = {
 
 const LANE_GAP = 236;
 const COLUMN_GAP = 296;
+
+export function clampFloatingPanelPosition(
+  x: number,
+  y: number,
+  panel: { width: number; height: number },
+  container: { width: number; height: number },
+) {
+  return {
+    x: Math.min(Math.max(0, x), Math.max(0, container.width - panel.width)),
+    y: Math.min(Math.max(0, y), Math.max(0, container.height - panel.height)),
+  };
+}
 
 /**
  * 语义分层布局：行由科研语义与关系方向决定（纵向有序），行内用 barycenter
@@ -215,6 +226,11 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
   const [proposalTitle, setProposalTitle] = useState("");
   const [proposalSummary, setProposalSummary] = useState("");
   const [zoom, setZoom] = useState(1);
+  const [detailPosition, setDetailPosition] = useState<{ x: number; y: number; height: number }>();
+  const [detailDragging, setDetailDragging] = useState(false);
+  const canvasShell = useRef<HTMLDivElement | null>(null);
+  const detailPanel = useRef<HTMLElement | null>(null);
+  const detailDragCleanup = useRef<(() => void) | undefined>(undefined);
   const flow = useRef<ReactFlowInstance<ScientificNode, ScientificEdge> | null>(null);
   const revisionByView = useRef(new Map<ResearchGraphView, number>());
   const viewRef = useRef(view);
@@ -226,6 +242,20 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
 
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
   useEffect(() => { viewRef.current = view; }, [view]);
+  useEffect(() => () => detailDragCleanup.current?.(), []);
+  useEffect(() => {
+    const shell = canvasShell.current;
+    if (!shell || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(() => {
+      setDetailPosition((current) => {
+        if (!current || !detailPanel.current) return current;
+        const next = clampFloatingPanelPosition(current.x, current.y, { width: detailPanel.current.offsetWidth, height: current.height }, { width: shell.clientWidth, height: shell.clientHeight });
+        return next.x === current.x && next.y === current.y ? current : { ...current, ...next };
+      });
+    });
+    observer.observe(shell);
+    return () => observer.disconnect();
+  }, []);
 
   const referenceCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -355,6 +385,45 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
     void flow.current.setCenter(match.position.x + 125, match.position.y + 65, { zoom: Math.max(flow.current.getZoom(), .85), duration: 280 });
   };
 
+  const beginDetailDrag = (event: React.PointerEvent<HTMLElement>) => {
+    if (event.button !== 0 || (event.target as HTMLElement).closest("button, a, input, textarea, select")) return;
+    const shell = canvasShell.current;
+    const panel = detailPanel.current;
+    if (!shell || !panel) return;
+    const shellRect = shell.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const start = clampFloatingPanelPosition(panelRect.left - shellRect.left, panelRect.top - shellRect.top, panelRect, shellRect);
+    const drag = { pointerId: event.pointerId, offsetX: event.clientX - panelRect.left, offsetY: event.clientY - panelRect.top, width: panelRect.width, height: panelRect.height };
+    setDetailPosition({ ...start, height: panelRect.height });
+    setDetailDragging(true);
+    document.body.classList.add("dragging-canvas-detail");
+    const move = (pointer: PointerEvent) => {
+      if (pointer.pointerId !== drag.pointerId) return;
+      const currentShell = canvasShell.current;
+      if (!currentShell) return;
+      const currentShellRect = currentShell.getBoundingClientRect();
+      const next = clampFloatingPanelPosition(pointer.clientX - currentShellRect.left - drag.offsetX, pointer.clientY - currentShellRect.top - drag.offsetY, drag, currentShellRect);
+      setDetailPosition({ ...next, height: drag.height });
+      pointer.preventDefault();
+    };
+    const stop = (pointer?: PointerEvent) => {
+      if (pointer && pointer.pointerId !== drag.pointerId) return;
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", stop);
+      document.removeEventListener("pointercancel", stop);
+      document.body.classList.remove("dragging-canvas-detail");
+      detailDragCleanup.current = undefined;
+      setDetailDragging(false);
+    };
+    detailDragCleanup.current?.();
+    detailDragCleanup.current = () => stop();
+    document.addEventListener("pointermove", move, { passive: false });
+    document.addEventListener("pointerup", stop);
+    document.addEventListener("pointercancel", stop);
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
   const setChatContext = async () => {
     if (!activeSessionId || !selectedId) return;
     setStatus("正在更新 Chat 上下文…");
@@ -388,7 +457,7 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
     } catch (error) { setStatus(error instanceof Error ? error.message : String(error)); }
   };
 
-  return <div className="scientific-canvas-shell">
+  return <div className="scientific-canvas-shell" ref={canvasShell}>
     <div className="scientific-canvas-topbar">
       <div className="scientific-canvas-views">{views.map((item) => <button key={item.id} className={view === item.id ? "active" : ""} title={item.hint} onClick={() => setView(item.id)}>{item.label}</button>)}</div>
       <div className="scientific-canvas-actions">
@@ -441,12 +510,15 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
       deleteKeyCode={null}
     >
       <Background gap={32} size={1} className="scientific-background" />
-      <MiniMap position="bottom-left" pannable zoomable className="scientific-minimap" />
       <Controls position="bottom-right" />
     </ReactFlow>
-    <aside className={`scientific-canvas-detail ${selected || selectedEdge ? "open" : ""}`}>
+    <aside
+      ref={detailPanel}
+      className={`scientific-canvas-detail ${selected || selectedEdge ? "open" : ""} ${detailPosition ? "is-positioned" : ""} ${detailDragging ? "is-dragging" : ""}`}
+      style={detailPosition ? { left: detailPosition.x, top: detailPosition.y, right: "auto", bottom: "auto", height: detailPosition.height } : undefined}
+    >
       {selected ? <>
-        <header><span>{kindLabel[selected.kind] ?? selected.kind}</span><button aria-label="关闭详情" onClick={() => setSelectedId("")}>×</button></header>
+        <header className="scientific-canvas-detail-handle" title="拖动移动详情面板" onPointerDown={beginDetailDrag}><span><GripHorizontal size={15} aria-hidden="true" />{kindLabel[selected.kind] ?? selected.kind}</span><button aria-label="关闭详情" onClick={() => setSelectedId("")}>×</button></header>
         <h2>{selected.title}</h2><p>{selected.summary || "暂无摘要"}</p>
         <dl><div><dt>状态</dt><dd>{selected.status ?? "未标记"}</dd></div><div><dt>版本</dt><dd>{selected.revision}</dd></div><div><dt>关系</dt><dd>{relatedRelations.length}</dd></div>{selected.stance ? <div><dt>立场</dt><dd>{stanceLabel[selected.stance] ?? selected.stance}</dd></div> : null}</dl>
         {selected.uri ? <code>{selected.uri}</code> : null}
@@ -460,10 +532,10 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
           <button className={quotedIds.includes(selected.id) ? "active" : ""} onClick={() => setQuotedIds((current) => current.includes(selected.id) ? current.filter((id) => id !== selected.id) : [...current, selected.id].slice(-12))}>{quotedIds.includes(selected.id) ? "移除显式引用" : "加入显式引用"}</button>
           <button className="primary" disabled={!activeSessionId} title={activeSessionId ? "当前会话只会加载该实体的有限科研邻域" : "请先在 Chat 中新建或选择一个对话"} onClick={() => void setChatContext()}>设为 Chat 上下文</button>
         </div>
-        {!activeSessionId ? <small className="scientific-context-hint">先在 Chat 新建或选择对话后即可绑定上下文。</small> : <small className="scientific-context-hint">仅加载所选实体、有限邻域与显式引用，不载入整张图。</small>}
+        {!activeSessionId ? <small className="scientific-context-hint">先在 Chat 新建或选择对话后即可绑定上下文。</small> : null}
       </> : null}
       {selectedEdge ? <>
-        <header><span>关系详情</span><button aria-label="关闭详情" onClick={() => setSelectedEdgeId("")}>×</button></header>
+        <header className="scientific-canvas-detail-handle" title="拖动移动详情面板" onPointerDown={beginDetailDrag}><span><GripHorizontal size={15} aria-hidden="true" />关系详情</span><button aria-label="关闭详情" onClick={() => setSelectedEdgeId("")}>×</button></header>
         <h2>{relationLabel[selectedEdge.data?.kind ?? "REFERENCES"]}</h2>
         <dl>
           <div><dt>类型</dt><dd>{selectedEdge.data?.kind}</dd></div>

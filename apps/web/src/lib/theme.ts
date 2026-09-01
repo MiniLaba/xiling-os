@@ -4,12 +4,16 @@ export type ThemePreference = "system" | "lingjing" | "poxiao";
 export type ResolvedTheme = "lingjing" | "poxiao";
 
 const STORAGE_KEY = "xiling-theme";
+export const DEFAULT_THEME_PREFERENCE: ThemePreference = "lingjing";
+
+export function parseStoredTheme(value: string | null): ThemePreference {
+  return value === "system" || value === "lingjing" || value === "poxiao" ? value : DEFAULT_THEME_PREFERENCE;
+}
 
 function readPreference(): ThemePreference {
   try {
-    const value = localStorage.getItem(STORAGE_KEY);
-    return value === "lingjing" || value === "poxiao" ? value : "system";
-  } catch { return "system"; }
+    return parseStoredTheme(localStorage.getItem(STORAGE_KEY));
+  } catch { return DEFAULT_THEME_PREFERENCE; }
 }
 
 function systemTheme(): ResolvedTheme {
@@ -22,7 +26,12 @@ function applyTheme(preference: ThemePreference): ResolvedTheme {
   return resolved;
 }
 
-/** 汐语灵境主题：跟随系统，可在设置中手动覆盖（localStorage 持久）。 */
+/** 在 React 首次渲染前应用主题，避免默认灵境闪成浅色或延迟读取用户选择。 */
+export function initializeTheme(): ResolvedTheme {
+  return applyTheme(readPreference());
+}
+
+/** 汐语灵境主题：首次使用默认灵境，可在设置中手动覆盖（localStorage 持久）。 */
 export function useTheme(): { preference: ThemePreference; resolved: ResolvedTheme; setPreference: (next: ThemePreference) => void } {
   const [preference, setPreferenceState] = useState<ThemePreference>(() => readPreference());
   const [resolved, setResolved] = useState<ResolvedTheme>(() => applyTheme(readPreference()));

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="lingjing">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f6f6f3" />
+    <meta name="theme-color" content="#0B1220" />
     <link rel="icon" type="image/png" href="/brand/xiling-mark.png" />
     <title>汐灵 OS · Science Intelligence</title>
   </head>
@@ -12,14 +12,14 @@
     <script>
       window.addEventListener("error", function (event) {
         if (document.getElementById("root").childElementCount) return;
-        document.getElementById("root").innerHTML = '<main style="max-width:680px;margin:12vh auto;padding:28px;font-family:system-ui;color:#292926"><small style="color:#b55335">界面加载失败</small><h1 style="font-size:24px">汐灵 OS 无法启动当前视图</h1><pre style="white-space:pre-wrap;padding:16px;background:#f3f3f0;border:1px solid #ddd;border-radius:8px">' + String(event.message || "未知错误").replaceAll("<", "&lt;") + '</pre><p style="color:#777;font-size:13px">刷新页面重试；若问题持续，请运行 xiling-doctor。</p></main>';
+        document.getElementById("root").innerHTML = '<main style="max-width:680px;margin:12vh auto;padding:28px;font-family:system-ui;color:#E8EEF6"><small style="color:#38BDF8">界面加载失败</small><h1 style="font-size:24px">汐灵 OS 无法启动当前视图</h1><pre style="white-space:pre-wrap;padding:16px;background:#111D31;border:1px solid #263852;border-radius:8px">' + String(event.message || "未知错误").replaceAll("<", "&lt;") + '</pre><p style="color:#A5B6CC;font-size:13px">刷新页面重试；若问题持续，请运行 xiling-doctor。</p></main>';
       });
     </script>
-    <main id="file-help" hidden style="max-width:720px;margin:12vh auto;padding:32px;font-family:system-ui,sans-serif;color:#17323b">
+    <main id="file-help" hidden style="max-width:720px;margin:12vh auto;padding:32px;font-family:system-ui,sans-serif;color:#E8EEF6">
       <p style="color:#16816f;font-weight:700">汐灵 OS 正式应用</p>
       <h1>请通过本地服务启动</h1>
       <p>正式应用包含 ES Modules、Pi Server 和科研 Runner，不能像 Gate 1 静态原型一样直接双击打开。</p>
-      <pre style="padding:16px;background:#eef5f5;border-radius:10px">cd "/path/to/xiling-os"\npnpm start</pre>
+      <pre style="padding:16px;background:#111D31;border:1px solid #263852;border-radius:10px">cd "/path/to/xiling-os"\npnpm start</pre>
       <p>启动完成后访问 <strong>http://127.0.0.1:4317/</strong></p>
     </main>
     <script>

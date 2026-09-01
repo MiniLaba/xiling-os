@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ResearchGraphEntity, ResearchGraphRelation } from "@xiling/contracts";
-import { arrangedPositions } from "./ScientificCanvasView.js";
+import { arrangedPositions, clampFloatingPanelPosition } from "./ScientificCanvasView.js";
 
 const entity = (id: string, kind: ResearchGraphEntity["kind"]): ResearchGraphEntity => ({
   id, projectId: "project", kind, title: id, summary: id, properties: {}, revision: 1, contentHash: id.padEnd(64, "0").slice(0, 64), createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z",
@@ -16,5 +16,10 @@ describe("Scientific Canvas semantic layout", () => {
     expect(positions.get("question")!.y).toBeLessThan(positions.get("assertion")!.y);
     expect(positions.get("claim")!.y).toBeLessThan(positions.get("assertion")!.y);
     expect(positions.get("fragment")!.y).toBeLessThan(positions.get("assertion")!.y);
+  });
+
+  it("keeps a dragged detail panel fully inside the canvas", () => {
+    expect(clampFloatingPanelPosition(-80, 900, { width: 320, height: 480 }, { width: 900, height: 700 })).toEqual({ x: 0, y: 220 });
+    expect(clampFloatingPanelPosition(740, -20, { width: 320, height: 480 }, { width: 900, height: 700 })).toEqual({ x: 580, y: 0 });
   });
 });

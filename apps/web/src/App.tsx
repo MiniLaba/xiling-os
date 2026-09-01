@@ -1,13 +1,14 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FREE_EXPLORATION_PROJECT_ID } from "@xiling/contracts";
 import {
-  AlertTriangle, BookOpen, ChevronDown, FolderKanban, LayoutGrid, MessageSquare, Network, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Trash2, X,
+  AlertTriangle, BookOpen, ChevronDown, FolderKanban, LayoutGrid, MessageSquare, Network, Plus, Search, Settings, Trash2, X,
 } from "lucide-react";
 import { WorkspaceProvider, useWorkspace } from "./workspace/WorkspaceContext.js";
 import { ConversationProvider, useConversations } from "./workspace/ConversationContext.js";
 import { ToastProvider, useToast } from "./components/ui/toast.js";
 import { Dialog } from "./components/ui/dialog.js";
 import { DesignTweaks } from "./devtools/DesignTweaks.js";
+import { HomeView } from "./home/HomeView.js";
 
 const ChatView = lazy(async () => ({ default: (await import("./chat/ChatView.js")).ChatView }));
 const PaperGraphView = lazy(async () => ({ default: (await import("./papers/PaperGraphView.js")).PaperGraphView }));
@@ -17,9 +18,10 @@ const SettingsView = lazy(async () => ({ default: (await import("./settings/Sett
 const ScientificCanvasView = lazy(async () => ({ default: (await import("./canvas/ScientificCanvasView.js")).ScientificCanvasView }));
 const AttentionView = lazy(async () => ({ default: (await import("./attention/AttentionView.js")).AttentionView }));
 
-type View = "chat" | "attention" | "canvas" | "project" | "wiki" | "papers" | "settings";
+type View = "home" | "chat" | "attention" | "canvas" | "project" | "wiki" | "papers" | "settings";
 
 const labels: Record<View, string> = {
+  home: "首页",
   chat: "对话",
   attention: "需要关注",
   canvas: "科研画布",
@@ -31,6 +33,7 @@ const labels: Record<View, string> = {
 
 const iconSize = 17;
 const icons: Record<View, React.ReactNode> = {
+  home: <MessageSquare size={iconSize} aria-hidden="true" />,
   chat: <MessageSquare size={iconSize} aria-hidden="true" />,
   attention: <AlertTriangle size={iconSize} aria-hidden="true" />,
   canvas: <LayoutGrid size={iconSize} aria-hidden="true" />,
@@ -40,7 +43,7 @@ const icons: Record<View, React.ReactNode> = {
   settings: <Settings size={iconSize} aria-hidden="true" />,
 };
 
-const navigationItems: Exclude<View, "settings">[] = ["chat", "attention", "canvas", "project", "wiki", "papers"];
+const navigationItems: Exclude<View, "settings">[] = ["chat", "attention", "canvas", "wiki", "papers"];
 
 export function App() {
   return (
@@ -51,10 +54,9 @@ export function App() {
 }
 
 function WorkspaceApp() {
-  const [view, setView] = useState<View>("chat");
+  const [view, setView] = useState<View>("home");
   const [viewHistory, setViewHistory] = useState<View[]>([]);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem("xiling:sidebar-collapsed") === "true");
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [commandIndex, setCommandIndex] = useState(0);
@@ -90,6 +92,7 @@ function WorkspaceApp() {
   const commandActions = useMemo(() => {
     const query = commandQuery.trim().toLocaleLowerCase();
     const viewActions = (Object.keys(labels) as View[])
+      .filter((target) => target !== "project")
       .filter((target) => !query || labels[target].includes(query))
       .map((target) => ({ id: `view:${target}`, label: labels[target], hint: "打开视图", run: () => { navigateToView(target); } }));
     const projectActions = [...projects]
@@ -120,33 +123,41 @@ function WorkspaceApp() {
     if (event.key === "Enter") { event.preventDefault(); runCommandAction(commandIndex); }
   };
 
-  const confirmDeleteSession = () => {
+  const confirmDeleteSession = async () => {
     if (!pendingDelete) return;
-    void deleteSession(pendingDelete.id);
-    push({ title: `对话「${pendingDelete.title}」已删除`, tone: "info" });
+    try {
+      await deleteSession(pendingDelete.id);
+      push({ title: `对话「${pendingDelete.title}」已删除`, tone: "success" });
+    } catch (cause) {
+      push({ title: "删除对话失败", description: cause instanceof Error ? cause.message : String(cause), tone: "danger" });
+    }
     setPendingDelete(undefined);
   };
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed((collapsed) => {
-      const next = !collapsed;
-      localStorage.setItem("xiling:sidebar-collapsed", String(next));
-      return next;
-    });
-  };
-
+  // 启动首页：不依赖工作区数据，点击「进入工作区」后才进入现在的首页（对话）。
+  if (view === "home") {
+    return (
+      <main className="home-shell">
+        <HomeView onEnter={navigateToView} />
+        <Dialog open={pendingDelete !== undefined} onClose={() => setPendingDelete(undefined)} title="删除对话" width={420}
+          footer={<>
+            <button className="xl-btn" data-variant="ghost" onClick={() => setPendingDelete(undefined)}>取消</button>
+            <button className="xl-btn" data-variant="danger" onClick={confirmDeleteSession}>删除</button>
+          </>}>
+          <p>确定删除对话「<b>{pendingDelete?.title}</b>」吗？对话中的推演记录将一并移除，删除后不可恢复。</p>
+        </Dialog>
+      </main>
+    );
+  }
   if (loading && !activeProject) return <main className="shell"><div className="view-loading">正在恢复科研工作区…</div></main>;
   if (!activeProject) return <main className="shell"><div className="view-loading">{error ?? "没有可用科研项目"}</div></main>;
 
   return (
-    <main className={`shell ${view === "settings" ? "settings-mode" : ""} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <main className={`shell sidebar-collapsed ${view === "settings" ? "settings-mode" : ""}`}>
       {view !== "settings" ? <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-mark"><img src="/brand/xiling-mark.png" alt="" /></div>
           <div className="brand-text"><b>汐灵</b><small>SCIENCE OS</small></div>
-          <button className="sidebar-collapse" aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"} title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"} onClick={toggleSidebar}>
-            {sidebarCollapsed ? <PanelLeftOpen size={16} aria-hidden="true" /> : <PanelLeftClose size={16} aria-hidden="true" />}
-          </button>
         </div>
         <div className="project-switcher" ref={projectMenuRef}>
           <button className="project-switcher-trigger" aria-expanded={projectMenuOpen} onClick={() => setProjectMenuOpen((open) => !open)}>
@@ -199,7 +210,7 @@ function WorkspaceApp() {
             <span>{activeProject.name}</span>
           </div>
           {view === "settings"
-            ? <div className="settings-top-status"><i />本地设置 · 凭据不会回传</div>
+            ? null
             : <div className="workspace-actions">
                 <button onClick={() => { setCommandOpen(true); setCommandIndex(0); }}><Search size={14} aria-hidden="true" /><kbd aria-hidden="true">Ctrl K</kbd> 搜索与跳转</button>
               </div>

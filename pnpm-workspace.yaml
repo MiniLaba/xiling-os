@@ -12,10 +12,13 @@ catalog:
   '@earendil-works/pi-coding-agent': 0.84.2
   '@milkdown/kit': 7.22.1
   '@types/dagre': ^0.7.54
+  '@types/three': ^0.185.4
   dagre: ^0.8.5
   lucide-react: ^1.37.0
   pangu: ^9.1.0
   pi-mcp-adapter: 2.27.0
+  pngjs: ^7.0.0
+  three: ^0.185.1
 
 catalogMode: strict
 

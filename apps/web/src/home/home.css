@@ -1,0 +1,108 @@
+/* 启动首页（汐语灵境）：固定纯黑灵境画布（首屏专用深色，不随主题切换）。 */
+
+.home {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #000;
+  color: #e8eef6;
+  font-family: var(--xl-font-ui);
+  overflow: hidden;
+}
+.home-gl { position: absolute; inset: 0; }
+.home-gl canvas { display: block; }
+
+.home-ui { position: absolute; inset: 0; pointer-events: none; }
+.home-ui a, .home-ui button { pointer-events: auto; }
+
+.home-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--xl-space-5) var(--xl-space-8);
+  animation: home-fade 0.9s var(--xl-ease-tide) both;
+}
+.home-brand { display: flex; align-items: center; gap: var(--xl-space-3); }
+.home-brand img { width: 30px; height: 30px; border-radius: var(--xl-radius-md); background: rgba(56, 189, 248, 0.12); }
+.home-brand b { font-size: var(--xl-type-lead); font-weight: 650; letter-spacing: 0.06em; color: #e8eef6; }
+.home-brand small { font-size: var(--xl-type-caption); letter-spacing: 0.24em; color: rgba(165, 182, 204, 0.66); }
+.home-nav nav { display: flex; gap: var(--xl-space-5); }
+.home-nav nav button {
+  font-size: var(--xl-type-small);
+  color: rgba(232, 238, 246, 0.72);
+  letter-spacing: 0.04em;
+  transition: color var(--xl-motion-fast) var(--xl-ease-tide);
+}
+.home-nav nav button:hover { color: #38bdf8; }
+
+.home-title {
+  position: absolute;
+  left: var(--xl-space-12);
+  top: 50%;
+  transform: translateY(-58%);
+  display: grid;
+  gap: var(--xl-space-4);
+  max-width: 560px;
+}
+.home-title small { font-family: var(--xl-font-latin); font-size: var(--xl-type-caption); letter-spacing: 0.34em; color: rgba(56, 189, 248, 0.85); animation: home-fade 0.8s var(--xl-ease-tide) 0.15s both; }
+.home-title h1 {
+  font-size: 56px;
+  font-weight: 250;
+  letter-spacing: 0.12em;
+  color: #eef4fb;
+  line-height: 1.15;
+  animation: home-fade 0.8s var(--xl-ease-tide) 0.3s both;
+}
+.home-title p { font-size: var(--xl-type-body); line-height: var(--xl-leading-cjk); color: rgba(165, 182, 204, 0.92); animation: home-fade 0.8s var(--xl-ease-tide) 0.45s both; }
+
+.home-cta { display: flex; gap: var(--xl-space-3); margin-top: var(--xl-space-3); animation: home-fade 0.8s var(--xl-ease-tide) 0.6s both; }
+.home-cta button {
+  min-height: 40px;
+  padding: 0 var(--xl-space-5);
+  border-radius: var(--xl-radius-full);
+  font-size: var(--xl-type-control);
+  letter-spacing: 0.06em;
+  transition: background var(--xl-motion-fast) var(--xl-ease-tide), color var(--xl-motion-fast) var(--xl-ease-tide), border-color var(--xl-motion-fast) var(--xl-ease-tide);
+}
+.home-cta-primary { background: #0e7490; border: 1px solid transparent; color: #f0faff; }
+.home-cta-primary:hover { background: #38bdf8; color: #04121c; }
+.home-cta-ghost { background: transparent; border: 1px solid rgba(165, 182, 204, 0.35); color: rgba(232, 238, 246, 0.85); }
+.home-cta-ghost:hover { border-color: #38bdf8; color: #38bdf8; }
+
+/* 十字准星节点：JS 内联 transform 做反向视差；自身不再有会动 transform 的动画。 */
+.home-node {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  pointer-events: none;
+  will-change: transform;
+}
+.home-node i {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  flex: none;
+  margin-top: 2px;
+}
+.home-node i::before, .home-node i::after {
+  content: "";
+  position: absolute;
+  background: rgba(56, 189, 248, 0.85);
+}
+.home-node i::before { left: 50%; top: 0; bottom: 0; width: 1px; transform: translateX(-0.5px); }
+.home-node i::after { top: 50%; left: 0; right: 0; height: 1px; transform: translateY(-0.5px); }
+.home-node span { display: grid; gap: 1px; }
+.home-node b { font-size: var(--xl-type-small); font-weight: 500; color: rgba(232, 238, 246, 0.88); letter-spacing: 0.1em; }
+.home-node small { font-family: var(--xl-font-latin); font-size: var(--xl-type-caption); letter-spacing: 0.2em; color: rgba(122, 140, 164, 0.8); }
+
+@keyframes home-fade {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+  .home-nav nav { display: none; }
+  .home-title { left: var(--xl-space-6); right: var(--xl-space-6); }
+  .home-title h1 { font-size: 40px; }
+}

@@ -12,7 +12,7 @@ const styles = ["tokens", "base", "shell", "chat", "canvas", "views"].map((name)
 
 const checks = [
   [chat.includes("ResizeObserver") && chat.includes("ArtifactViewer"), "Chat must resize with the real Artifact viewer"],
-  [!app.includes("OutputPanel") && styles.includes("grid-template-columns: 220px minmax(0, 1fr)") && app.includes("sidebarCollapsed"), "application shell must retain the two-column pre-junzezhi layout contract"],
+  [!app.includes("OutputPanel") && styles.includes("grid-template-columns: 220px minmax(0, 1fr)") && styles.includes(".shell.sidebar-collapsed") && styles.includes(":has(.sidebar:hover)") && !app.includes("PanelLeftClose") && !app.includes("sidebar-collapse "), "application shell stays two-column and defaults collapsed with hover expansion"],
   [chat.includes("artifact-overlay") && styles.includes(".artifact-overlay .artifact-panel"), "narrow Chat must use an Artifact drawer"],
   [chat.includes("workbenchWidth >= 1_040") && chat.includes("artifact-overlay"), "narrow Chat must not start behind the Artifact drawer"],
   [!chat.includes('setArtifactOpen(project.id ==='), "project selection must not force the Artifact drawer over narrow Chat"],

@@ -5,9 +5,10 @@ import type { ProjectResearchWorkflow } from "@xiling/domain-ocean";
 import { useConversations } from "../workspace/ConversationContext.js";
 import { ResearchWorkflowCard } from "./ResearchWorkflowCard.js";
 import { runResearchTurn } from "../lib/research-session-client.js";
-import { jsonInit } from "../lib/api-client.js";
 import { formatAttachmentSize, nativeImageUpload, NATIVE_IMAGE_ACCEPT, readNativeImages, type PendingNativeImage } from "../lib/native-image-input.js";
-import { AgentExecutionGraphView } from "./AgentExecutionGraphView.js";
+import { ModelCapsule, type CapsuleRoute } from "../components/ModelCapsule.js";
+import { apiJson, jsonInit } from "../lib/api-client.js";
+import { useToast } from "../components/ui/toast.js";
 import { ArtifactViewer } from "../components/ArtifactViewer.js";
 import { ScientificMarkdown } from "../components/ScientificMarkdown.js";
 import {
@@ -88,17 +89,13 @@ export function ChatView({ project }: { project: ResearchProject }) {
   const [modelRuntime, setModelRuntime] = useState<ModelRuntimeStatus>();
   const [modelCatalog, setModelCatalog] = useState<ModelCatalogEntry[]>([]);
   const [configuredModelProviders, setConfiguredModelProviders] = useState<ModelProviderId[]>([]);
-  const [selectedModelKey, setSelectedModelKey] = useState("");
   const [pendingImages, setPendingImages] = useState<PendingNativeImage[]>([]);
   const [attachmentError, setAttachmentError] = useState("");
   const [contextTrace, setContextTrace] = useState<ContextAssemblyTrace>();
   const [artifactWidth, setArtifactWidth] = useState(560);
-  const [artifactOpen, setArtifactOpen] = useState(false);
+  const [artifactOpen, setArtifactOpen] = useState(true);
   const [artifactExpanded, setArtifactExpanded] = useState(false);
   const [workbenchWidth, setWorkbenchWidth] = useState(0);
-  const [primaryMode, setPrimaryMode] = useState<"conversation" | "execution">("conversation");
-  const [graphRefreshKey, setGraphRefreshKey] = useState(0);
-  const artifactBeforeGraphRef = useRef(false);
   const manualArtifactOpenRef = useRef(false);
   const seenArtifactCountRef = useRef(0);
   const workbenchRef = useRef<HTMLDivElement>(null);
@@ -123,14 +120,18 @@ export function ChatView({ project }: { project: ResearchProject }) {
     } else {
       setMessages([welcomeMessage(project)]);
     }
-    setTools([]); setContextTrace(undefined); setSaveStatus(""); setPendingImages([]); setAttachmentError(""); setArtifactExpanded(false); setArtifactOpen(false); manualArtifactOpenRef.current = false; seenArtifactCountRef.current = 0;
+    setTools([]); setContextTrace(undefined); setSaveStatus(""); setPendingImages([]); setAttachmentError(""); setArtifactExpanded(false); manualArtifactOpenRef.current = false; seenArtifactCountRef.current = 0;
     return () => { cancelled = true; };
   }, [project.id, activeSessionId]);
   useEffect(() => {
     if (!activeSessionId) { setWorkflows([]); return; }
     void fetch(`/api/v1/research-workflows?projectId=${encodeURIComponent(project.id)}&sessionId=${encodeURIComponent(activeSessionId)}`).then((response) => response.ok ? response.json() : []).then((items) => setWorkflows(items as ProjectResearchWorkflow[]));
   }, [project.id, activeSessionId]);
-  useEffect(() => { void fetch("/api/settings/models").then((response) => response.json()).then((body: { runtime: ModelRuntimeStatus; catalog: ModelCatalogEntry[]; configuredProviderIds: ModelProviderId[] }) => { const firstConnected = body.catalog.find((model) => body.configuredProviderIds.includes(model.providerId)); setModelRuntime(body.runtime); setModelCatalog(body.catalog); setConfiguredModelProviders(body.configuredProviderIds); setSelectedModelKey(body.runtime.primary ? `${body.runtime.primary.providerId}::${body.runtime.primary.modelId}` : firstConnected ? `${firstConnected.providerId}::${firstConnected.id}` : ""); }); }, []);
+  const [providerTitles, setProviderTitles] = useState<Record<string, string>>({});
+  useEffect(() => {
+    void fetch("/api/settings/models").then((response) => response.json()).then((body: { runtime: ModelRuntimeStatus; catalog: ModelCatalogEntry[]; configuredProviderIds: ModelProviderId[] }) => { setModelRuntime(body.runtime); setModelCatalog(body.catalog); setConfiguredModelProviders(body.configuredProviderIds); });
+    void fetch("/api/settings/providers").then((response) => response.json()).then((providers: Array<{ id: string; title: string }>) => setProviderTitles(Object.fromEntries(providers.map((provider) => [provider.id, provider.title]))));
+  }, []);
   useEffect(() => {
     const clampWidth = () => {
       const width = workbenchRef.current?.getBoundingClientRect().width;
@@ -144,7 +145,6 @@ export function ChatView({ project }: { project: ResearchProject }) {
   const artifactCount = useMemo(() => workflows.reduce((count, workflow) => count + (workflow.run?.artifactUris?.length ?? 0), 0), [workflows]);
   useEffect(() => {
     if (artifactCount > seenArtifactCountRef.current) setArtifactOpen(true);
-    else if (artifactCount === 0 && !manualArtifactOpenRef.current) setArtifactOpen(false);
     seenArtifactCountRef.current = artifactCount;
   }, [artifactCount]);
   const lastCompleteAssistantText = useMemo(() => [...messages].reverse().find((message) => message.role === "assistant" && message.status === "complete")?.text ?? "", [messages]);
@@ -180,10 +180,7 @@ export function ChatView({ project }: { project: ResearchProject }) {
       };
 
       try {
-        const [selectedProviderId, ...selectedModelParts] = selectedModelKey.split("::");
-        const selectedModelId = selectedModelParts.join("::");
-        const routeOverride = selectedProviderId && selectedModelId && (modelRuntime?.primary?.providerId !== selectedProviderId || modelRuntime.primary.modelId !== selectedModelId) ? { providerId: selectedProviderId as ModelProviderId, modelId: selectedModelId } : undefined;
-        for await (const event of runResearchTurn({ projectId: project.id, sessionId: session.id, prompt, ...(routeOverride ? { modelRoute: routeOverride } : {}), ...(images.length ? { attachments: images.map(nativeImageUpload) } : {}), signal: controller.signal })) {
+        for await (const event of runResearchTurn({ projectId: project.id, sessionId: session.id, prompt, ...(images.length ? { attachments: images.map(nativeImageUpload) } : {}), signal: controller.signal })) {
             if (visibleSessionRef.current !== session.id) continue;
             if (event.type === "run.accepted") {
               setPendingImages([]);
@@ -217,8 +214,7 @@ export function ChatView({ project }: { project: ResearchProject }) {
         runSessionIdRef.current = null;
         if (visibleSessionRef.current === session.id) setRunning(false);
         await refreshSessions(session.id);
-        setGraphRefreshKey((value) => value + 1);
-        if (visibleSessionRef.current === session.id) {
+            if (visibleSessionRef.current === session.id) {
           try {
             const response = await fetch(`/api/v1/chat-sessions/${encodeURIComponent(session.id)}/messages`);
             if (response.ok) {
@@ -231,7 +227,7 @@ export function ChatView({ project }: { project: ResearchProject }) {
         }
       }
     }
-  }, [project, ensureSession, refreshSessions, selectedModelKey, modelRuntime]);
+  }, [project, ensureSession, refreshSessions, modelRuntime]);
   const runtime = useExternalStoreRuntime({
     messages,
     isRunning: running,
@@ -240,17 +236,23 @@ export function ChatView({ project }: { project: ResearchProject }) {
     onCancel: async () => runAbortRef.current?.abort(),
   });
 
-  const selectableModels = modelCatalog.filter((model) => configuredModelProviders.includes(model.providerId));
-  const [selectedProviderId, ...selectedModelParts] = selectedModelKey.split("::");
-  const selectedModelId = selectedModelParts.join("::");
-  const primaryModel = modelRuntime?.primary;
-  const selectedCatalogModel = modelCatalog.find((model) => model.providerId === selectedProviderId && model.id === selectedModelId) ?? (primaryModel && primaryModel.providerId === selectedProviderId && primaryModel.modelId === selectedModelId ? primaryModel.selectedModel : undefined);
-  const nativeImageEnabled = Boolean(selectedCatalogModel?.inputModalities.includes("image"));
-  const attachmentTitle = nativeImageEnabled ? "添加模型原生图像输入" : selectedCatalogModel ? "当前模型未声明原生图像输入" : "请先在设置中连接模型 API";
+  const nativeImageEnabled = Boolean(modelRuntime?.primary?.selectedModel?.inputModalities.includes("image"));
+  const attachmentTitle = nativeImageEnabled ? "添加模型原生图像输入" : modelRuntime?.primary ? "当前主模型未声明原生图像输入" : "请先在发送按钮左侧选择模型";
   const addImages = async (files: FileList | null) => {
     if (!files?.length || !nativeImageEnabled) return;
     try { setPendingImages(await readNativeImages(files, pendingImages)); setAttachmentError(""); }
     catch (error) { setAttachmentError(error instanceof Error ? error.message : String(error)); }
+  };
+
+  const { push } = useToast();
+  const commitPrimaryModel = async (route: CapsuleRoute | null) => {
+    if (!route) return;
+    const modalities = modelCatalog.find((model) => model.providerId === route.providerId && model.id === route.modelId)?.inputModalities ?? ["text"];
+    try {
+      const next = await apiJson<ModelRuntimeStatus>("/api/settings/models", jsonInit("PUT", { primary: { providerId: route.providerId, modelId: route.modelId, reasoning: route.reasoning, inputModalities: modalities }, roleRoutes: modelRuntime?.roleRoutes ?? {} }));
+      setModelRuntime(next);
+      push({ title: `主模型已切换为 ${next.primary?.selectedModel?.name ?? route.modelId}`, tone: "success" });
+    } catch (error) { push({ title: "主模型保存失败", description: error instanceof Error ? error.message : String(error), tone: "danger" }); }
   };
 
   const lastAssistant = [...messages].reverse().find((message) => message.role === "assistant" && message.id !== `welcome-${project.id}` && message.status === "complete" && message.text.trim());
@@ -296,43 +298,28 @@ export function ChatView({ project }: { project: ResearchProject }) {
 
   const artifactDocked = workbenchWidth >= 1_040 && !artifactExpanded;
 
-  const switchPrimaryMode = (next: "conversation" | "execution") => {
-    if (next === primaryMode) return;
-    if (next === "execution") {
-      artifactBeforeGraphRef.current = artifactOpen;
-      setArtifactOpen(false);
-      setArtifactExpanded(false);
-    } else if (artifactBeforeGraphRef.current && (artifactCount > 0 || manualArtifactOpenRef.current)) {
-      setArtifactOpen(true);
-    }
-    setPrimaryMode(next);
-  };
-
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <div className={`chat-workbench ${artifactExpanded ? "artifact-expanded" : ""} ${artifactOpen && !artifactDocked && !artifactExpanded ? "artifact-overlay" : ""}`} ref={workbenchRef} style={{ gridTemplateColumns: artifactExpanded || !artifactOpen || !artifactDocked ? "minmax(0, 1fr)" : `minmax(520px, 1fr) 7px ${artifactWidth}px` }}>
         <ThreadPrimitive.Root className="chat-view">
-          <div className="chat-heading"><div><small>{project.name} · {primaryMode === "conversation" ? "研究对话" : "Agent 可观测性"}</small><h1>{primaryMode === "conversation" ? activeSession?.title ?? "新对话" : "Agent 运行图"}</h1></div><div className="chat-heading-actions"><div className="chat-primary-switch"><button className={primaryMode === "conversation" ? "active" : ""} onClick={() => switchPrimaryMode("conversation")}>对话</button><button className={primaryMode === "execution" ? "active" : ""} onClick={() => switchPrimaryMode("execution")}>运行图</button></div>{primaryMode === "conversation" ? <label className={`chat-model-picker ${selectedModelKey ? "ready" : "blocked"}`} title={selectedModelKey ? "仅覆盖下一次 Chat 运行；子智能体仍按角色路由" : "请先在设置中连接模型 API"}><i /><select aria-label="本轮模型" disabled={running || !selectedModelKey} value={selectedModelKey} onChange={(event) => setSelectedModelKey(event.target.value)}>{!selectedModelKey ? <option value="">连接模型 API 后可切换</option> : null}{modelRuntime?.primary && !selectableModels.some((model) => model.providerId === modelRuntime.primary!.providerId && model.id === modelRuntime.primary!.modelId) ? <option value={`${modelRuntime.primary.providerId}::${modelRuntime.primary.modelId}`}>{modelRuntime.primary.selectedModel?.name ?? modelRuntime.primary.modelId}</option> : null}{selectableModels.map((model) => <option key={`${model.providerId}:${model.id}`} value={`${model.providerId}::${model.id}`}>{model.name} · {model.providerId}</option>)}</select></label> : null}{!artifactOpen && primaryMode === "conversation" ? <button onClick={() => { manualArtifactOpenRef.current = true; setArtifactOpen(true); }}>打开产物面板</button> : null}</div></div>
-          {primaryMode === "execution" ? <AgentExecutionGraphView projectId={project.id} activeSessionId={activeSessionId} refreshKey={graphRefreshKey} onReturnToChat={() => switchPrimaryMode("conversation")} /> : <>
+          <div className="chat-heading"><div><h1>{activeSession?.title ?? "新对话"}</h1></div><div className="chat-heading-actions">{!artifactOpen ? <button onClick={() => { manualArtifactOpenRef.current = true; setArtifactOpen(true); }}>打开产物面板</button> : null}</div></div>
             <ThreadPrimitive.Viewport className="aui-thread">
               <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
-              {!running && choiceOptions.length ? <div className="chat-choice-chips" role="group" aria-label="可选操作"><small>你可以直接点击：</small>{choiceOptions.map((label) => <button key={label} onClick={() => void submitPrompt(label, [])}>{label}</button>)}</div> : null}
+              {!running && choiceOptions.length ? <div className="chat-choice-chips" role="group" aria-label="可选操作">{choiceOptions.map((label) => <button key={label} onClick={() => void submitPrompt(label, [])}>{label}</button>)}</div> : null}
               {running ? <div className="chat-running-indicator" role="status" aria-live="polite"><i /><span>{(() => { const active = [...tools].reverse().find((tool) => tool.status === "running"); return active ? `正在处理 · 调用 ${active.name}…` : tools.length ? `正在处理 · ${tools.filter((item) => item.status === "complete").length}/${tools.length} 个工具已完成…` : "正在思考…"; })()}</span></div> : null}
               {workflows.length ? <div className="chat-workflows">{workflows.map((workflow) => <ResearchWorkflowCard key={workflow.id} workflow={workflow} onChange={(updated) => setWorkflows((current) => current.map((item) => item.id === updated.id ? updated : item))} />)}</div> : null}
             </ThreadPrimitive.Viewport>
-            <div className="agent-activity"><span>⌁ {project.name}</span>{activeSession?.canvasContext ? <span title={`活动科研实体：${activeSession.canvasContext.activeNodeId}`}>科研图上下文 · {activeSession.canvasContext.activeNodeId}{activeSession.canvasContext.quotedNodeIds.length ? ` · 显式引用 ${activeSession.canvasContext.quotedNodeIds.length}` : ""}</span> : <span>项目研究问题上下文</span>}{contextTrace ? <span title={`精确实体：${contextTrace.exactNodeIds.join(", ") || "无"}\nCapsule 实体：${contextTrace.capsuleNodeIds.join(", ") || "无"}\n能力：${contextTrace.activatedCapabilityIds.join(", ") || "无"}\nSkill：${contextTrace.activatedSkillNames.join(", ") || "无"}`}>{contextTrace.exactNodeIds.length} 精确实体 · {contextTrace.capsuleNodeIds.length} 胶囊 · {contextTrace.activatedSkillNames.length} Skill · {contextTrace.cache === "hit" ? "组装缓存" : "新投影"}</span> : null}<span>{tools.length ? `${tools.filter((item) => item.status === "complete").length}/${tools.length} 个工具完成` : "按需工具未激活"}</span><span>{running ? "Pi 正在执行" : "Pi 已就绪"}</span></div>
+
             {contextTrace?.degradations.length ? <div className="chat-context-notice">{contextTrace.degradations.map((item) => <span key={item}>{item}</span>)}</div> : null}
             {tools.length ? <div className="chat-tool-trace">{tools.map((tool) => <span className={tool.status} key={tool.callId}>{tool.status === "complete" ? "✓" : tool.status === "failed" ? "×" : "↻"} {tool.name}</span>)}</div> : null}
-            {lastAssistant ? <div className="chat-save-actions"><span>以可审阅草稿沉淀</span><button onClick={() => setPendingSaveTarget("task")}>保存为任务</button><button onClick={() => setPendingSaveTarget("wiki")}>写入 Wiki</button>{saveStatus ? <small>{saveStatus}</small> : null}</div> : null}
+            {lastAssistant ? <div className="chat-save-actions"><button onClick={() => setPendingSaveTarget("task")}>保存为任务</button><button onClick={() => setPendingSaveTarget("wiki")}>写入 Wiki</button>{saveStatus ? <small>{saveStatus}</small> : null}</div> : null}
             <ComposerPrimitive.Root className="chat-composer">
             {pendingImages.length ? <div className="native-attachment-tray">{pendingImages.map((image) => <div key={image.localId}><img src={image.previewUrl} alt="" /><span><b>{image.name}</b><small>{formatAttachmentSize(image.size)} · 原生图像</small></span><button type="button" aria-label={`移除 ${image.name}`} onClick={() => setPendingImages((current) => current.filter((item) => item.localId !== image.localId))}>×</button></div>)}</div> : null}
             {attachmentError ? <div className="native-attachment-error">{attachmentError}</div> : null}
             <ComposerPrimitive.Input placeholder="询问数据、文献或当前科研图选择…" />
             <input ref={imageInputRef} className="native-file-input" type="file" accept={NATIVE_IMAGE_ACCEPT} multiple onChange={(event) => { void addImages(event.currentTarget.files); event.currentTarget.value = ""; }} />
-            <div className="composer-tools"><button type="button" aria-label="添加图像" disabled={!nativeImageEnabled || running} title={attachmentTitle} onClick={() => imageInputRef.current?.click()}>＋</button><span>{nativeImageEnabled ? "原生图像可用" : "仅原生模态"}</span><div className="composer-actions"><ComposerPrimitive.Send aria-label="发送">↑</ComposerPrimitive.Send><ComposerPrimitive.Cancel aria-label="取消">■</ComposerPrimitive.Cancel></div></div>
+            <div className="composer-tools"><button type="button" aria-label="添加图像" disabled={!nativeImageEnabled || running} title={attachmentTitle} onClick={() => imageInputRef.current?.click()}>＋</button><span>{nativeImageEnabled ? "原生图像可用" : "仅文字输入"}</span><div className="composer-model-slot"><ModelCapsule value={modelRuntime?.primary ? { providerId: modelRuntime.primary.providerId, modelId: modelRuntime.primary.modelId, reasoning: modelRuntime.primary.reasoning } : undefined} catalog={modelCatalog} configuredProviders={configuredModelProviders.map((id) => ({ id, title: providerTitles[id] ?? id }))} disabled={running} onCommit={(route) => void commitPrimaryModel(route)} /></div><div className="composer-actions"><ComposerPrimitive.Send aria-label="发送">↑</ComposerPrimitive.Send><ComposerPrimitive.Cancel aria-label="取消">■</ComposerPrimitive.Cancel></div></div>
             </ComposerPrimitive.Root>
-            <p className="adapter-note">回答可能有误，请核对数据来源与科研结论</p>
-          </>}
         </ThreadPrimitive.Root>
         {artifactOpen && artifactDocked ? <div className="split-resizer" role="separator" aria-label="调整 Artifact 面板宽度" aria-orientation="vertical" onPointerDown={beginResize}><i /></div> : null}
         {artifactOpen ? <ArtifactViewer projectId={project.id} workflows={workflows} expanded={artifactExpanded} onToggleExpanded={() => setArtifactExpanded((value) => !value)} onClose={() => { setArtifactOpen(false); setArtifactExpanded(false); }} /> : null}

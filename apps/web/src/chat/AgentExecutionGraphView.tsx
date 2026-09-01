@@ -4,7 +4,6 @@ import {
   Controls,
   Handle,
   MarkerType,
-  MiniMap,
   Position,
   ReactFlow,
   useEdgesState,
@@ -16,7 +15,7 @@ import {
   type ReactFlowInstance,
 } from "@xyflow/react";
 import { unstable_useComposerInput } from "@assistant-ui/react";
-import { Bot, Clock3, Cpu, Layers, MessageSquare, Play, RotateCcw, Search, User, Users, Wrench, X } from "lucide-react";
+import { Bot, Clock3, Cpu, Layers, MessageSquare, RotateCcw, Search, User, Users, Wrench, X } from "lucide-react";
 import type { AgentExecutionGraphProjection, AgentExecutionNode, AgentExecutionGraphScope } from "@xiling/contracts";
 import { RecordDetailModal } from "../components/RecordDetailModal.js";
 
@@ -291,7 +290,6 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
   const [inspected, setInspected] = useState<AgentExecutionNode>();
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
-  const [replayTick, setReplayTick] = useState(0);
   const [retryPrompt, setRetryPrompt] = useState("");
   const [nodes, setNodes, onNodesChange] = useNodesState<ConversationNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ConversationEdge>([]);
@@ -389,21 +387,6 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
     followUp(id);
   }, [nodes, followUp]);
 
-  // 时间线回放：按时间戳逐张揭示卡片（潮汐叙事）
-  const startReplay = useCallback(() => {
-    const ordered = [...nodes].sort((a, b) => a.data.sourceNode.timestamp.localeCompare(b.data.sourceNode.timestamp));
-    if (!ordered.length) return;
-    setReplayTick(1);
-    ordered.forEach((node, index) => {
-      window.setTimeout(() => {
-        setNodes((current) => current.map((item): ConversationNode => item.id === node.id ? { ...item, className: "execution-replay-in" } : item));
-        if (index === ordered.length - 1) window.setTimeout(() => setReplayTick(0), 600);
-      }, 180 * index);
-    });
-    setNodes((current) => current.map((item): ConversationNode => ({ ...item, className: "execution-replay-hidden" })));
-  }, [nodes, setNodes]);
-
-  // 搜索 dim 与焦点 dim 一样只是派生展示状态：在渲染时合成，绝不写回 nodes（避免 setState 自激循环）。
   const displayNodes = useMemo(() => {
     const matched = new Set(searchMatches.map((node) => node.id));
     const searching = searchQuery.trim().length > 0;
@@ -414,18 +397,16 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
   return (
     <section className="agent-execution-graph" aria-label="Agent 对话运行画布">
       <header className="execution-graph-head">
-        <div><small>AGENT FLOW</small><b>{scope === "project" ? "项目对话全景" : "当前对话脉络"}</b><span>默认只显示研究指令与关键回答；执行细节按需查看</span></div>
+        <div><b>{scope === "project" ? "项目对话全景" : "当前对话脉络"}</b></div>
         <div className="execution-graph-actions">
           <div className="execution-scope-switch"><button className={scope === "session" ? "active" : ""} disabled={!activeSessionId} onClick={() => setScope("session")}>当前对话</button><button className={scope === "project" ? "active" : ""} onClick={() => setScope("project")}>项目全景</button></div>
-          <button onClick={startReplay} disabled={replayTick > 0 || !nodes.length} title="按时间回放推演过程"><Play size={13} aria-hidden="true" />回放</button>
-          <button onClick={autoArrange}>整理</button><button onClick={fit}>居中</button>
+          <button onClick={autoArrange}>整理</button>
         </div>
       </header>
       <div className="execution-graph-meta">
         <span>{projection ? `${turns} 轮 · ${nodes.length} 个可见节点` : "正在读取 Agent Store…"}</span>
         <span>{foldedDetails ? `${foldedDetails} 条执行细节已折叠` : "没有额外执行细节"}</span>
         <div className="execution-interaction-switch" aria-label="节点交互方式"><button className={interactionMode === "follow-up" ? "active" : ""} onClick={() => { interactionModeRef.current = "follow-up"; setInteractionMode("follow-up"); clearSelection(); }}>沿节点继续</button><button className={interactionMode === "quote" ? "active" : ""} onClick={() => { interactionModeRef.current = "quote"; setInteractionMode("quote"); clearSelection(); }}>组合引用</button></div>
-        <em className="execution-layout-note">布局仅当前视图有效</em>
         {projection?.truncated ? <em>当前为有界投影</em> : null}
       </div>
       <div className="execution-search">
@@ -461,7 +442,6 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
         >
           <Background gap={34} size={1} className="execution-background" />
           <Controls position="bottom-left" />
-          <MiniMap pannable zoomable position="bottom-right" className="execution-minimap" />
         </ReactFlow> : <div className="execution-graph-empty"><b>这段对话还没有运行节点</b><span>回到对话发送研究问题后，这里会形成可继续和引用的脉络。</span></div>}
         <div className="execution-legend" aria-label="连线图例">
           {(["answer", "follow-up", "delegation"] as const).map((kind) => <span key={kind} className={`execution-legend-item execution-edge-${kind}`}><i />{edgeKindLabel[kind]}</span>)}
