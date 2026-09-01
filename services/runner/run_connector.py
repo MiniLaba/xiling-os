@@ -15,6 +15,7 @@ def main() -> None:
     parser.add_argument("--workspace", required=True)
     parser.add_argument("--mode", choices=("plan", "probe", "download"), required=True)
     parser.add_argument("--fixture-source")
+    parser.add_argument("--max-bytes", type=int, default=None, help="approved volume budget; downloads past it fail inside the container")
     args = parser.parse_args()
     workspace = Path(args.workspace).resolve()
     workspace.mkdir(parents=True, exist_ok=True)
@@ -34,7 +35,7 @@ def main() -> None:
         for name in ("HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
             if isinstance(network.get(name), str) and len(network[name]) <= 4096:
                 os.environ[name] = network[name]
-        result = execute_download(request, workspace, credentials, Path(args.fixture_source) if args.fixture_source else None)
+        result = execute_download(request, workspace, credentials, Path(args.fixture_source) if args.fixture_source else None, args.max_bytes)
     (workspace / "connector-result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 

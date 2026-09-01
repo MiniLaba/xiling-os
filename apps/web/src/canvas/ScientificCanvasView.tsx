@@ -16,16 +16,19 @@ import {
   type ReactFlowInstance,
   type Viewport,
 } from "@xyflow/react";
+import {
+  BookOpen, CheckCircle2, ClipboardCheck, Cpu, Database, FileText, FolderKanban, HelpCircle, Layers, MessageSquareQuote, Package, Search, User, X,
+} from "lucide-react";
 import type { ResearchGraphEntity, ResearchGraphProjection, ResearchGraphProposal, ResearchGraphView, ResearchRelationKind, ScientificCanvasLayout } from "@xiling/contracts";
 import { apiJson, jsonInit } from "../lib/api-client.js";
 import { useConversations } from "../workspace/ConversationContext.js";
 
-type ScientificNodeData = ResearchGraphEntity & Record<string, unknown>;
+type ScientificNodeData = ResearchGraphEntity & Record<string, unknown> & { compact?: boolean | undefined; refTier?: number | undefined };
 type ScientificNode = Node<ScientificNodeData, "scientific">;
 type ScientificEdge = Edge<{ kind: ResearchRelationKind }>;
 
 const views: Array<{ id: ResearchGraphView; label: string; hint: string }> = [
-  { id: "all", label: "全景", hint: "项目全部科研对象" },
+  { id: "all", label: "总览", hint: "项目全部科研对象" },
   { id: "literature", label: "文献", hint: "论文、片段与引用" },
   { id: "evidence", label: "证据", hint: "主张与支持/反驳链" },
   { id: "provenance", label: "溯源", hint: "数据、计算与审查" },
@@ -43,21 +46,59 @@ const relationLabel: Record<ResearchRelationKind, string> = {
   USED: "使用", GENERATED: "生成", DERIVED_FROM: "派生", EVALUATES: "评估", DOCUMENTS: "记录", SUPERSEDES: "取代",
   HAS_VERSION: "拥有版本", TRANSITIONED_BY: "状态变化", ASSOCIATED_WITH: "关联", REFERENCES: "指向",
 };
-const relationColor: Record<ResearchRelationKind, string> = {
-  CONTAINS: "#a9b4bf", HAS_REVISION: "#8d91c7", HAS_FRAGMENT: "#8293b8", CITES: "#799ca0", ASSERTS: "#5d8f84", BASED_ON: "#4c8a7f",
-  USED: "#97855f", GENERATED: "#467c9d", DERIVED_FROM: "#6f7eaa", EVALUATES: "#9a6f78", DOCUMENTS: "#8b7b91", SUPERSEDES: "#b07869",
-  HAS_VERSION: "#617e9a", TRANSITIONED_BY: "#89929a", ASSOCIATED_WITH: "#9b9a87", REFERENCES: "#7e8a91",
+const relationKinds = Object.keys(relationLabel) as ResearchRelationKind[];
+const relationVar = (kind: ResearchRelationKind) => `var(--xl-rel-${kind.toLowerCase().replaceAll("_", "-")})`;
+
+const kindIcon: Record<string, React.ReactNode> = {
+  Project: <FolderKanban size={13} aria-hidden="true" />,
+  ResearchQuestion: <HelpCircle size={13} aria-hidden="true" />,
+  Hypothesis: <MessageSquareQuote size={13} aria-hidden="true" />,
+  Claim: <MessageSquareQuote size={13} aria-hidden="true" />,
+  ClaimRevision: <Layers size={13} aria-hidden="true" />,
+  EvidenceAssertion: <CheckCircle2 size={13} aria-hidden="true" />,
+  Paper: <FileText size={13} aria-hidden="true" />,
+  SourceFragment: <FileText size={13} aria-hidden="true" />,
+  Dataset: <Database size={13} aria-hidden="true" />,
+  DatasetSnapshot: <Database size={13} aria-hidden="true" />,
+  ResearchRun: <Cpu size={13} aria-hidden="true" />,
+  Artifact: <Package size={13} aria-hidden="true" />,
+  ArtifactVersion: <Package size={13} aria-hidden="true" />,
+  ReviewReport: <ClipboardCheck size={13} aria-hidden="true" />,
+  Approval: <CheckCircle2 size={13} aria-hidden="true" />,
+  WikiRevisionRef: <BookOpen size={13} aria-hidden="true" />,
+  Actor: <User size={13} aria-hidden="true" />,
 };
 
+const stanceLabel: Record<string, string> = { supports: "支持", refutes: "反驳", qualifies: "限定", insufficient: "证据不足" };
+
 function ScientificNodeCard({ data, selected }: NodeProps<ScientificNode>) {
-  return <article className={`scientific-node scientific-node-${data.kind.toLowerCase()} ${selected ? "selected" : ""}`}>
-    <Handle type="target" position={Position.Top} isConnectable={false} />
-    <header><span>{kindLabel[data.kind] ?? data.kind}</span>{data.status ? <i>{data.status}</i> : null}</header>
-    <h3>{data.title}</h3>
-    <p>{data.summary || "暂无摘要"}</p>
-    <footer><span>v{data.revision}</span>{data.confidence !== undefined ? <span>置信度 {Math.round(data.confidence * 100)}%</span> : null}</footer>
-    <Handle type="source" position={Position.Bottom} isConnectable={false} />
-  </article>;
+  const entityColor = `var(--xl-entity-${data.kind.toLowerCase()})`;
+  if (data.compact) {
+    return (
+      <article className={`scientific-node scientific-node-compact ${selected ? "selected" : ""}`} title={`${kindLabel[data.kind] ?? data.kind} · ${data.title}`} style={{ borderColor: entityColor }}>
+        <Handle type="target" position={Position.Top} isConnectable={false} />
+        <i style={{ background: entityColor }} />
+        <Handle type="source" position={Position.Bottom} isConnectable={false} />
+      </article>
+    );
+  }
+  return (
+    <article className={`scientific-node ${selected ? "selected" : ""} ${data.refTier === 2 ? "ref-tier-2" : data.refTier === 1 ? "ref-tier-1" : ""}`} style={{ borderLeftColor: entityColor }}>
+      <Handle type="target" position={Position.Top} isConnectable={false} />
+      <header>
+        <span className="scientific-kind" style={{ color: entityColor }}>{kindIcon[data.kind] ?? <Layers size={13} aria-hidden="true" />}{kindLabel[data.kind] ?? data.kind}</span>
+        {data.status ? <i className="scientific-status">{data.status}</i> : null}
+      </header>
+      <h3>{data.title}</h3>
+      <p>{data.summary || "暂无摘要"}</p>
+      <footer>
+        <span>v{data.revision}</span>
+        {data.confidence !== undefined ? <span>置信度 {Math.round(data.confidence * 100)}%</span> : null}
+        {data.stance ? <span className={`scientific-stance stance-${data.stance}`}>{stanceLabel[data.stance] ?? data.stance}</span> : null}
+      </footer>
+      <Handle type="source" position={Position.Bottom} isConnectable={false} />
+    </article>
+  );
 }
 
 const nodeTypes: NodeTypes = { scientific: ScientificNodeCard };
@@ -68,14 +109,25 @@ const semanticRank: Record<string, number> = {
   Artifact: 6, ReviewReport: 6, ArtifactVersion: 7, LifecycleEvent: 8, Actor: 8,
 };
 
+const LANE_GAP = 236;
+const COLUMN_GAP = 296;
+
+/**
+ * 语义分层布局：行由科研语义与关系方向决定（纵向有序），行内用 barycenter
+ * 启发式最小化连线交叉（Sugiyama 单层迭代），保证大图可读。
+ */
 export function arrangedPositions(entities: ResearchGraphEntity[], relations: ResearchGraphProjection["relations"] = []): Map<string, { x: number; y: number }> {
   const incoming = new Map<string, string[]>();
+  const outgoing = new Map<string, string[]>();
   const forward = new Set<ResearchRelationKind>(["CONTAINS", "HAS_REVISION", "HAS_FRAGMENT", "GENERATED", "HAS_VERSION", "TRANSITIONED_BY"]);
   const reverse = new Set<ResearchRelationKind>(["ASSERTS", "BASED_ON", "USED", "DERIVED_FROM", "EVALUATES", "DOCUMENTS", "SUPERSEDES"]);
   for (const relation of relations) {
     const parentId = forward.has(relation.kind) ? relation.sourceId : reverse.has(relation.kind) ? relation.targetId : undefined;
     const childId = forward.has(relation.kind) ? relation.targetId : reverse.has(relation.kind) ? relation.sourceId : undefined;
-    if (parentId && childId) incoming.set(childId, [...(incoming.get(childId) ?? []), parentId]);
+    if (parentId && childId) {
+      incoming.set(childId, [...(incoming.get(childId) ?? []), parentId]);
+      outgoing.set(parentId, [...(outgoing.get(parentId) ?? []), childId]);
+    }
   }
   const ranks = new Map<string, number>();
   const rankOf = (entity: ResearchGraphEntity, stack = new Set<string>()): number => {
@@ -87,16 +139,37 @@ export function arrangedPositions(entities: ResearchGraphEntity[], relations: Re
     const value = Math.max(graphRank, semanticRank[entity.kind] ?? 0);
     ranks.set(entity.id, value); return value;
   };
-  const grouped = new Map<number, ResearchGraphEntity[]>();
+  const rows = new Map<number, ResearchGraphEntity[]>();
   for (const entity of entities) {
     const rank = rankOf(entity);
-    grouped.set(rank, [...(grouped.get(rank) ?? []), entity]);
+    rows.set(rank, [...(rows.get(rank) ?? []), entity]);
+  }
+  const sortedRows = [...rows.entries()].sort(([left], [right]) => left - right);
+  const ordered = new Map<number, ResearchGraphEntity[]>(sortedRows.map(([rank, siblings]) => [rank, [...siblings].sort((left, right) => left.title.localeCompare(right.title, "zh-CN"))]));
+  // barycenter 迭代：按相邻行邻居的列均值重排行内顺序，降低连线交叉。
+  for (let pass = 0; pass < 3; pass += 1) {
+    for (const [rowIndex, [rank, siblings]] of sortedRows.entries()) {
+      const indexOf = new Map(siblings.map((entity, index) => [entity.id, index]));
+      const neighborRanks = [sortedRows[rowIndex - 1]?.[0], sortedRows[rowIndex + 1]?.[0]].filter((value): value is number => value !== undefined);
+      const barycenter = (entity: ResearchGraphEntity) => {
+        const neighbors = [...(incoming.get(entity.id) ?? []), ...(outgoing.get(entity.id) ?? [])]
+          .filter((id) => neighborRanks.some((rankValue) => ranks.get(id) === rankValue))
+          .map((id) => {
+            const neighborRank = ranks.get(id) ?? rank;
+            const neighborIndex = (ordered.get(neighborRank) ?? []).findIndex((candidate) => candidate.id === id);
+            return neighborIndex >= 0 ? neighborIndex : indexOf.get(entity.id) ?? 0;
+          });
+        if (!neighbors.length) return indexOf.get(entity.id) ?? 0;
+        return neighbors.reduce((total, value) => total + value, 0) / neighbors.length;
+      };
+      ordered.set(rank, [...siblings].sort((left, right) => barycenter(left) - barycenter(right) || left.title.localeCompare(right.title, "zh-CN")));
+    }
   }
   const result = new Map<string, { x: number; y: number }>();
-  [...grouped.entries()].sort(([left], [right]) => left - right).forEach(([, siblings], row) => {
-    const sorted = [...siblings].sort((left, right) => left.title.localeCompare(right.title, "zh-CN"));
-    const width = (sorted.length - 1) * 310;
-    sorted.forEach((entity, column) => result.set(entity.id, { x: column * 310 - width / 2, y: row * 210 }));
+  sortedRows.forEach(([rank], rowIndex) => {
+    const siblings = ordered.get(rank) ?? [];
+    const width = (siblings.length - 1) * COLUMN_GAP;
+    siblings.forEach((entity, column) => result.set(entity.id, { x: column * COLUMN_GAP - width / 2, y: rowIndex * LANE_GAP }));
   });
   return result;
 }
@@ -114,15 +187,13 @@ function toEdges(graph: ResearchGraphProjection): ScientificEdge[] {
     target: relation.targetId,
     // React Flow's built-in "default" edge is the cubic Bézier renderer.
     type: "default",
-    selectable: false,
-    focusable: false,
+    selectable: true,
+    focusable: true,
     label: relationLabel[relation.kind],
-    labelStyle: { fill: "#68727c", fontSize: 9 },
-    labelBgStyle: { fill: "rgba(255,255,255,.92)" },
-    labelBgPadding: [5, 3],
     data: { kind: relation.kind },
-    style: { stroke: relationColor[relation.kind], strokeWidth: 1.35, opacity: .66 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: relationColor[relation.kind], width: 13, height: 13 },
+    className: `scientific-edge scientific-edge-${relation.kind.toLowerCase().replaceAll("_", "-")}`,
+    style: { stroke: relationVar(relation.kind), strokeWidth: 1.35, opacity: .66 },
+    markerEnd: { type: MarkerType.ArrowClosed, color: relationVar(relation.kind), width: 13, height: 13 },
   }));
 }
 
@@ -133,15 +204,17 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
   const [nodes, setNodes, onNodesChange] = useNodesState<ScientificNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ScientificEdge>([]);
   const [selectedId, setSelectedId] = useState("");
+  const [selectedEdgeId, setSelectedEdgeId] = useState("");
   const [quotedIds, setQuotedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const [focusOneHop, setFocusOneHop] = useState(false);
+  const [focusDepth, setFocusDepth] = useState<0 | 1 | 2>(0);
   const [relationFilter, setRelationFilter] = useState<ResearchRelationKind | "all">("all");
   const [status, setStatus] = useState("正在读取科研图…");
   const [proposals, setProposals] = useState<ResearchGraphProposal[]>([]);
   const [proposalOpen, setProposalOpen] = useState(false);
   const [proposalTitle, setProposalTitle] = useState("");
   const [proposalSummary, setProposalSummary] = useState("");
+  const [zoom, setZoom] = useState(1);
   const flow = useRef<ReactFlowInstance<ScientificNode, ScientificEdge> | null>(null);
   const revisionByView = useRef(new Map<ResearchGraphView, number>());
   const viewRef = useRef(view);
@@ -153,6 +226,12 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
 
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
   useEffect(() => { viewRef.current = view; }, [view]);
+
+  const referenceCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const relation of graph?.relations ?? []) counts.set(relation.targetId, (counts.get(relation.targetId) ?? 0) + 1);
+    return counts;
+  }, [graph?.relations]);
 
   const load = useCallback(async () => {
     acceptViewportChanges.current = false;
@@ -197,7 +276,8 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
     });
   }, [load, projectId, view]);
 
-  const autoArrange = () => {
+  /** 「还原布局」：全部节点回到语义自动布局。 */
+  const restoreLayout = () => {
     if (!graph) return;
     const positions = arrangedPositions(graph.nodes, graph.relations);
     const next = nodes.map((node) => ({ ...node, position: positions.get(node.id) ?? node.position }));
@@ -212,38 +292,66 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
     }, 20);
   };
 
+  /** 「整理」：只重排没有用户位置的节点，用户摆好的布局永不被覆盖。 */
+  const tidyUnplaced = () => {
+    if (!graph || !layout) return;
+    const persistedIds = new Set(layout.positions.map((position) => position.entityId));
+    const positions = arrangedPositions(graph.nodes, graph.relations);
+    const next = nodes.map((node) => persistedIds.has(node.id) ? node : { ...node, position: positions.get(node.id) ?? node.position });
+    setNodes(next);
+    persistLayout(next);
+  };
+
   const selected = graph?.nodes.find((node) => node.id === selectedId);
+  const selectedEdge = edges.find((edge) => edge.id === selectedEdgeId);
   const relatedRelations = graph?.relations.filter((relation) => relation.sourceId === selectedId || relation.targetId === selectedId) ?? [];
   const focusedIds = useMemo(() => {
-    if (!focusOneHop || !selectedId) return undefined;
+    if (!focusDepth || !selectedId) return undefined;
     const ids = new Set([selectedId]);
-    for (const relation of graph?.relations ?? []) if (relation.sourceId === selectedId || relation.targetId === selectedId) {
-      ids.add(relation.sourceId); ids.add(relation.targetId);
+    let frontier = [selectedId];
+    for (let depth = 0; depth < focusDepth; depth += 1) {
+      const next: string[] = [];
+      for (const relation of graph?.relations ?? []) {
+        for (const id of frontier) {
+          if (relation.sourceId === id && !ids.has(relation.targetId)) { ids.add(relation.targetId); next.push(relation.targetId); }
+          if (relation.targetId === id && !ids.has(relation.sourceId)) { ids.add(relation.sourceId); next.push(relation.sourceId); }
+        }
+      }
+      frontier = next;
     }
     return ids;
-  }, [focusOneHop, graph?.relations, selectedId]);
-  const filteredEdges = useMemo(() => {
+  }, [focusDepth, graph?.relations, selectedId]);
+
+  const searchMatches = useMemo(() => {
     const term = query.trim().toLocaleLowerCase();
-    const matching = term ? new Set(nodes.filter((node) => `${node.data.title} ${node.data.summary} ${kindLabel[node.data.kind] ?? node.data.kind}`.toLocaleLowerCase().includes(term)).map((node) => node.id)) : undefined;
+    if (!term) return [];
+    return nodes.filter((node) => `${node.data.title} ${node.data.summary} ${kindLabel[node.data.kind] ?? node.data.kind}`.toLocaleLowerCase().includes(term));
+  }, [nodes, query]);
+
+  const filteredEdges = useMemo(() => {
+    const matching = query.trim() ? new Set(searchMatches.map((node) => node.id)) : undefined;
     return edges.map((edge) => {
       const relationMatches = relationFilter === "all" || edge.data?.kind === relationFilter;
       const focusMatches = !focusedIds || (focusedIds.has(edge.source) && focusedIds.has(edge.target));
       return { ...edge, hidden: !relationMatches || !focusMatches, style: { ...edge.style, opacity: matching ? matching.has(edge.source) || matching.has(edge.target) ? .8 : .09 : selectedId && (edge.source === selectedId || edge.target === selectedId) ? .9 : .42, strokeWidth: selectedId && (edge.source === selectedId || edge.target === selectedId) ? 1.8 : 1.15 } };
     });
-  }, [edges, focusedIds, nodes, query, relationFilter, selectedId]);
+  }, [edges, focusedIds, searchMatches, query, relationFilter, selectedId]);
   const displayedNodes = useMemo(() => {
     const term = query.trim().toLocaleLowerCase();
+    const compact = zoom < 0.5;
     return nodes.map((node) => {
       const matches = !term || `${node.data.title} ${node.data.summary} ${kindLabel[node.data.kind] ?? node.data.kind}`.toLocaleLowerCase().includes(term);
-      return { ...node, hidden: Boolean(focusedIds && !focusedIds.has(node.id)), selected: node.id === selectedId, style: { ...node.style, opacity: matches ? 1 : .18 } };
+      const references = referenceCounts.get(node.id) ?? 0;
+      const refTier = references >= 5 ? 2 : references >= 2 ? 1 : 0;
+      return { ...node, hidden: Boolean(focusedIds && !focusedIds.has(node.id)), selected: node.id === selectedId, data: { ...node.data, compact, refTier }, style: { ...node.style, opacity: matches ? 1 : .18 } };
     });
-  }, [focusedIds, nodes, query, selectedId]);
+  }, [focusedIds, nodes, query, referenceCounts, selectedId, zoom]);
 
-  const focusSearch = () => {
-    const term = query.trim().toLocaleLowerCase();
-    const match = nodes.find((node) => `${node.data.title} ${node.data.summary}`.toLocaleLowerCase().includes(term));
+  const jumpToNode = (id: string) => {
+    const match = nodes.find((node) => node.id === id);
     if (!match || !flow.current) return;
-    setSelectedId(match.id);
+    setSelectedId(id);
+    setSelectedEdgeId("");
     void flow.current.setCenter(match.position.x + 125, match.position.y + 65, { zoom: Math.max(flow.current.getZoom(), .85), duration: 280 });
   };
 
@@ -282,44 +390,65 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
 
   return <div className="scientific-canvas-shell">
     <div className="scientific-canvas-topbar">
-      <div><span className="scientific-canvas-mark">RG</span><b>科研画布</b><small>事实、证据、计算溯源与产物生命周期</small></div>
       <div className="scientific-canvas-views">{views.map((item) => <button key={item.id} className={view === item.id ? "active" : ""} title={item.hint} onClick={() => setView(item.id)}>{item.label}</button>)}</div>
-      <div className="scientific-canvas-actions"><button onClick={() => { setProposalOpen(true); setProposalTitle(selected?.kind === "Claim" ? selected.title : ""); setProposalSummary(selected?.kind === "Claim" ? selected.summary : ""); }}>{selected?.kind === "Claim" ? "修订主张" : "提出主张"}</button><button className={focusOneHop ? "active" : ""} disabled={!selectedId} onClick={() => setFocusOneHop((current) => !current)}>{focusOneHop ? "退出聚焦" : "聚焦 1 跳"}</button><button onClick={autoArrange}>自动整理</button><button onClick={() => void flow.current?.fitView({ padding: .18, duration: 300 })}>查看全景</button></div>
+      <div className="scientific-canvas-actions">
+        <button onClick={() => { setProposalOpen(true); setProposalTitle(selected?.kind === "Claim" ? selected.title : ""); setProposalSummary(selected?.kind === "Claim" ? selected.summary : ""); }}>{selected?.kind === "Claim" ? "修订主张" : "提出主张"}</button>
+        <div className="scientific-focus-switch" role="group" aria-label="邻域聚焦深度">
+          <button className={focusDepth === 1 ? "active" : ""} disabled={!selectedId} onClick={() => setFocusDepth((current) => current === 1 ? 0 : 1)}>聚焦 1 跳</button>
+          <button className={focusDepth === 2 ? "active" : ""} disabled={!selectedId} onClick={() => setFocusDepth((current) => current === 2 ? 0 : 2)}>2 跳</button>
+        </div>
+        <button onClick={tidyUnplaced} title="只整理没有手动位置的节点">整理</button>
+        <button onClick={restoreLayout} title="全部节点回到自动布局（覆盖手动位置）">还原布局</button>
+        <button onClick={() => void flow.current?.fitView({ padding: .18, duration: 300 })}>查看全景</button>
+      </div>
     </div>
-    <div className="scientific-canvas-search"><input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") focusSearch(); }} placeholder="搜索实体、摘要或类型" /><button onClick={focusSearch}>定位</button><span>{status}</span></div>
+    <div className="scientific-canvas-search">
+      <Search size={13} aria-hidden="true" />
+      <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && searchMatches[0]) jumpToNode(searchMatches[0].id); }} placeholder="搜索实体、摘要或类型" />
+      {query ? <button aria-label="清除搜索" onClick={() => setQuery("")}><X size={12} /></button> : null}
+      <span>{status}</span>
+      {searchMatches.length ? (
+        <div className="scientific-search-results">
+          {searchMatches.slice(0, 8).map((node) => <button key={node.id} onClick={() => jumpToNode(node.id)}><span>{kindLabel[node.data.kind] ?? node.data.kind}</span>{node.data.title}</button>)}
+        </div>
+      ) : null}
+    </div>
     <ReactFlow<ScientificNode, ScientificEdge>
       nodes={displayedNodes}
       edges={filteredEdges}
       nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
-      onNodeClick={(_, node) => setSelectedId(node.id)}
+      onNodeClick={(_, node) => { setSelectedId(node.id); setSelectedEdgeId(""); }}
+      onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedId(""); }}
       onNodeDragStop={(_, dragged) => {
         const snapshot = nodesRef.current.map((node) => node.id === dragged.id ? { ...node, position: dragged.position } : node);
         persistLayout(snapshot);
       }}
       onInit={(instance) => { flow.current = instance; }}
+      onMove={(_, nextViewport) => setZoom(nextViewport.zoom)}
       onMoveEnd={(_, nextViewport) => { viewport.current = nextViewport; if (acceptViewportChanges.current) persistLayout(nodesRef.current, nextViewport); }}
       nodesDraggable
       nodesConnectable={false}
-      edgesFocusable={false}
       edgesReconnectable={false}
       panOnScroll
       panOnScrollSpeed={.8}
       zoomOnScroll={false}
+      zoomActivationKeyCode={["Meta", "Control"]}
+      zoomOnPinch
       minZoom={.16}
       maxZoom={2.4}
       deleteKeyCode={null}
     >
-      <Background color="#dfe4e8" gap={32} size={1} />
-      <MiniMap position="bottom-left" pannable zoomable nodeColor={(node) => node.id === selectedId ? "#4c8fd8" : "#aebbc7"} maskColor="rgba(248,250,251,.72)" />
+      <Background gap={32} size={1} className="scientific-background" />
+      <MiniMap position="bottom-left" pannable zoomable className="scientific-minimap" />
       <Controls position="bottom-right" />
     </ReactFlow>
-    <aside className={`scientific-canvas-detail ${selected ? "open" : ""}`}>
+    <aside className={`scientific-canvas-detail ${selected || selectedEdge ? "open" : ""}`}>
       {selected ? <>
         <header><span>{kindLabel[selected.kind] ?? selected.kind}</span><button aria-label="关闭详情" onClick={() => setSelectedId("")}>×</button></header>
         <h2>{selected.title}</h2><p>{selected.summary || "暂无摘要"}</p>
-        <dl><div><dt>状态</dt><dd>{selected.status ?? "未标记"}</dd></div><div><dt>版本</dt><dd>{selected.revision}</dd></div><div><dt>关系</dt><dd>{relatedRelations.length}</dd></div>{selected.stance ? <div><dt>立场</dt><dd>{selected.stance}</dd></div> : null}</dl>
+        <dl><div><dt>状态</dt><dd>{selected.status ?? "未标记"}</dd></div><div><dt>版本</dt><dd>{selected.revision}</dd></div><div><dt>关系</dt><dd>{relatedRelations.length}</dd></div>{selected.stance ? <div><dt>立场</dt><dd>{stanceLabel[selected.stance] ?? selected.stance}</dd></div> : null}</dl>
         {selected.uri ? <code>{selected.uri}</code> : null}
         {selected.sourceLocator ? <div className="scientific-source-action">{/^https?:\/\//.test(selected.sourceLocator) ? <a href={selected.sourceLocator} target="_blank" rel="noreferrer">打开原始来源 ↗</a> : <button onClick={() => onNavigate?.(selected.kind === "Paper" || selected.kind === "SourceFragment" ? "papers" : selected.kind === "WikiRevisionRef" ? "wiki" : "chat")}>前往来源视图</button>}<small>{selected.sourceLocator}</small></div> : null}
         <section><b>直接关系</b>{relatedRelations.slice(0, 8).map((relation) => {
@@ -333,8 +462,24 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
         </div>
         {!activeSessionId ? <small className="scientific-context-hint">先在 Chat 新建或选择对话后即可绑定上下文。</small> : <small className="scientific-context-hint">仅加载所选实体、有限邻域与显式引用，不载入整张图。</small>}
       </> : null}
+      {selectedEdge ? <>
+        <header><span>关系详情</span><button aria-label="关闭详情" onClick={() => setSelectedEdgeId("")}>×</button></header>
+        <h2>{relationLabel[selectedEdge.data?.kind ?? "REFERENCES"]}</h2>
+        <dl>
+          <div><dt>类型</dt><dd>{selectedEdge.data?.kind}</dd></div>
+          <div><dt>起点</dt><dd>{graph?.nodes.find((node) => node.id === selectedEdge.source)?.title ?? selectedEdge.source}</dd></div>
+          <div><dt>终点</dt><dd>{graph?.nodes.find((node) => node.id === selectedEdge.target)?.title ?? selectedEdge.target}</dd></div>
+        </dl>
+        <div className="scientific-context-actions">
+          <button onClick={() => { setSelectedId(selectedEdge.source); setSelectedEdgeId(""); }}>查看起点</button>
+          <button onClick={() => { setSelectedId(selectedEdge.target); setSelectedEdgeId(""); }}>查看终点</button>
+        </div>
+      </> : null}
     </aside>
-    <div className="scientific-canvas-legend"><button className={relationFilter === "all" ? "active" : ""} onClick={() => setRelationFilter("all")}>全部关系</button>{(["BASED_ON", "ASSERTS", "USED", "GENERATED", "DERIVED_FROM", "EVALUATES"] as ResearchRelationKind[]).map((kind) => <button key={kind} className={relationFilter === kind ? "active" : ""} onClick={() => setRelationFilter((current) => current === kind ? "all" : kind)}><i style={{ background: relationColor[kind] }} />{relationLabel[kind]}</button>)}</div>
+    <div className="scientific-canvas-legend">
+      <button className={relationFilter === "all" ? "active" : ""} onClick={() => setRelationFilter("all")}>全部关系</button>
+      {relationKinds.map((kind) => <button key={kind} className={relationFilter === kind ? "active" : ""} onClick={() => setRelationFilter((current) => current === kind ? "all" : kind)}><i style={{ background: relationVar(kind) }} />{relationLabel[kind]}</button>)}
+    </div>
     {proposalOpen ? <div className="scientific-proposal-dialog" role="dialog" aria-modal="true" aria-label="科研图变更提案"><div><header><div><small>{selected?.kind === "Claim" ? "创建不可变主张版本" : "创建新科研主张"}</small><h2>预览科研图变更</h2></div><button aria-label="关闭" onClick={() => setProposalOpen(false)}>×</button></header><label><span>主张标题</span><input autoFocus value={proposalTitle} onChange={(event) => setProposalTitle(event.target.value)} /></label><label><span>主张内容与适用边界</span><textarea value={proposalSummary} onChange={(event) => setProposalSummary(event.target.value)} placeholder="写明结论、条件、时间/区域范围和不确定性…" /></label><p>提交只生成待审提案；接受后才会写入 Claim / ClaimRevision，并保留版本关系。</p><footer><button onClick={() => setProposalOpen(false)}>取消</button><button className="primary" disabled={!proposalTitle.trim() || !proposalSummary.trim()} onClick={() => void submitProposal()}>生成提案</button></footer></div></div> : null}
     {proposals.some((proposal) => proposal.status === "pending") ? <aside className="scientific-proposal-tray"><header><b>待确认变更</b><span>{proposals.filter((proposal) => proposal.status === "pending").length}</span></header>{proposals.filter((proposal) => proposal.status === "pending").map((proposal) => <article key={proposal.id}><small>{proposal.action.type === "create_claim" ? "新建主张" : "修订主张"}</small><b>{proposal.action.title}</b><p>{proposal.action.summary}</p><footer><button onClick={() => void decideProposal(proposal, "reject")}>拒绝</button><button className="primary" onClick={() => void decideProposal(proposal, "accept")}>接受并写入</button></footer></article>)}</aside> : null}
   </div>;

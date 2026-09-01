@@ -106,6 +106,13 @@ const migrations: Array<{ version: number; sql: string }> = [{
       domain_ids = '["general-science"]'
       WHERE id = 'free-exploration';
   `,
+}, {
+  version: 9,
+  sql: `
+    -- wiki_search was a write-only FTS5 index: search always used LIKE and the
+    -- default unicode61 tokenizer cannot segment CJK text anyway.
+    DROP TABLE IF EXISTS wiki_search;
+  `,
 }];
 
 export const KNOWLEDGE_SCHEMA_VERSION = migrations.at(-1)?.version ?? 0;

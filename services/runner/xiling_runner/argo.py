@@ -82,6 +82,8 @@ def inspect_argo_dataset(path: Path) -> dict[str, object]:
 
 
 def _mixed_layer_depth(pressure: np.ndarray, temperature: np.ndarray) -> float:
+    if not len(pressure) or not len(temperature):
+        return float("nan")
     reference = temperature[0]
     candidates = np.flatnonzero(temperature <= reference - 0.2)
     return float(pressure[candidates[0]]) if candidates.size else float(pressure[-1])

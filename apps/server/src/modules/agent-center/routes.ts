@@ -1,11 +1,13 @@
+import { validationFailure } from "../../http-errors.js";
 import type { FastifyInstance } from "fastify";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { AGENT_SESSION_FORMAT_VERSION, type ResearchAgentHarness, type SqliteAgentSessionStore } from "@xiling/agent-harness";
+import { agentAttachmentUploadSchema, agentRunCommandSchema, agentSessionCreateSchema, agentCenterIdSchema } from "@xiling/api-contracts";
 import type { ModelModality } from "@xiling/contracts";
 import { projectAgentExecutionGraph } from "../../agent-execution-graph.js";
 
-const id = z.string().min(1).max(160);
+const id = agentCenterIdSchema;
 const supportedImageMimeTypes = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 const hasBytes = (data: Buffer, offset: number, expected: number[]) => expected.every((value, index) => data[offset + index] === value);
 const hasNativeImageSignature = (data: Buffer, mimeType: string) => {
@@ -15,13 +17,7 @@ const hasNativeImageSignature = (data: Buffer, mimeType: string) => {
   if (mimeType === "image/webp") return data.subarray(0, 4).toString("ascii") === "RIFF" && data.subarray(8, 12).toString("ascii") === "WEBP";
   return false;
 };
-const attachmentUpload = z.object({
-  name: z.string().trim().min(1).max(240),
-  modality: z.enum(["image", "audio", "video"]),
-  mimeType: z.string().trim().min(1).max(120),
-  size: z.number().int().positive().max(8 * 1024 * 1024),
-  data: z.string().min(4).max(12 * 1024 * 1024),
-});
+const attachmentUpload = agentAttachmentUploadSchema;
 
 export interface AgentCenterRouteDependencies {
   harness: ResearchAgentHarness;
@@ -86,8 +82,8 @@ export function registerAgentCenterRoutes(app: FastifyInstance, dependencies: Ag
   });
 
   app.post("/api/agent-center/sessions", async (request, reply) => {
-    const parsed = z.object({ id: id.optional(), projectId: id }).safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    const parsed = agentSessionCreateSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     if (!projectActive(parsed.data.projectId)) return reply.code(404).send({ error: "Project not found or archived" });
     if (!parsed.data.id || !sessionExists(parsed.data.id, parsed.data.projectId)) return reply.code(409).send({ error: "Create the Knowledge chat session before its Agent session" });
     try { return reply.code(201).send(harness.createSession({ projectId: parsed.data.projectId, ...(parsed.data.id ? { id: parsed.data.id } : {}) })); }
@@ -98,8 +94,8 @@ export function registerAgentCenterRoutes(app: FastifyInstance, dependencies: Ag
   // larger than the 20 MB raw attachment budget enforced below.
   app.post("/api/agent-center/runs", { bodyLimit: 32 * 1024 * 1024 }, async (request, reply) => {
     await ready;
-    const parsed = z.object({ sessionId: id, projectId: id, prompt: z.string().min(1).max(50_000), clientCommandId: id, modelRoute: z.object({ providerId: z.enum(["openai", "anthropic", "google", "openrouter", "deepseek", "xai", "mistral", "moonshotai", "zai", "groq", "custom"]), modelId: z.string().trim().min(1).max(240) }).optional(), context: z.object({ activeNodeId: id, quotedNodeIds: z.array(id).max(12) }).optional(), attachments: z.array(attachmentUpload).max(4).optional() }).safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    const parsed = agentRunCommandSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     if (!activeSessionInProject(parsed.data.sessionId, parsed.data.projectId)) return reply.code(404).send({ error: "Agent session, chat session, or project not found" });
     const uploads = parsed.data.attachments ?? [];
     const totalSize = uploads.reduce((sum, attachment) => sum + attachment.size, 0);
@@ -156,13 +152,26 @@ export function registerAgentCenterRoutes(app: FastifyInstance, dependencies: Ag
     const query = z.object({ projectId: id, afterSequence: z.coerce.number().int().min(0).default(0) }).safeParse(request.query);
     if (!params.success || !query.success) return reply.code(400).send({ error: "Invalid event subscription" });
     if (!runInProject(params.data.id, query.data.projectId)) return reply.code(404).send({ error: "Agent run not found in project" });
+    // EventSource reconnects carry the last seen sequence in this header; it
+    // wins over the query parameter so automatic reconnects resume in order.
+    const lastEventId = request.headers["last-event-id"];
+    const headerValue = Array.isArray(lastEventId) ? lastEventId[0] : lastEventId;
+    const headerSequence = headerValue !== undefined && /^\d+$/.test(headerValue) ? Number(headerValue) : undefined;
+    const afterSequence = headerSequence ?? query.data.afterSequence;
     reply.hijack();
     reply.raw.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", connection: "keep-alive" });
-    for await (const event of harness.subscribe(params.data.id, query.data.afterSequence)) {
-      if (request.raw.destroyed || reply.raw.destroyed) break;
-      reply.raw.write(`id: ${event.sequence}\ndata: ${JSON.stringify(event)}\n\n`);
+    // Comment-only keep-alives stop idle connections from being reaped by proxies.
+    const heartbeat = setInterval(() => { if (!request.raw.destroyed && !reply.raw.destroyed) reply.raw.write(": keep-alive\n\n"); }, 15_000);
+    try {
+      for await (const event of harness.subscribe(params.data.id, afterSequence)) {
+        if (request.raw.destroyed || reply.raw.destroyed) break;
+        reply.raw.write(`id: ${event.sequence}\ndata: ${JSON.stringify(event)}\n\n`);
+      }
+    } catch { /* client vanished or store hiccup: close below instead of leaking the socket */ }
+    finally {
+      clearInterval(heartbeat);
+      if (!reply.raw.destroyed) reply.raw.end();
     }
-    if (!reply.raw.destroyed) reply.raw.end();
   });
 
   app.post("/api/agent-center/runs/:id/cancel", async (request, reply) => {

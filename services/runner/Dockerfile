@@ -19,5 +19,6 @@ COPY connector_smoke.py ./connector_smoke.py
 RUN mkdir -p /workspace && chown -R runner:runner /workspace /opt/xiling-runner
 
 USER runner
-EXPOSE 8888
-CMD ["jupyter", "kernelgateway", "--KernelGatewayApp.ip=0.0.0.0", "--KernelGatewayApp.port=8888", "--KernelGatewayApp.allow_origin=*"]
+# The Node host always starts one-shot entrypoints (run_ocean_analysis.py /
+# run_connector.py); no long-lived listener is exposed from the sandbox.
+CMD ["python", "-c", "raise SystemExit('xiLing runner image is not meant to run a default command')"]

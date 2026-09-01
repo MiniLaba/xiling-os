@@ -116,6 +116,18 @@ describe("LadybugResearchGraphStore", () => {
     await reopened.close();
   });
 
+  it("rejects in-place rewrites of immutable revisions but allows locator refinement", async () => {
+    const { store } = await createStore();
+    const base = { projectId: "p1", kind: "DatasetSnapshot" as const, id: "dataset-snapshot:abc", title: "数据快照" };
+    await expect(store.applyChangeSet({ projectId: "p1", nodes: [{ ...base, uri: "artifact://connector/run-1/subset.nc", properties: { sha256: "a".repeat(64) } }], relations: [] })).resolves.toEqual({ nodes: 1, relations: 0 });
+    // A locator-only refinement (connector URI → canonical artifact URI) is not
+    // a content change and must not trip the immutability guard.
+    await expect(store.applyChangeSet({ projectId: "p1", nodes: [{ ...base, uri: "artifact://sha256/" + "a".repeat(64), properties: { sha256: "a".repeat(64) } }], relations: [] })).resolves.toBeDefined();
+    // A real content change on the same revision id is a history rewrite.
+    await expect(store.applyChangeSet({ projectId: "p1", nodes: [{ ...base, properties: { sha256: "b".repeat(64) } }], relations: [] })).rejects.toThrow("Immutable DatasetSnapshot");
+    await store.close();
+  });
+
   it("keeps reads responsive while the single-writer queue commits another change set", async () => {
     const { store } = await createStore();
     const fixture = createOceanResearchFixture();

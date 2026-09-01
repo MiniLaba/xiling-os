@@ -183,22 +183,57 @@ export class MultiAgentOrchestrator {
     if (!input.tasks.length || input.tasks.length > maxTasks) throw new Error(`Delegation requires 1-${maxTasks} tasks`);
     if (input.mode === "single" && input.tasks.length !== 1) throw new Error("Single delegation accepts exactly one task");
     if (input.mode === "chain" && input.tasks.some((task, index) => index > 0 && !(task.dependsOn?.length))) throw new Error("Chain tasks after the first require dependsOn");
+    // dependsOn forms a DAG over task indices: strictly earlier references keep
+    // it acyclic by construction, and every declared edge is actually honoured.
+    for (const [index, task] of input.tasks.entries()) {
+      for (const dependency of task.dependsOn ?? []) {
+        if (!Number.isInteger(dependency) || dependency < 0 || dependency >= index) throw new Error(`Task ${index} dependsOn must reference an earlier task`);
+      }
+    }
     const maxCost = input.budget?.maxCost ?? this.options.defaultBudget?.maxCost;
     const budget: AgentTaskBudget = {
       maxDurationMs: input.budget?.maxDurationMs ?? this.options.defaultBudget?.maxDurationMs ?? 180_000,
       maxToolCalls: input.budget?.maxToolCalls ?? this.options.defaultBudget?.maxToolCalls ?? 12,
       ...(maxCost !== undefined ? { maxCost } : {}),
     };
-    const runTask = (task: AgentTaskRequest, index: number) => this.runOne({ ...input, rootRunId: input.rootRunId ?? input.parentRunId, task, index, budget });
-    if (input.mode === "chain") {
-      const results: AgentTaskResult[] = [];
-      for (const [index, task] of input.tasks.entries()) {
-        if (results.some((result) => result.status !== "completed")) break;
-        results.push(await runTask({ ...task, objective: `${task.objective}${results.length ? `\n前序结构化摘要：\n${results.map((item) => item.summary).join("\n")}` : ""}` }, index));
+    const tasks = input.tasks;
+    const transitiveDependencies = (index: number): number[] => {
+      const seen = new Set<number>();
+      const stack = [...(tasks[index]!.dependsOn ?? [])];
+      while (stack.length) {
+        const dependency = stack.pop()!;
+        if (seen.has(dependency)) continue;
+        seen.add(dependency);
+        stack.push(...(tasks[dependency]!.dependsOn ?? []));
       }
-      return results;
+      return [...seen].sort((a, b) => a - b);
+    };
+    const results: Array<AgentTaskResult | undefined> = new Array(tasks.length);
+    const summaries: string[] = new Array(tasks.length).fill("");
+    const runTask = async (index: number) => {
+      const task = tasks[index]!;
+      const dependencies = transitiveDependencies(index).filter((dependency) => summaries[dependency]);
+      const objective = dependencies.length ? `${task.objective}\n前序结构化摘要：\n${dependencies.map((dependency) => summaries[dependency]).join("\n")}` : task.objective;
+      const result = await this.runOne({ ...input, rootRunId: input.rootRunId ?? input.parentRunId, task: { ...task, objective }, index, budget });
+      results[index] = result;
+      summaries[index] = result.status === "completed" ? result.summary : "";
+    };
+    // Level-by-level DAG execution: every task whose dependencies have all
+    // completed runs as soon as a concurrency slot frees up.
+    const pending = new Set(tasks.map((_, index) => index));
+    while (pending.size) {
+      const runnable = [...pending].filter((index) => (tasks[index]!.dependsOn ?? []).every((dependency) => results[dependency]?.status === "completed"));
+      if (!runnable.length) {
+        for (const index of pending) {
+          const role = this.roles.get(tasks[index]!.roleId);
+          results[index] = { delegationId: "", roleId: tasks[index]!.roleId, childSessionId: "", status: "failed", summary: "", sourceUris: [], artifactUris: [], limitations: [], error: "upstream dependency did not complete; task skipped" };
+          void role;
+        }
+        break;
+      }
+      await Promise.all(runnable.map((index) => { pending.delete(index); return runTask(index); }));
     }
-    return Promise.all(input.tasks.map(runTask));
+    return results.map((result) => result!);
   }
 
   private async runOne(input: { projectId: string; rootRunId: string; parentRunId: string; task: AgentTaskRequest; index: number; contextManifest: ContextManifest; budget: AgentTaskBudget; signal?: AbortSignal }): Promise<AgentTaskResult> {
@@ -238,14 +273,20 @@ export class MultiAgentOrchestrator {
 
   private async acquire(signal?: AbortSignal): Promise<void> {
     const limit = Math.max(1, this.options.maxConcurrency ?? 3);
-    if (signal?.aborted) throw new Error("Delegation cancelled");
-    if (this.active < limit) { this.active += 1; return; }
-    await new Promise<void>((resolve, reject) => {
-      const next = () => { signal?.removeEventListener("abort", onAbort); this.active += 1; resolve(); };
-      const onAbort = () => { const index = this.waiters.indexOf(next); if (index >= 0) this.waiters.splice(index, 1); reject(new Error("Delegation cancelled")); };
-      signal?.addEventListener("abort", onAbort, { once: true });
-      this.waiters.push(next);
-    });
+    while (true) {
+      if (signal?.aborted) throw new Error("Delegation cancelled");
+      if (this.active < limit) { this.active += 1; return; }
+      await new Promise<void>((resolve, reject) => {
+        const next = () => { signal?.removeEventListener("abort", onAbort); resolve(); };
+        const onAbort = () => { const index = this.waiters.indexOf(next); if (index >= 0) this.waiters.splice(index, 1); reject(new Error("Delegation cancelled")); };
+        signal?.addEventListener("abort", onAbort, { once: true });
+        this.waiters.push(next);
+      });
+      // Woken by a release(): re-check abort before claiming the handed-over
+      // slot, and pass the wakeup on to the next waiter when aborting so the
+      // freed slot is never lost.
+      if (signal?.aborted) { this.waiters.shift()?.(); throw new Error("Delegation cancelled"); }
+    }
   }
   private release(): void { if (this.active > 0) this.active -= 1; this.waiters.shift()?.(); }
 }

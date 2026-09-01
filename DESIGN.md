@@ -192,7 +192,7 @@ docs/adr/                        # 已接受或被替代的架构决策
 | ScienceDomainManifest | Science Domains | 代码清单 + 项目 domainIds | 通用科研内核始终启用；领域清单不自动获得执行权限 |
 | ChatSession 目录 | Knowledge | SQLite | 会话必须项目隔离 |
 | Agent Entry / Message | Agent Harness | Agent SQLite | Server 单写；Chat 与运行图按稳定 source ID 查询 |
-| WikiPage / Revision | Knowledge | SQLite + FTS5 | Revision 不可变；恢复产生新版本 |
+| WikiPage / Revision | Knowledge | SQLite | Revision 不可变；恢复产生新版本；全文搜索使用带 ESCAPE 的 LIKE（FTS5 索引因 CJK 分词与只写不读已于 2026-08-31 移除） |
 | Evidence 捕获记录 | Knowledge | SQLite + outbox | 每条证据保存原文摘录、定位、解释、局限、立场、置信度与目标 ClaimRevision；同一论文可支持多个断言 |
 | ResearchGraphProposal | Research Graph module | 独立 SQLite | Agent/用户的 Claim 新建或修订先落待审提案；接受后才生成不可变 ClaimRevision，拒绝不改科研事实 |
 | ContextCapsule | Context + Knowledge | SQLite 派生缓存 | 不是证据源；源变化后失效 |
@@ -332,6 +332,8 @@ Wiki Markdown、`[[slug]]`、Research Graph 实体/关系和 Artifact URI 可以
 
 ## 7. API 与前端基础设施
 
+- 应用壳采用“侧边导航 + 当前工作区”两栏；侧栏位置顺序遵循 `27ebdf7` 的稳定布局，但视觉与组件只以当前设计系统为准。设置页独占全宽。
+- Chat 的运行图和 Artifact Viewer 是会话上下文的一部分：运行图在 Chat 内切换，Artifact 在 Chat 内按需停靠、调宽、抽屉或全屏。禁止恢复应用级常驻 `OutputPanel`，避免与 Chat 自有面板形成双重第三栏。
 - HTTP 输入由 `@xiling/api-contracts` 校验；修改请求字段时前后端必须在同一变更中升级。
 - `apps/web/src/lib/api-client.ts` 是 JSON 请求和 API 错误的统一入口。
 - `apps/web/src/lib/agent-stream.ts` 是 SSE 解码的统一入口。
@@ -374,12 +376,12 @@ Wiki Markdown、`[[slug]]`、Research Graph 实体/关系和 Artifact URI 可以
 
 ## 9. 安全与执行边界
 
-- 服务默认只绑定 `127.0.0.1`。
+- 服务默认只绑定 `127.0.0.1`；Host 头必须是本机回环地址（防 DNS rebinding），且所有非 GET 控制面请求必须携带启动时生成本地访问令牌文件（`runtime/access-token`，0600）对应的 `x-xiling-token` 头，浏览器通过 `GET /api/auth/token` 获取——跨源页面既读不到令牌也无法伪造请求头。
 - 科研代码和官方客户端通过 `@xiling/execution` 的统一策略，在非 root、移除 capabilities、禁止提权且限制 CPU/内存/PID/IPC/tmpfs 的 Linux 容器中运行。
 - 凭据通过受控通道注入单次运行，不进入 argv、Artifact、计划 JSON 或模型上下文。
 - MCP Bearer Token 只在隔离 Host 配置时读取，不回传 Web；默认 Server 工具调用需审批。
-- 下载审批锁定请求哈希、元数据来源哈希、变量、区域、时间、深度、体积和目标。
-- 通用执行审批锁定代码快照、参数、随机种子、环境 digest、资源和网络策略；输入物化后记录内容哈希。
+- 下载审批锁定请求哈希、元数据来源哈希、变量、区域、时间、深度、体积和目标；批准的体积估算以 `--max-bytes` 传入 Runner 并在实际下载后对账，超出即失败。
+- 通用执行审批锁定代码快照、参数、随机种子、环境 digest、资源和网络策略；输入物化后记录内容哈希。下载/探测/分析均有墙钟超时（分别默认 30/2/15 分钟），镜像在运行时钉定为不可变 image ID。
 - 取消使用应用 cancellation token、Pi `abort()`、Jupyter interrupt 或 Docker stop/kill 升级路径，不依赖 POSIX 信号语义。
 - 受管 Artifact 读取必须校验 URI、扩展名、路径穿越和最大读取量。
 
@@ -397,7 +399,7 @@ Wiki Markdown、`[[slug]]`、Research Graph 实体/关系和 Artifact URI 可以
 ### SQLite
 
 - `KnowledgeService` 是当前 SQLite 适配器，调用方依赖 `ProjectStore`、`ConversationStore`、`WikiStore` 等窄 ports。
-- schema 由顺序 migration 管理，版本保存在 `PRAGMA user_version`。
+- schema 由顺序 migration 管理，版本保存在 `PRAGMA user_version`（当前 v9）。
 - 应用拒绝打开高于自身支持版本的数据库。
 - 新表或字段必须新增 migration，禁止修改已经发布的 migration。
 
@@ -487,6 +489,10 @@ pnpm compliance    # 依赖许可证检查
 - Workflow 状态/outbox 同事务，Research Graph 投影与 applied ledger 同事务；重复 reconcile 不增加节点/关系。
 - 凭据不通过状态 API、日志和 Artifact 泄漏。
 - Windows 路径、UTF-8/LF 和启动 Doctor。
+- Agent 取消/关闭在运行时创建窗口内到达也能收敛为终态，不会砖化会话单写者槽（fixture 与真实 Pi SDK abort 语义一致）。
+- Execution 幂等键以原子 INSERT 认领；崩溃残留的 running 记录启动时标记为 failed 并可重试。
+- Research Graph 存储层拒绝原地覆写 ClaimRevision/DatasetSnapshot/ArtifactVersion/WikiRevisionRef；uri/sourceLocator 定位符精化不算内容变更。
+- 多智能体 `dependsOn` 按 DAG 真实调度：依赖失败时下游跳过，兄弟分支并行。
 - Research Graph ChangeSet 回滚、冲突证据、Artifact 多跳溯源、Checkpoint 与异常退出 WAL 恢复。
 
 ## 14. 已知风险与后续边界
@@ -558,6 +564,7 @@ R0–R8 现代化开发同时受[科研内核架构宪法](docs/architecture/res
 - [ADR 0038：GitHub 合并门禁与 WSL2 支持边界（已替代）](docs/adr/0038-github-ci-wsl2-boundary.md)
 - [ADR 0039：原生 Windows 控制面与 Docker 科研沙箱](docs/adr/0039-native-windows-control-plane-and-docker-sandbox.md)
 - [ADR 0040：通用科研内核与可安装领域包](docs/adr/0040-extensible-science-domain-packages.md)
+- [ADR 0041：两栏应用壳与 Chat 上下文产物面板](docs/adr/0041-two-column-shell-and-contextual-artifact-panel.md)
 - [Gate 4.5：Agent 中枢架构纠偏](docs/gate-4.5-agent-center-correction.md)
 - [架构现代化计划](docs/architecture/modernization-plan.md)
 - [开源复用与许可证矩阵](docs/oss-evaluation.md)
@@ -566,6 +573,8 @@ R0–R8 现代化开发同时受[科研内核架构宪法](docs/architecture/res
 
 ## 17. 变更记录
 
+- **2026-09-01**：明确最新版与 `27ebdf7` 的兼容关系：保留最新版后端、原生 Windows、Docker 沙箱、科研内核和前端设计系统；应用壳恢复两栏与旧版位置层级，删除重复的应用级 OutputPanel，运行图和 Artifact 继续由 Chat 按上下文管理。
+- **2026-08-31**：后端加固收口：修复 Agent 取消竞态（取消后 run 收敛为终态、不再砖化会话）、MCP Host 生命周期（close 不再挂起、init 失败可见）、Execution 幂等（原子认领 + 启动恢复）；控制面新增本地访问令牌与回环 Host 校验；全部路由错误统一为 `{ error, code?, details? }` envelope 并注册全局 error handler；SSE 支持 `Last-Event-ID` 续传与 keep-alive；连接器下载增加墙钟超时、审批体积对账与镜像 ID 钉定；Research Graph 存储层强制不可变版本（uri/sourceLocator 定位符精化除外）；请求哈希统一为 canonical JSON；多智能体 `dependsOn` 落实为 DAG 调度；token 估算统一为 CJK 保守口径并对未知模型显式降级成本护栏；移除只写不读的 Wiki FTS5 索引（migration v9）与 Runner 中未使用的 Jupyter Kernel Gateway 死代码。
 - **2026-08-31**：重构文档信息架构：README 成为产品/运行/贡献入口，DESIGN 明确事实层级、交付边界、信任边界、版本引用与外部知识工具投影；新增 docs/ADR 索引，并解决领域包 ADR 的重复编号。
 - **2026-08-31**：统一产品定位为通用科研操作系统；海洋与气候改为当前优先完成的领域模块，移除面向用户的海洋示例项目、海洋限定自由探索提示和文献默认主题。
 - **2026-08-31**：以 ADR 0039 替代全量 WSL2 后端：Windows 控制面、SQLite、Research Graph 与项目数据改为原生运行；科研执行收敛到统一最小权限 Docker 沙箱；新增健康检查后自动打开 Web 的跨平台启动器，并恢复 `windows-latest` 合并门禁。

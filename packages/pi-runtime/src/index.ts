@@ -12,7 +12,7 @@ import { moonshotaiProvider } from "@earendil-works/pi-ai/providers/moonshotai";
 import { zaiProvider } from "@earendil-works/pi-ai/providers/zai";
 import { groqProvider } from "@earendil-works/pi-ai/providers/groq";
 import type { AgentStreamEvent, ModelCatalogEntry, ModelProviderId, ModelRouteSettings, ModelRuntimeSettings, TokenLedgerEntry } from "@xiling/contracts";
-import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, open, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { createErrorStream, createOfflineStream } from "./mock-stream.js";
@@ -329,21 +329,52 @@ function validateSkillCatalogEntry(value: unknown): SkillCatalogEntry {
   return { name: candidate.name as string, description: candidate.description as string, version: candidate.version as string, path: candidate.path as string, keywords: strings("keywords")!, capabilityIds: strings("capabilityIds")! };
 }
 
+const TOKEN_LEDGER_ROTATE_BYTES = 8 * 1024 * 1024;
+const TOKEN_LEDGER_ENTRY_WINDOW_BYTES = 2_048;
+
 export class TokenLedger {
   constructor(private readonly path: string, private readonly now: () => Date = () => new Date()) {}
 
+  private async rotateIfNeeded(): Promise<void> {
+    try {
+      const stats = await stat(this.path);
+      if (stats.size < TOKEN_LEDGER_ROTATE_BYTES) return;
+      // One retained generation; metrics cover the current one only.
+      await rename(this.path, `${this.path}.1`);
+    } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+  }
+
   async record(input: Omit<TokenLedgerEntry, "id" | "createdAt">): Promise<TokenLedgerEntry> {
+    await this.rotateIfNeeded();
     const entry: TokenLedgerEntry = { id: randomUUID(), createdAt: this.now().toISOString(), ...input };
     await mkdir(dirname(this.path), { recursive: true });
     await appendFile(this.path, `${JSON.stringify(entry)}\n`, { encoding: "utf8", mode: 0o600 });
     return entry;
   }
 
+  private async parseTail(limit: number): Promise<TokenLedgerEntry[]> {
+    try {
+      // Ledger lines are small structured metrics; reading a bounded tail window
+      // keeps both `list` and `summarize` O(limit) instead of O(file size).
+      const handle = await open(this.path, "r");
+      let text: string;
+      try {
+        const stats = await handle.stat();
+        const start = Math.max(0, stats.size - limit * TOKEN_LEDGER_ENTRY_WINDOW_BYTES);
+        const buffer = Buffer.alloc(stats.size - start);
+        await handle.read(buffer, 0, buffer.length, start);
+        text = buffer.toString("utf8");
+      } finally { await handle.close(); }
+      let lines = text.split("\n").filter(Boolean);
+      if (lines.length && !text.endsWith("\n")) lines = lines.slice(1);
+      if (lines.length < limit) lines = (await readFile(this.path, "utf8")).split("\n").filter(Boolean);
+      return lines.slice(-limit).map((line) => JSON.parse(line) as TokenLedgerEntry);
+    } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+  }
+
   async list(limit = 100): Promise<TokenLedgerEntry[]> {
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000) throw new Error("invalid token ledger limit");
-    try {
-      return (await readFile(this.path, "utf8")).split("\n").filter(Boolean).slice(-limit).map((line) => JSON.parse(line) as TokenLedgerEntry);
-    } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+    return this.parseTail(limit);
   }
 
   async summarize(limit = 1_000): Promise<{

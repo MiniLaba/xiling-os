@@ -1,3 +1,4 @@
+import { validationFailure } from "../../http-errors.js";
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 import { credentialIdSchema, credentialValuesSchema, modelRuntimeSchema, providerTestSchema } from "@xiling/api-contracts";
@@ -95,14 +96,14 @@ export function registerSettingsRoutes(app: FastifyInstance, service: ModelSetti
   app.get("/api/settings/providers", async () => { await credentialsReady; return credentials.listStatus(); });
   app.put("/api/settings/providers/:id", async (request, reply) => {
     await credentialsReady; const params = credentialIdSchema.safeParse(request.params); const body = credentialValuesSchema.safeParse(request.body);
-    if (!params.success) return reply.code(400).send({ error: params.error.issues });
-    if (!body.success) return reply.code(400).send({ error: body.error.issues });
+    if (!params.success) return reply.code(400).send(validationFailure(params.error));
+    if (!body.success) return reply.code(400).send(validationFailure(body.error));
     try { return await credentials.set(params.data.id, body.data.values); }
     catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) }); }
   });
   app.delete("/api/settings/providers/:id", async (request, reply) => {
     await credentialsReady; const params = credentialIdSchema.safeParse(request.params);
-    return params.success ? credentials.clear(params.data.id) : reply.code(400).send({ error: params.error.issues });
+    return params.success ? credentials.clear(params.data.id) : reply.code(400).send(validationFailure(params.error));
   });
   app.post("/api/settings/providers/:id/test", async (request, reply) => {
     await credentialsReady; const params = credentialIdSchema.safeParse(request.params); const body = providerTestSchema.safeParse(request.body ?? {});
@@ -128,7 +129,7 @@ export function registerSettingsRoutes(app: FastifyInstance, service: ModelSetti
   app.get("/api/settings/models", async () => ({ catalog: listRecommendedModels(), runtime: await service.status(), configuredProviderIds: credentials.listStatus().filter((provider) => provider.category === "model" && provider.configured).map((provider) => provider.id) }));
   app.put("/api/settings/models", async (request, reply) => {
     const parsed = modelRuntimeSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     const normalizeRoute = (route: typeof parsed.data.primary): ModelRouteSettings => ({ providerId: route.providerId, modelId: route.modelId, reasoning: route.reasoning, ...(route.inputModalities ? { inputModalities: route.inputModalities } : {}) });
     try { return await service.setRuntime({ primary: normalizeRoute(parsed.data.primary), roleRoutes: Object.fromEntries(Object.entries(parsed.data.roleRoutes).map(([roleId, route]) => [roleId, normalizeRoute(route)])) }); }
     catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) }); }

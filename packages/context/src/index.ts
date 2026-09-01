@@ -8,6 +8,7 @@ import type {
   ResearchGraphProjection,
   ResourceUri,
 } from "@xiling/contracts";
+import { estimateTextTokens } from "@xiling/contracts";
 import { createHash } from "node:crypto";
 
 export interface CapabilityDescriptor {
@@ -272,9 +273,9 @@ export class ContextCapacityError extends Error {
 }
 
 export function estimateContextTokens(text: string): number {
-  const ascii = [...text].filter((character) => character.codePointAt(0)! < 128).length;
-  const nonAscii = [...text].length - ascii;
-  return Math.ceil(ascii / 4 + nonAscii / 1.7);
+  // Delegates to the single shared estimator (contracts) so the context
+  // assembler and the Agent harness guard rails share one CJK-aware scale.
+  return estimateTextTokens(text);
 }
 
 export function assembleContext(input: ContextAssemblyInput): ContextAssemblyResult {

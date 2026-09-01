@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ChatSessionSummary } from "@xiling/contracts";
 import { useWorkspace } from "./WorkspaceContext.js";
+import { apiJson, jsonInit } from "../lib/api-client.js";
 
 type ConversationState = {
   sessions: ChatSessionSummary[];
@@ -53,13 +54,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
   const selectSession = useCallback((id: string) => rememberSelection(activeProjectId, id), [activeProjectId, rememberSelection]);
   const startNewConversation = useCallback(() => rememberSelection(activeProjectId, ""), [activeProjectId, rememberSelection]);
   const createConversation = useCallback(async (firstPrompt: string) => {
-    const response = await fetch("/api/v1/chat-sessions", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ projectId: activeProjectId, title: titleFromPrompt(firstPrompt) }),
-    });
-    if (!response.ok) throw new Error(`新建会话失败：${response.status}`);
-    const created = await response.json() as ChatSessionSummary;
+    const created = await apiJson<ChatSessionSummary>("/api/v1/chat-sessions", jsonInit("POST", { projectId: activeProjectId, title: titleFromPrompt(firstPrompt) }));
     setSessions((currentSessions) => [created, ...currentSessions]);
     rememberSelection(activeProjectId, created.id);
     return created;
@@ -70,8 +65,7 @@ export function ConversationProvider({ children }: { children: ReactNode }) {
     return current ?? createConversation(firstPrompt);
   }, [activeProjectId, createConversation, selectedByProject, sessions]);
   const deleteSession = useCallback(async (id: string) => {
-    const response = await fetch(`/api/v1/chat-sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
-    if (!response.ok) throw new Error(`删除会话失败：${response.status}`);
+    await apiJson(`/api/v1/chat-sessions/${encodeURIComponent(id)}`, jsonInit("DELETE"));
     setSelectedByProject((current) => {
       const next = { ...current };
       if (next[activeProjectId] === id) { delete next[activeProjectId]; localStorage.removeItem(sessionStorageKey(activeProjectId)); }

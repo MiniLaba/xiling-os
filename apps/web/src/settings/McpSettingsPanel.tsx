@@ -63,7 +63,7 @@ export function McpSettingsPanel({ value, onChanged, onMessage }: Props) {
     if (confirmRemove !== server.name) { setConfirmRemove(server.name); onMessage(`再次点击“确认删除”将移除 ${server.name} 配置和本地 Bearer Token。`); return; }
     setBusy(`remove:${server.name}`);
     try {
-      const next = await apiJson<McpSettingsResponse>(`/api/settings/mcp/servers/${encodeURIComponent(server.name)}`, { method: "DELETE" });
+      const next = await apiJson<McpSettingsResponse>(`/api/settings/mcp/servers/${encodeURIComponent(server.name)}`, jsonInit("DELETE"));
       onChanged(next); setConfirmRemove(undefined); onMessage(`${server.name} 已删除。`);
     } catch { onMessage("MCP 服务器删除失败。"); }
     finally { setBusy(undefined); }

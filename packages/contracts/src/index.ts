@@ -698,3 +698,14 @@ export type AgentStreamEvent =
   | { type: "workflow.projection.failed"; projector: string; projectionKey: string; projectId: string; sessionId: string; runId: string; sourceCallId: string; sourceEventSequence: number; sourceOperationId?: string; retryable: boolean; message: string }
   | { type: "session.finished"; sessionId: string; stopReason: string }
   | { type: "session.error"; sessionId: string; message: string };
+
+/**
+ * Conservative shared token estimate used by the context assembler and the
+ * Agent harness guard rails: ASCII text runs about 4 characters per token and
+ * every non-ASCII character (CJK tokenizers land near 1 token/character) is
+ * counted as one token, so uncertainty overestimates — never underestimates.
+ */
+export function estimateTextTokens(text: string): number {
+  const nonAscii = [...text].filter((character) => (character.codePointAt(0) ?? 0) >= 128).length;
+  return nonAscii + Math.ceil((text.length - nonAscii) / 4);
+}

@@ -17,7 +17,7 @@
 | 文献算法参考 | Inciteful docs | 文档许可需复核 | 只参考公开描述，独立实现公式 | 参考 |
 | Wiki 编辑器 | Milkdown | MIT | Markdown/ProseMirror 编辑器 | 采用 |
 | 项目管理参考 | Plane | AGPL-3.0 | 不复制代码，只参考信息架构 | 参考限定 |
-| 计算内核 | Jupyter Kernel Gateway | BSD-3-Clause | 执行、流式输出、中断 | 采用 |
+| 计算内核 | Jupyter Kernel Gateway | BSD-3-Clause | 执行、流式输出、中断 | 未采用（2026-08-31 评审后移除：宿主直接驱动一次性容器入口，不再暴露长驻监听） |
 | 科学计算 | xarray/Dask/pandas/SciPy | Apache/BSD | 直接依赖 | 采用 |
 | 海洋制图 | Cartopy/Matplotlib/Plotly | LGPL/PSF/MIT | 容器内生成与 Web 展示 | 逐项核验 |
 | ERDDAP | erddapy | BSD-3-Clause | 元数据和子集请求；固定 3.3.0，Argo 私有导入兼容垫片隔离在 Runner | 采用 |

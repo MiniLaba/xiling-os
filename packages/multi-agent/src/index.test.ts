@@ -127,4 +127,61 @@ describe("multi-agent research orchestration", () => {
     const [result] = await orchestrator.delegate({ projectId: "p", parentRunId: "parent", mode: "single", budget: { maxDurationMs: 5 }, contextManifest: { projectId: "p", projectBriefRevision: "v1", researchEntityIds: [], sourceUris: [], projectionHash: "hash" }, tasks: [{ roleId: "research-explorer", objective: "执行超时测试" }] });
     expect(result?.status).toBe("cancelled");
   });
+
+  it("honours dependsOn as a real DAG: parallel siblings, skipped dependants and dependency summaries", async () => {
+    const store = new MemoryStore();
+    const order: string[] = [];
+    let active = 0; let peak = 0;
+    const objectives = new Map<string, string>();
+    let failFirst = true;
+    const orchestrator = new MultiAgentOrchestrator(store, {
+      createChildSession: () => `child-${order.length}`,
+      async execute(input) {
+        input.onRunStarted(`run-${input.childSessionId}`);
+        active += 1; peak = Math.max(peak, active);
+        order.push(input.objective);
+        objectives.set(input.objective, input.objective);
+        await new Promise((resolve) => setTimeout(resolve, 4));
+        active -= 1;
+        if (input.objective.startsWith("先失败任务") && failFirst) { failFirst = false; return { status: "failed", summary: "", sourceUris: [], artifactUris: [], limitations: [], error: "boom" }; }
+        return { status: "completed", ...extractTaskResultText(JSON.stringify({ summary: `完成 ${input.objective}`, sourceUris: [], artifactUris: [], limitations: [] })) };
+      },
+    }, roleRegistry(), { maxConcurrency: 2 });
+    const manifest = { projectId: "p", projectBriefRevision: "v1", researchEntityIds: [], sourceUris: [], projectionHash: "hash" };
+    const diamond = await orchestrator.delegate({
+      projectId: "p", parentRunId: "parent", mode: "chain", contextManifest: manifest,
+      tasks: [
+        { roleId: "research-explorer", objective: "根任务" },
+        { roleId: "domain-executor", objective: "分支一", dependsOn: [0] },
+        { roleId: "research-explorer", objective: "分支二", dependsOn: [0] },
+        { roleId: "independent-reviewer", objective: "汇总", dependsOn: [1, 2] },
+      ],
+    });
+    expect(diamond.every((result) => result.status === "completed")).toBe(true);
+    expect(peak).toBe(2); // the two siblings ran concurrently after the root
+    const rootAt = order.findIndex((entry) => entry.startsWith("根任务"));
+    const branchOneAt = order.findIndex((entry) => entry.startsWith("分支一"));
+    const branchTwoAt = order.findIndex((entry) => entry.startsWith("分支二"));
+    const summaryAt = order.findIndex((entry) => entry.startsWith("汇总"));
+    expect(rootAt).toBeGreaterThanOrEqual(0);
+    expect(branchOneAt).toBeGreaterThan(rootAt);
+    expect(branchTwoAt).toBeGreaterThan(rootAt);
+    expect(summaryAt).toBeGreaterThan(branchOneAt);
+    expect(summaryAt).toBeGreaterThan(branchTwoAt);
+
+    const skipped = await orchestrator.delegate({
+      projectId: "p", parentRunId: "parent-2", mode: "chain", contextManifest: manifest,
+      tasks: [
+        { roleId: "research-explorer", objective: "先失败任务" },
+        { roleId: "domain-executor", objective: "被阻塞的后续", dependsOn: [0] },
+      ],
+    });
+    expect(skipped[0]?.status).toBe("failed");
+    expect(skipped[1]?.status).toBe("failed");
+    expect(skipped[1]?.error).toContain("dependency did not complete");
+    await expect(orchestrator.delegate({
+      projectId: "p", parentRunId: "parent-3", mode: "chain", contextManifest: manifest,
+      tasks: [{ roleId: "research-explorer", objective: "非法依赖" }, { roleId: "domain-executor", objective: "x", dependsOn: [1] }],
+    })).rejects.toThrow("must reference an earlier task");
+  });
 });

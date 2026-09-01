@@ -4,7 +4,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { ConnectorMetadataProbe, ConnectorWorkflowService } from "@xiling/connectors";
-import { preflightConnector } from "@xiling/connectors";
+import { canonicalRequestHash, preflightConnector } from "@xiling/connectors";
 import type { ResourceUri, ReviewerReport } from "@xiling/contracts";
 import type { OceanSubsetRequest, ProjectResearchWorkflow } from "@xiling/domain-ocean";
 
@@ -176,7 +176,7 @@ export class ProjectWorkflowService {
     this.workflows = await this.repository.load();
     const interrupted = new Set(["probing", "downloading", "analyzing"]);
     this.workflows = this.workflows.map((workflow) => {
-      const requestHash = workflow.requestHash ?? createHash("sha256").update(JSON.stringify(workflow.request)).digest("hex");
+      const requestHash = workflow.requestHash ?? canonicalRequestHash(workflow.request);
       const migrated = { ...workflow, requestHash, ...(["approved", "downloading", "analyzing", "completed"].includes(workflow.status) && !workflow.approvedRequestHash ? { approvedRequestHash: requestHash } : {}) };
       return interrupted.has(migrated.status) ? { ...migrated, status: "failed" as const, error: "interrupted during previous server session", updatedAt: this.now() } : migrated;
     });
@@ -191,7 +191,7 @@ export class ProjectWorkflowService {
     const request = input.request.connectorId === "argo-gdac"
       ? { ...input.request, variables: [...new Set([...input.request.variables, "POSITION_QC", "LATITUDE", "LONGITUDE", "JULD"])] }
       : input.request;
-    const requestHash = createHash("sha256").update(JSON.stringify(request)).digest("hex");
+    const requestHash = canonicalRequestHash(request);
     const existing = this.workflows.find((workflow) => input.sourceProjectionKey
       ? workflow.sourceProjectionKey === input.sourceProjectionKey
       : workflow.projectId === input.projectId && workflow.sourceCallId === input.sourceCallId);

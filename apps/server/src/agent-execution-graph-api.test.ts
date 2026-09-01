@@ -4,10 +4,21 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createApp as createAppBase } from "./app.js";
 
-const createApp = (options: Parameters<typeof createAppBase>[0] = {}) => createAppBase({
-  ...options,
-  additionalProjects: [{ id: "ocean-heatwave", name: "海洋领域测试", description: "test fixture", researchQuestion: "层结如何变化？", domainIds: ["general-science", "ocean-climate"] }],
-});
+const createApp = (options: Parameters<typeof createAppBase>[0] = {}) => {
+  const app = createAppBase({
+    ...options,
+    additionalProjects: [{ id: "ocean-heatwave", name: "海洋领域测试", description: "test fixture", researchQuestion: "层结如何变化？", domainIds: ["general-science", "ocean-climate"] }],
+  });
+  const rawInject = app.inject.bind(app);
+  const token = (app as unknown as { localAccessToken: string }).localAccessToken;
+  // Mutations require the local access token; tests reuse the app's own token.
+  app.inject = ((options: Record<string, unknown>) => {
+    const method = String(options.method ?? "GET").toUpperCase();
+    const headers = (options.headers ?? {}) as Record<string, unknown>;
+    return rawInject(method !== "GET" && method !== "HEAD" && !headers["x-xiling-token"] ? { ...options, headers: { ...headers, "x-xiling-token": token } } : options);
+  }) as unknown as typeof app.inject;
+  return app;
+};
 
 describe("Agent Execution Graph API", () => {
   it("serves project and current-session projections from the durable Agent Store", async () => {

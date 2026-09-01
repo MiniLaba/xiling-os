@@ -36,6 +36,9 @@ export const RESEARCH_RELATION_KINDS = [
 
 const relationKindSet = new Set<string>(RESEARCH_RELATION_KINDS);
 
+/** Versioned scientific facts whose stored id pins one immutable revision. */
+const IMMUTABLE_ENTITY_KINDS = new Set<ResearchEntityKind>(["ClaimRevision", "DatasetSnapshot", "ArtifactVersion", "WikiRevisionRef"]);
+
 export interface ResearchGraphEntityInput {
   id: string;
   projectId: string;
@@ -274,6 +277,9 @@ function normalizedEntity(input: ResearchGraphEntityInput, now: string): Researc
   const createdAt = input.createdAt ?? now;
   const updatedAt = input.updatedAt ?? now;
   const properties = input.properties ?? {};
+  // uri and sourceLocator are locators, not content: a snapshot/version may
+  // legitimately refine its pointer (connector URI → artifact://sha256) without
+  // becoming new content, so the immutability hash intentionally excludes both.
   const content = {
     projectId: input.projectId,
     kind: input.kind,
@@ -281,10 +287,8 @@ function normalizedEntity(input: ResearchGraphEntityInput, now: string): Researc
     summary: input.summary ?? "",
     status: input.status,
     revision: input.revision ?? 1,
-    uri: input.uri,
     stance: input.stance,
     confidence: input.confidence,
-    sourceLocator: input.sourceLocator,
     properties,
   };
   return {
@@ -522,6 +526,19 @@ export class LadybugResearchGraphStore implements ResearchGraphStore {
   }
 
   private async upsertEntity(entity: ResearchGraphEntity): Promise<void> {
+    // Versioned scientific facts are append-only: an id collision with a
+    // different contentHash means the caller is trying to rewrite history and
+    // must publish a new revision (SUPERSEDES) instead.
+    if (IMMUTABLE_ENTITY_KINDS.has(entity.kind)) {
+      const existingRows = await this.executeWrite(
+        "MATCH (node:ResearchNode {graphId: $graphId}) RETURN node.contentHash AS contentHash",
+        { graphId: graphId(entity.projectId, entity.id) },
+      );
+      const existingHash = existingRows[0]?.contentHash;
+      if (typeof existingHash === "string" && existingHash.length > 0 && existingHash !== entity.contentHash) {
+        throw new Error(`Immutable ${entity.kind} ${entity.id} cannot be overwritten in project ${entity.projectId}; publish a new revision connected by SUPERSEDES instead`);
+      }
+    }
     await this.executeWrite(
       `MERGE (node:ResearchNode {graphId: $graphId})
        SET node.id = $id, node.projectId = $projectId, node.kind = $kind, node.title = $title, node.summary = $summary,

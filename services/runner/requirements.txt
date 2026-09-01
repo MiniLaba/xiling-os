@@ -4,8 +4,6 @@ netCDF4==1.7.1.post1
 pandas==2.2.2
 matplotlib==3.9.2
 rocrate==0.15.1
-jupyter-kernel-gateway==3.0.1
-ipykernel==6.29.5
 erddapy==3.3.0
 argopy==1.4.0
 copernicusmarine==2.4.1

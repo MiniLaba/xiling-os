@@ -1,0 +1,222 @@
+/* 汐语灵境 · 基础层：排版、焦点、滚动条与全局原子规则。
+   只引用 tokens.css 的 --xl-* 变量（规范见 docs/design-system.md）。 */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--xl-font-ui);
+  font-size: var(--xl-type-body);
+  line-height: var(--xl-leading-ui);
+  color: var(--xl-text);
+  background: var(--xl-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: tabular-nums;
+}
+
+h1, h2, h3, h4, p, figure { margin: 0; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+input, textarea, select { font: inherit; color: inherit; }
+img, svg { display: block; }
+a { color: var(--xl-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre, kbd { font-family: var(--xl-font-mono); }
+::selection { background: color-mix(in srgb, var(--xl-accent) 30%, transparent); }
+
+/* 聚焦环：2px 双色（accent + 底对比色），全站一致。 */
+:focus-visible {
+  outline: 2px solid var(--xl-accent);
+  outline-offset: 2px;
+  border-radius: var(--xl-radius-sm);
+}
+
+/* 细滚动条，融入底色。 */
+* { scrollbar-width: thin; scrollbar-color: var(--xl-border-strong) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--xl-border-strong); border-radius: var(--xl-radius-full); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* 通用加载/空态。 */
+.view-loading {
+  min-height: 40vh;
+  display: grid;
+  place-items: center;
+  color: var(--xl-muted);
+  font-size: var(--xl-type-body);
+  letter-spacing: 0.02em;
+}
+
+.xl-kicker {
+  font-size: var(--xl-type-caption);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--xl-faint);
+}
+
+/* 骨架屏：潮汐呼吸。 */
+.xl-skeleton {
+  border-radius: var(--xl-radius-md);
+  background: var(--xl-bg-secondary);
+  animation: xl-tide-breathe var(--xl-motion-breathe) var(--xl-ease-tide) infinite;
+}
+
+/* 徽标。 */
+.xl-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--xl-space-1);
+  padding: 2px var(--xl-space-2);
+  border-radius: var(--xl-radius-full);
+  font-size: var(--xl-type-caption);
+  line-height: var(--xl-leading-tight);
+  color: var(--xl-muted);
+  background: var(--xl-bg-secondary);
+  border: 1px solid var(--xl-border);
+}
+.xl-badge[data-tone="accent"] { color: var(--xl-accent); background: var(--xl-accent-soft); border-color: transparent; }
+.xl-badge[data-tone="evidence"] { color: var(--xl-evidence); background: var(--xl-evidence-soft); border-color: transparent; }
+.xl-badge[data-tone="success"] { color: var(--xl-success); }
+.xl-badge[data-tone="warning"] { color: var(--xl-warning); }
+.xl-badge[data-tone="danger"] { color: var(--xl-danger); }
+
+/* 按钮基元（与 components/ui 对应）。 */
+.xl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--xl-space-2);
+  min-height: 34px;
+  padding: 0 var(--xl-space-3);
+  border-radius: var(--xl-radius-md);
+  font-size: var(--xl-type-control);
+  font-weight: 500;
+  color: var(--xl-text);
+  background: var(--xl-surface);
+  border: 1px solid var(--xl-border);
+  transition: background var(--xl-motion-fast) var(--xl-ease-tide), border-color var(--xl-motion-fast) var(--xl-ease-tide), transform var(--xl-motion-fast) var(--xl-ease-tide);
+}
+.xl-btn:hover { background: var(--xl-hover); border-color: var(--xl-border-strong); }
+.xl-btn:active { transform: translateY(1px); }
+.xl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.xl-btn[data-variant="primary"] { background: var(--xl-accent-strong); border-color: transparent; color: var(--xl-on-accent); }
+.xl-btn[data-variant="primary"]:hover { background: var(--xl-accent); color: var(--xl-bg); }
+.xl-btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--xl-muted); }
+.xl-btn[data-variant="ghost"]:hover { background: var(--xl-hover); color: var(--xl-text); }
+.xl-btn[data-variant="danger"] { color: var(--xl-danger); border-color: color-mix(in srgb, var(--xl-danger) 40%, transparent); }
+.xl-btn[data-variant="danger"]:hover { background: color-mix(in srgb, var(--xl-danger) 12%, transparent); }
+
+.xl-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--xl-radius-sm);
+  color: var(--xl-muted);
+  transition: background var(--xl-motion-fast) var(--xl-ease-tide), color var(--xl-motion-fast) var(--xl-ease-tide);
+}
+.xl-icon-btn:hover { background: var(--xl-hover); color: var(--xl-text); }
+
+/* 卡片。 */
+.xl-card {
+  background: var(--xl-surface);
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-lg);
+  box-shadow: var(--xl-shadow-sm);
+}
+
+/* 空态。 */
+.xl-empty {
+  display: grid;
+  place-items: center;
+  gap: var(--xl-space-3);
+  padding: var(--xl-space-12) var(--xl-space-6);
+  text-align: center;
+  color: var(--xl-muted);
+}
+.xl-empty .empty-icon { color: var(--xl-faint); opacity: 0.9; }
+.xl-empty h3 { font-size: var(--xl-type-lead); font-weight: 600; color: var(--xl-text); }
+.xl-empty p { font-size: var(--xl-type-control); max-width: 42ch; line-height: var(--xl-leading-cjk); }
+
+/* 潮涌入场。 */
+.xl-rise { animation: xl-tide-rise var(--xl-motion-normal) var(--xl-ease-tide) both; }
+
+/* 文本截断。 */
+.xl-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xl-clamp-2, .xl-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+.xl-clamp-2 { -webkit-line-clamp: 2; }
+.xl-clamp-3 { -webkit-line-clamp: 3; }
+
+/* ─── Dialog / Toast 基元 ───────────────────────────────────── */
+
+.xl-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--xl-z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--xl-space-6);
+  background: color-mix(in srgb, var(--xl-bg) 62%, transparent);
+  backdrop-filter: blur(6px);
+  animation: xl-tide-rise var(--xl-motion-fast) var(--xl-ease-tide) both;
+}
+.xl-dialog {
+  max-width: calc(100vw - 48px);
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--xl-elevated);
+  border: 1px solid var(--xl-border-strong);
+  border-radius: var(--xl-radius-lg);
+  box-shadow: var(--xl-shadow-lg);
+  overflow: hidden;
+}
+.xl-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--xl-space-3);
+  padding: var(--xl-space-4) var(--xl-space-4) var(--xl-space-3);
+}
+.xl-dialog-head h2 { font-size: var(--xl-type-lead); font-weight: 650; }
+.xl-dialog-body { padding: 0 var(--xl-space-4) var(--xl-space-4); overflow: auto; line-height: var(--xl-leading-cjk); color: var(--xl-muted); }
+.xl-dialog-body b, .xl-dialog-body strong { color: var(--xl-text); }
+.xl-dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--xl-space-2);
+  padding: var(--xl-space-3) var(--xl-space-4);
+  border-top: 1px solid var(--xl-border);
+}
+
+.xl-toast-host {
+  position: fixed;
+  top: var(--xl-space-4);
+  right: var(--xl-space-4);
+  z-index: var(--xl-z-toast);
+  display: grid;
+  gap: var(--xl-space-2);
+  width: min(360px, calc(100vw - 32px));
+}
+.xl-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--xl-space-2);
+  padding: var(--xl-space-3);
+  background: var(--xl-elevated);
+  border: 1px solid var(--xl-border-strong);
+  border-radius: var(--xl-radius-md);
+  box-shadow: var(--xl-shadow-md);
+}
+.xl-toast > svg { flex: none; margin-top: 1px; }
+.xl-toast[data-tone="success"] > svg { color: var(--xl-success); }
+.xl-toast[data-tone="info"] > svg { color: var(--xl-info); }
+.xl-toast[data-tone="warning"] > svg { color: var(--xl-warning); }
+.xl-toast[data-tone="danger"] > svg { color: var(--xl-danger); }
+.xl-toast-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.xl-toast-text b { font-size: var(--xl-type-control); font-weight: 600; }
+.xl-toast-text small { font-size: var(--xl-type-small); color: var(--xl-muted); line-height: var(--xl-leading-ui); }
+.xl-toast-action { font-size: var(--xl-type-small); color: var(--xl-accent); font-weight: 600; padding: 2px var(--xl-space-2); border-radius: var(--xl-radius-sm); }
+.xl-toast-action:hover { background: var(--xl-accent-soft); }

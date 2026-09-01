@@ -331,7 +331,6 @@ export class KnowledgeService implements KnowledgeStore {
   private insertRevision(pageId: string, version: number, markdown: string, artifactUris: ResourceUri[], createdAt: string, title: string): WikiPageRevision {
     const revision: WikiPageRevision = { id: randomUUID(), pageId, version, markdown, artifactUris, createdAt };
     this.db.insert(wikiRevisions).values({ ...revision, artifactUris: JSON.stringify(artifactUris) }).run();
-    this.sqlite.prepare("INSERT INTO wiki_search(page_id, title, markdown) VALUES (?, ?, ?)").run(pageId, title, markdown);
     return revision;
   }
 
