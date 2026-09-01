@@ -7,6 +7,7 @@ import "./styles/shell.css";
 import "./styles/chat.css";
 import "./styles/canvas.css";
 import "./styles/views.css";
+import "./styles/legacy-27ebdf7-workspaces.css";
 import "./styles/devtools.css";
 import { App } from "./App.js";
 import { ensureLocalAccessToken } from "./lib/api-client.js";
