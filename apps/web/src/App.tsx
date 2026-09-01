@@ -1,13 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FREE_EXPLORATION_PROJECT_ID } from "@xiling/contracts";
 import {
-  AlertTriangle, BookOpen, ChevronDown, FolderKanban, LayoutGrid, MessageSquare, Monitor, Moon, Network, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Sun, Trash2, X,
+  AlertTriangle, BookOpen, ChevronDown, FolderKanban, LayoutGrid, MessageSquare, Network, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Trash2, X,
 } from "lucide-react";
 import { WorkspaceProvider, useWorkspace } from "./workspace/WorkspaceContext.js";
 import { ConversationProvider, useConversations } from "./workspace/ConversationContext.js";
 import { ToastProvider, useToast } from "./components/ui/toast.js";
 import { Dialog } from "./components/ui/dialog.js";
-import { useTheme, type ThemePreference } from "./lib/theme.js";
 import { DesignTweaks } from "./devtools/DesignTweaks.js";
 
 const ChatView = lazy(async () => ({ default: (await import("./chat/ChatView.js")).ChatView }));
@@ -43,13 +42,6 @@ const icons: Record<View, React.ReactNode> = {
 
 const navigationItems: Exclude<View, "settings">[] = ["chat", "attention", "canvas", "project", "wiki", "papers"];
 
-const themeOrder: ThemePreference[] = ["system", "lingjing", "poxiao"];
-const themeMeta: Record<ThemePreference, { label: string; icon: React.ReactNode }> = {
-  system: { label: "跟随系统", icon: <Monitor size={16} aria-hidden="true" /> },
-  lingjing: { label: "灵境", icon: <Moon size={16} aria-hidden="true" /> },
-  poxiao: { label: "破晓", icon: <Sun size={16} aria-hidden="true" /> },
-};
-
 export function App() {
   return (
     <ToastProvider>
@@ -71,7 +63,6 @@ function WorkspaceApp() {
   const commandListRef = useRef<HTMLDivElement>(null);
   const { projects, activeProject, activeProjectId, setActiveProjectId, refreshProjects, loading, error } = useWorkspace();
   const { sessions, activeSessionId, loading: sessionsLoading, selectSession, startNewConversation, deleteSession } = useConversations();
-  const theme = useTheme();
   const { push } = useToast();
 
   useEffect(() => {
@@ -195,9 +186,6 @@ function WorkspaceApp() {
           ) : <p className="session-empty">这个项目还没有对话</p>}
         </div>
         <div className="sidebar-footer">
-          <button className="settings-btn" onClick={() => theme.setPreference(themeOrder[(themeOrder.indexOf(theme.preference) + 1) % themeOrder.length]!)} aria-label={`主题：${themeMeta[theme.preference].label}（点击切换）`} title={`主题：${themeMeta[theme.preference].label}`}>
-            {themeMeta[theme.preference].icon}
-          </button>
           <button className="settings-entry" onClick={() => navigateToView("settings")} aria-label="设置">
             <Settings size={16} aria-hidden="true" /><span>设置</span>
           </button>

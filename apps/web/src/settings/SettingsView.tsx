@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CredentialProviderId, CredentialProviderStatus, InstalledSkillSummary, InstalledSkillsResponse, McpSettingsResponse, ModelCatalogEntry, ModelProviderId, ModelRouteSettings, ModelRuntimeStatus, ProviderConnectionTestResult } from "@xiling/contracts";
+import { Check, Monitor, Moon, Sun } from "lucide-react";
 import { ApiError, apiJson, jsonInit } from "../lib/api-client.js";
+import { useTheme, type ThemePreference } from "../lib/theme.js";
 import { McpSettingsPanel } from "./McpSettingsPanel.js";
 
-type SettingsSection = "overview" | "model" | "agents" | "domains" | "skills" | "mcp" | "model-apis" | "literature" | "data" | "security";
+type SettingsSection = "overview" | "appearance" | "model" | "agents" | "domains" | "skills" | "mcp" | "model-apis" | "literature" | "data" | "security";
 type ProviderCategory = CredentialProviderStatus["category"];
 type InstalledAgentRole = { id: string; title: string; description: string; allowedCapabilities: string[]; defaultIsolation: "scoped" | "blind" | "execution"; dynamic?: boolean };
 type InstalledScienceDomain = { id: string; version: string; title: string; description: string; disciplines: string[]; capabilities: Array<{ id: string }>; agentRoles: Array<{ id: string }>; connectorKinds: string[]; artifactKinds: string[]; schemaNamespaces: string[] };
 type RouteDraft = { providerId?: ModelProviderId; modelId: string; reasoning: ModelRouteSettings["reasoning"] };
 
 const sections: Array<{ label: string; items: Array<{ id: SettingsSection; label: string; icon: string }> }> = [
-  { label: "常规", items: [{ id: "overview", label: "设置概览", icon: "⌂" }] },
+  { label: "常规", items: [{ id: "overview", label: "设置概览", icon: "⌂" }, { id: "appearance", label: "外观与主题", icon: "◐" }] },
   { label: "智能体", items: [{ id: "model", label: "模型分配", icon: "◈" }, { id: "agents", label: "多智能体", icon: "⑂" }, { id: "domains", label: "科学领域", icon: "◉" }, { id: "skills", label: "Skills", icon: "✦" }, { id: "mcp", label: "MCP", icon: "⌘" }] },
   { label: "连接", items: [{ id: "model-apis", label: "模型 API 连接", icon: "⌁" }, { id: "literature", label: "文献服务", icon: "⌕" }, { id: "data", label: "科研数据账户", icon: "≈" }] },
   { label: "系统", items: [{ id: "security", label: "安全与运行", icon: "◇" }] },
@@ -18,6 +20,7 @@ const sections: Array<{ label: string; items: Array<{ id: SettingsSection; label
 
 const sectionCopy: Record<SettingsSection, { eyebrow: string; title: string; description: string }> = {
   overview: { eyebrow: "SETTINGS", title: "设置概览", description: "集中查看智能体、服务连接和本地安全状态。" },
+  appearance: { eyebrow: "GENERAL · APPEARANCE", title: "外观与主题", description: "选择适合当前环境的界面明暗；更改即时生效并只保存在本机。" },
   model: { eyebrow: "AGENT · MODEL ROUTER", title: "模型分配", description: "配置主智能体和各科研角色使用的真实模型；Chat 中仍可为下一次运行临时切换。" },
   agents: { eyebrow: "AGENT · RESEARCH TEAM", title: "多智能体", description: "查看预置科研角色、上下文隔离和能力边界；主智能体只在任务值得拆分时按需委派。" },
   domains: { eyebrow: "EXTENSIONS · SCIENCE DOMAINS", title: "科学领域", description: "通用科研内核保持稳定，领域包按项目贡献提示、能力、角色、连接器与 Artifact 类型。" },
@@ -29,6 +32,12 @@ const sectionCopy: Record<SettingsSection, { eyebrow: string; title: string; des
   security: { eyebrow: "SYSTEM · LOCAL FIRST", title: "安全与运行", description: "查看加密、凭据隔离、当前模型路由和上下文加载边界。" },
 };
 
+const themeOptions: Array<{ id: ThemePreference; title: string; description: string; icon: React.ReactNode }> = [
+  { id: "system", title: "跟随系统", description: "自动匹配操作系统的深色或浅色外观。", icon: <Monitor size={19} aria-hidden="true" /> },
+  { id: "lingjing", title: "灵境", description: "低眩光深色界面，适合专注阅读与长时研究。", icon: <Moon size={19} aria-hidden="true" /> },
+  { id: "poxiao", title: "破晓", description: "清晰的浅色纸面感，适合日间工作与展示。", icon: <Sun size={19} aria-hidden="true" /> },
+];
+
 const skillPresentation: Record<string, { title: string; glyph: string }> = {
   "artifact-inspection": { title: "科研产物检查", glyph: "图" },
   "literature-evidence": { title: "文献证据", glyph: "文" },
@@ -37,6 +46,7 @@ const skillPresentation: Record<string, { title: string; glyph: string }> = {
 };
 
 export function SettingsView() {
+  const theme = useTheme();
   const [section, setSection] = useState<SettingsSection>("overview");
   const [providers, setProviders] = useState<CredentialProviderStatus[]>([]);
   const [values, setValues] = useState<Partial<Record<CredentialProviderId, Record<string, string>>>>({});
@@ -186,6 +196,7 @@ export function SettingsView() {
   const renderOverview = () => <div className="settings-overview">
     <section className="settings-health-strip"><div><i className={runtime?.ready ? "ok" : ""} /><span><b>{runtime?.ready ? "智能体可用" : "需要配置主模型"}</b><small>{runtime?.primary?.selectedModel?.name ?? runtime?.primary?.modelId ?? "尚未选择真实模型"}</small></span></div><div><i className="ok" /><span><b>本地安全边界</b><small>凭据值不会回传浏览器</small></span></div></section>
     <div className="settings-overview-grid">
+      <button onClick={() => setSection("appearance")}><span>◐</span><div><small>常规</small><h3>外观与主题</h3><p>{theme.preference === "system" ? `跟随系统 · 当前${theme.resolved === "lingjing" ? "灵境" : "破晓"}` : theme.preference === "lingjing" ? "灵境深色" : "破晓浅色"}</p></div><b>›</b></button>
       <button onClick={() => setSection("model")}><span>◈</span><div><small>智能体</small><h3>模型分配</h3><p>{runtime?.primary ? `主模型 ${runtime.primary.selectedModel?.name ?? runtime.primary.modelId} · ${Object.keys(runtime.roleRoutes).length} 个专属角色` : "尚未选择主模型"}</p></div><b>›</b></button>
       <button onClick={() => setSection("skills")}><span>✦</span><div><small>智能体</small><h3>{skills?.skills.length ?? 0} 个 Skills</h3><p>元数据常驻，正文按任务命中加载</p></div><b>›</b></button>
       <button onClick={() => setSection("agents")}><span>⑂</span><div><small>智能体</small><h3>{agentRoles.length} 个科研角色</h3><p>独立 Session · 受控并发 · 禁止递归</p></div><b>›</b></button>
@@ -197,13 +208,33 @@ export function SettingsView() {
     <section className="security-notice"><b>配置原则</b><p>设置只决定宿主如何连接能力，不会把所有模型、Skill 或服务说明注入 Agent。每轮任务仍由 Capability Catalog 选择最小相关集合。</p></section>
   </div>;
 
+  const renderAppearance = () => <div className="settings-appearance">
+    <section className="appearance-summary">
+      <div><small>当前生效</small><b>{theme.resolved === "lingjing" ? "灵境深色" : "破晓浅色"}</b></div>
+      <p>{theme.preference === "system" ? "外观会随操作系统设置自动变化。" : "当前使用手动选择；不会随系统外观变化。"}</p>
+    </section>
+    <section className="appearance-group" aria-labelledby="theme-choice-title">
+      <div className="appearance-group-title"><div><h2 id="theme-choice-title">系统主题</h2><p>影响整个汐灵工作区，包括对话、科研画布、Wiki 与设置。</p></div><span>无需重启</span></div>
+      <div className="theme-choice-grid" role="radiogroup" aria-label="系统主题">
+        {themeOptions.map((option) => {
+          const selected = theme.preference === option.id;
+          return <button className={`theme-choice ${selected ? "selected" : ""}`} key={option.id} role="radio" aria-checked={selected} onClick={() => { theme.setPreference(option.id); setMessage(`已切换为${option.title}。`); }}>
+            <div className={`theme-preview theme-preview-${option.id}`} aria-hidden="true"><span /><span /><span /></div>
+            <div className="theme-choice-copy"><i>{option.icon}</i><span><b>{option.title}</b><small>{option.description}</small></span>{selected ? <em><Check size={15} aria-hidden="true" /></em> : null}</div>
+          </button>;
+        })}
+      </div>
+    </section>
+    <section className="appearance-note"><b>显示原则</b><p>科研对象的证据立场、关系类型和运行状态使用独立语义色；切换主题不会改变它们所表达的含义。</p></section>
+  </div>;
+
   const renderSecurity = () => <div className="settings-security-page"><section className="security-notice"><b>本地凭据</b><p>凭据使用 AES-256-GCM 加密，主密钥与密文分离并限制为当前用户读取。环境变量优先；浏览器只能读取“是否配置”。</p></section><section className="security-list"><div><span>模型路由</span><b>{runtime?.ready ? "真实调用已就绪" : "模型路由被阻止"}</b><p>{runtime?.primary?.selectedModel?.name ?? runtime?.primary?.modelId ?? "尚未配置主模型"}</p></div><div><span>子智能体路由</span><b>{Object.keys(runtime?.roleRoutes ?? {}).length} 个专属分配</b><p>其余角色继承主智能体模型</p></div><div><span>Skill 上下文</span><b>按需加载</b><p>{skills?.skills.length ?? 0} 个已安装，0 个正文常驻</p></div><div><span>科研执行</span><b>隔离容器</b><p>下载、计算与外部写入必须先审批</p></div></section><section className="runtime-boundary"><b>运行时状态</b><span>{runtime?.ready ? `Chat 默认使用 ${runtime.primary?.selectedModel?.name ?? runtime.primary?.modelId}；可在对话页为下一次运行临时切换。` : "没有可用主模型时服务端会拒绝产品调用，不会自动降级为离线回答。"}</span></section></div>;
 
   const copy = sectionCopy[section];
   return <div className="settings-view settings-shell">
     <aside className="settings-local-nav"><div><small>SETTINGS</small><strong>汐灵设置</strong></div>{sections.map((group) => <section key={group.label}><span>{group.label}</span>{group.items.map((item) => <button className={section === item.id ? "active" : ""} key={item.id} onClick={() => { setSection(item.id); setMessage(""); }}><i>{item.icon}</i>{item.label}</button>)}</section>)}</aside>
     <main className="settings-content"><header className="settings-head"><div><small>{copy.eyebrow}</small><h1>{copy.title}</h1><p>{copy.description}</p></div>{section === "overview" ? <span>{configuredCount}/{providers.length} 已配置</span> : section === "skills" ? <span>{skills?.skills.length ?? 0} 已安装</span> : null}</header>{message ? <div className="settings-message" role="status">{message}</div> : null}
-      {section === "overview" ? renderOverview() : section === "model" ? renderModel() : section === "agents" ? renderAgents() : section === "domains" ? renderDomains() : section === "skills" ? renderSkills() : section === "mcp" ? <McpSettingsPanel value={mcp} onChanged={setMcp} onMessage={setMessage} /> : section === "model-apis" ? renderProviderCategory("model") : section === "literature" ? renderProviderCategory("literature") : section === "data" ? renderProviderCategory("data") : renderSecurity()}
+      {section === "overview" ? renderOverview() : section === "appearance" ? renderAppearance() : section === "model" ? renderModel() : section === "agents" ? renderAgents() : section === "domains" ? renderDomains() : section === "skills" ? renderSkills() : section === "mcp" ? <McpSettingsPanel value={mcp} onChanged={setMcp} onMessage={setMessage} /> : section === "model-apis" ? renderProviderCategory("model") : section === "literature" ? renderProviderCategory("literature") : section === "data" ? renderProviderCategory("data") : renderSecurity()}
     </main>
   </div>;
 }

@@ -25,7 +25,7 @@
 
 ## 2. 主题
 
-两套主题，**跟随系统** `prefers-color-scheme`，并允许用户在设置中手动覆盖（localStorage 持久化，`data-theme` 属性）：
+两套主题，**跟随系统** `prefers-color-scheme`，并允许用户在“设置 → 外观与主题”中手动覆盖（localStorage 持久化，`data-theme` 属性）。工作区侧栏左下角只保留单一设置入口，不提供会隐藏当前选择含义的循环主题按钮：
 
 | 主题 | data-theme | 定位 |
 |---|---|---|
