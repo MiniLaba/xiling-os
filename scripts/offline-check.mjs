@@ -74,6 +74,7 @@ const smokes = [
   "scripts/research-graph-smoke.mjs",
   "scripts/platform-smoke.mjs",
   "scripts/web-human-factors-check.mjs",
+  "scripts/legacy-workspace-compat-check.mjs",
 ];
 for (const script of smokes) run(script, node, [script]);
 

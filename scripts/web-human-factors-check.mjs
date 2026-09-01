@@ -6,12 +6,13 @@ const agentFlow = read("apps/web/src/chat/AgentExecutionGraphView.tsx");
 const canvas = read("apps/web/src/canvas/ScientificCanvasView.tsx");
 const papers = read("apps/web/src/papers/PaperGraphView.tsx");
 const app = read("apps/web/src/App.tsx");
+const settings = read("apps/web/src/settings/SettingsView.tsx");
 // 汐语灵境样式层：tokens（生成）+ base + shell + chat + canvas + views。
 const styles = ["tokens", "base", "shell", "chat", "canvas", "views"].map((name) => read(`apps/web/src/styles/${name}.css`)).join("\n");
 
 const checks = [
   [chat.includes("ResizeObserver") && chat.includes("ArtifactViewer"), "Chat must resize with the real Artifact viewer"],
-  [!app.includes("OutputPanel") && styles.includes("grid-template-columns: 220px minmax(0, 1fr)") && app.includes("sidebarCollapsed"), "application shell must retain the two-column pre-junzezhi layout contract"],
+  [!app.includes("OutputPanel") && styles.includes("grid-template-columns: 220px minmax(0, 1fr)") && styles.includes(".shell.sidebar-collapsed") && styles.includes(":has(.sidebar:hover)") && !app.includes("PanelLeftClose") && !app.includes("sidebar-collapse "), "application shell stays two-column and defaults collapsed with hover expansion"],
   [chat.includes("artifact-overlay") && styles.includes(".artifact-overlay .artifact-panel"), "narrow Chat must use an Artifact drawer"],
   [chat.includes("workbenchWidth >= 1_040") && chat.includes("artifact-overlay"), "narrow Chat must not start behind the Artifact drawer"],
   [!chat.includes('setArtifactOpen(project.id ==='), "project selection must not force the Artifact drawer over narrow Chat"],
@@ -21,6 +22,7 @@ const checks = [
   [canvas.includes("relationFilter") && canvas.includes("全部关系"), "Scientific Canvas relation legend must be interactive"],
   [!papers.includes("/api/v1/literature/demo"), "Literature workbench must not auto-load the fixture graph"],
   [app.includes("command-palette") && styles.includes(":focus-visible"), "global navigation must retain keyboard command and focus affordances"],
+  [!app.includes("settings-btn") && settings.includes("useTheme") && settings.includes('id: "appearance"'), "theme controls must live in Settings while the workspace sidebar keeps one bottom-left Settings entry"],
   [!app.includes("ResearchView") && !chat.includes("mhw_mld"), "retired demo UI must not return"],
   [styles.includes("@media (max-width: 900px)") && styles.includes("prefers-reduced-motion"), "responsive and reduced-motion rules are required"],
   // 汐语灵境设计系统不变量（docs/design-system.md）

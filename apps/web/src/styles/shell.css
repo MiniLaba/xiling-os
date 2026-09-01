@@ -11,7 +11,10 @@
     var(--xl-bg);
   color: var(--xl-text);
 }
+.shell { transition: grid-template-columns var(--xl-motion-normal) var(--xl-ease-tide); }
 .shell.sidebar-collapsed { grid-template-columns: 72px minmax(0, 1fr); }
+/* 默认收缩，鼠标停靠侧栏即展开（:has 兼容现代浏览器）。 */
+.shell.sidebar-collapsed:has(.sidebar:hover) { grid-template-columns: 220px minmax(0, 1fr); }
 .shell.settings-mode { grid-template-columns: 1fr; }
 
 /* ─── 侧边导航 ─────────────────────────────────────────────── */
@@ -34,17 +37,6 @@
   gap: var(--xl-space-3);
   padding: var(--xl-space-1) var(--xl-space-2) var(--xl-space-4);
 }
-.sidebar-collapse {
-  width: 28px;
-  height: 28px;
-  margin-left: auto;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  border-radius: var(--xl-radius-sm);
-  color: var(--xl-faint);
-}
-.sidebar-collapse:hover { color: var(--xl-text); background: var(--xl-hover); }
 .brand-mark {
   width: 34px;
   height: 34px;
@@ -231,14 +223,15 @@
   width: 26px;
   height: 26px;
   margin-right: 2px;
-  border-radius: var(--xl-radius-sm);
+  display: grid;
+  place-items: center;
+  border-radius: var(--xl-radius-full);
   color: var(--xl-faint);
-  font-size: var(--xl-type-small);
   opacity: 0;
-  transition: opacity var(--xl-motion-fast) var(--xl-ease-tide), color var(--xl-motion-fast) var(--xl-ease-tide), background var(--xl-motion-fast) var(--xl-ease-tide);
+  transition: opacity var(--xl-motion-fast) var(--xl-ease-tide), color var(--xl-motion-fast) var(--xl-ease-tide);
 }
 .session-item:hover .session-delete, .session-delete:focus-visible { opacity: 1; }
-.session-delete:hover { color: var(--xl-danger); background: color-mix(in srgb, var(--xl-danger) 12%, transparent); }
+.session-delete:hover { color: var(--xl-danger); }
 
 /* 侧栏底部 */
 .sidebar-footer {
@@ -264,20 +257,8 @@
 }
 .new-conversation-btn:hover { background: var(--xl-accent); color: var(--xl-bg); }
 .new-conversation-btn:active { transform: translateY(1px); }
-.settings-btn {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--xl-radius-md);
-  border: 1px solid var(--xl-border);
-  color: var(--xl-muted);
-  background: var(--xl-surface);
-  transition: background var(--xl-motion-fast) var(--xl-ease-tide), color var(--xl-motion-fast) var(--xl-ease-tide);
-}
-.settings-btn:hover { background: var(--xl-hover); color: var(--xl-text); }
 .settings-entry {
-  flex: 1;
+  width: 100%;
   min-height: 36px;
   display: flex;
   align-items: center;
@@ -463,17 +444,18 @@
   .workspace-title span { display: none; }
 }
 
-.sidebar-collapsed .sidebar { align-items: center; padding-inline: var(--xl-space-2); }
-.sidebar-collapsed .sidebar-brand { flex-direction: column; padding-inline: 0; gap: var(--xl-space-1); }
-.sidebar-collapsed .brand-text,
-.sidebar-collapsed .project-switcher,
-.sidebar-collapsed .recent-work,
-.sidebar-collapsed .sidebar-nav button span { display: none; }
-.sidebar-collapsed .sidebar-collapse { margin-left: 0; }
-.sidebar-collapsed .new-conversation-btn { width: 40px; padding: 0; }
-.sidebar-collapsed .new-conversation-btn span { display: none; }
-.sidebar-collapsed .sidebar-nav button { width: 40px; height: 40px; padding: 0; justify-content: center; }
-.sidebar-collapsed .sidebar-nav button.active::before { left: -8px; }
+.sidebar-collapsed:not(:has(.sidebar:hover)) .sidebar { align-items: center; padding-inline: var(--xl-space-2); }
+.sidebar-collapsed:not(:has(.sidebar:hover)) .sidebar-brand { flex-direction: column; padding-inline: 0; gap: var(--xl-space-1); }
+.sidebar-collapsed:not(:has(.sidebar:hover)) .brand-text,
+.sidebar-collapsed:not(:has(.sidebar:hover)) .project-switcher,
+.sidebar-collapsed:not(:has(.sidebar:hover)) .recent-work,
+.sidebar-collapsed:not(:has(.sidebar:hover)) .sidebar-nav button span { display: none; }
+.sidebar-collapsed:not(:has(.sidebar:hover)) .new-conversation-btn { width: 40px; padding: 0; }
+.sidebar-collapsed:not(:has(.sidebar:hover)) .new-conversation-btn span { display: none; }
+.sidebar-collapsed:not(:has(.sidebar:hover)) .sidebar-nav button { width: 40px; height: 40px; padding: 0; justify-content: center; }
+.sidebar-collapsed:not(:has(.sidebar:hover)) .sidebar-nav button.active::before { left: -8px; }
+.sidebar-collapsed:not(:has(.sidebar:hover)) .sidebar-footer .settings-entry span { display: none; }
+.sidebar-collapsed:not(:has(.sidebar:hover)) .sidebar-footer .settings-entry { width: 40px; justify-content: center; }
 .sidebar-collapsed .sidebar-footer { flex-direction: column; align-items: center; }
 .sidebar-collapsed .settings-entry { width: 36px; flex: none; }
 .sidebar-collapsed .settings-entry span { display: none; }

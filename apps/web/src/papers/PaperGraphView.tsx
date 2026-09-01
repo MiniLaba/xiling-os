@@ -139,7 +139,7 @@ export function PaperGraphView({ projectId, onNavigate }: { projectId: string; o
   }, [graph, edgeFilter]);
 
   if (!graph) return <div className="literature-start">
-    <section><small>LITERATURE WORKBENCH</small><h1>从一个研究问题开始探索论文关系</h1><p>检索结果是临时发现图。只有经过阅读、精确摘录并明确关联主张后，内容才会进入项目 Research Graph。</p><div><input autoFocus aria-label="检索论文" placeholder="输入研究主题、论文标题或关键词" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void searchRemote(); }} /><button disabled={searching} onClick={() => void searchRemote()}>{searching ? "检索中…" : "开始检索"}</button></div>{searchStatus ? <span>{searchStatus}</span> : null}</section>
+    <section><small>LITERATURE WORKBENCH</small><h1>从一个研究问题开始探索论文关系</h1><p>检索结果是临时发现图。只有经过阅读、精确摘录并明确关联主张后，内容才会进入项目 Research Graph。</p><div><input autoFocus aria-label="检索论文" placeholder="例如：marine heatwave mixed layer stratification" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void searchRemote(); }} /><button disabled={searching} onClick={() => void searchRemote()}>{searching ? "检索中…" : "开始检索"}</button></div>{searchStatus ? <span>{searchStatus}</span> : null}</section>
     <aside><header><b>项目证据</b><span>{evidence.length}</span></header>{evidence.slice(0, 6).map((record) => <article key={record.id}><small>{record.stance} · {Math.round(record.confidence * 100)}%</small><b>{record.paper.title}</b><p>{record.sourceQuote || record.note || "未记录精确摘录"}</p></article>)}{!evidence.length ? <p>还没有经过核对的文献证据。</p> : null}</aside>
   </div>;
   const evidenceByPaper = new Map(evidence.map((record) => [record.paper.id, record]));
@@ -159,7 +159,7 @@ export function PaperGraphView({ projectId, onNavigate }: { projectId: string; o
     </aside>
     <section className="paper-graph-main">
       <div className="paper-graph-toolbar">
-        <div><small>文献关联图 · {searchMeta?.provider ?? graph.provider}{searchMeta?.degradedFrom ? " · 降级来源" : ""}</small><h1>{searchMeta ? query : "文献关系探索"}</h1><p>距离表示相关性 · 大小表示被引量 · 默认突出最强关系{searchStatus ? ` · ${searchStatus}` : ""}</p></div>
+        <div><small>文献关联图 · {searchMeta?.provider ?? graph.provider}{searchMeta?.degradedFrom ? " · 降级来源" : ""}</small><h1>{searchMeta ? query : "层结与海洋热浪"}</h1><p>距离表示相关性 · 大小表示被引量 · 默认突出最强关系{searchStatus ? ` · ${searchStatus}` : ""}</p></div>
         <div className="paper-graph-actions">
           <input aria-label="检索论文" placeholder="主题、标题或关键词…" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void searchRemote(); }} />
           <button disabled={searching} onClick={() => void searchRemote()}>{searching ? "检索中…" : "检索"}</button>

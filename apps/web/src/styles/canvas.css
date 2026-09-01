@@ -3,10 +3,17 @@
 .scientific-canvas-shell {
   position: relative;
   flex: 1;
+  width: 100%;
+  max-width: 100%;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--xl-bg);
+  box-sizing: border-box;
+  overflow: hidden;
+  /* 留白走壳层 padding：React Flow 根节点内联 width:100%，外边距会溢出容器 */
+  padding: 0 var(--xl-space-5) var(--xl-space-3);
 }
 
 .scientific-canvas-topbar {
@@ -14,7 +21,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--xl-space-3);
-  padding: var(--xl-space-4) var(--xl-space-5) var(--xl-space-2);
+  padding: var(--xl-space-4) 0 var(--xl-space-2);
 }
 .scientific-canvas-views {
   display: inline-flex;
@@ -53,7 +60,7 @@
   display: flex;
   align-items: center;
   gap: var(--xl-space-2);
-  margin: 0 var(--xl-space-5) var(--xl-space-2);
+  margin: 0 0 var(--xl-space-2);
   padding: 0 var(--xl-space-3);
   max-width: 460px;
   border: 1px solid var(--xl-border);
@@ -79,14 +86,11 @@
 .scientific-search-results button:hover { background: var(--xl-hover); }
 .scientific-search-results button span { flex: none; font-size: var(--xl-type-caption); color: var(--xl-accent); }
 
-.scientific-canvas-shell .react-flow { flex: 1; margin: 0 var(--xl-space-5) var(--xl-space-3); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-lg); background: var(--xl-bg-secondary); }
+.scientific-canvas-shell .react-flow { flex: 1; width: 100%; max-width: 100%; min-width: 0; min-height: 0; box-sizing: border-box; overflow: hidden; border: 1px solid var(--xl-border); border-radius: var(--xl-radius-lg); background: var(--xl-bg-secondary); }
 .scientific-background { stroke: var(--xl-border); }
 .scientific-canvas-shell .react-flow__controls { box-shadow: var(--xl-shadow-md); border-radius: var(--xl-radius-md); overflow: hidden; }
 .scientific-canvas-shell .react-flow__controls-button { background: var(--xl-surface); border-bottom: 1px solid var(--xl-border); color: var(--xl-muted); }
 .scientific-canvas-shell .react-flow__controls-button:hover { background: var(--xl-hover); color: var(--xl-text); }
-.scientific-minimap { background: var(--xl-surface) !important; border-radius: var(--xl-radius-md); overflow: hidden; box-shadow: var(--xl-shadow-md); }
-.scientific-minimap .react-flow__minimap-mask { fill: color-mix(in srgb, var(--xl-bg) 55%, transparent); }
-.scientific-minimap .react-flow__minimap-node { fill: var(--xl-border-strong); }
 .scientific-canvas-shell .react-flow__edge-text { font-size: 11px; fill: var(--xl-muted); }
 .scientific-canvas-shell .react-flow__edge-textbg { fill: var(--xl-surface); }
 .scientific-canvas-shell .react-flow__edge.selected .react-flow__edge-path { stroke-width: 2.4 !important; opacity: 1 !important; }
@@ -98,7 +102,6 @@
   border-radius: var(--xl-radius-lg);
   background: var(--xl-surface);
   border: 1px solid var(--xl-border);
-  border-left: 3px solid var(--xl-border-strong);
   box-shadow: var(--xl-shadow-sm);
   display: grid;
   gap: var(--xl-space-2);
@@ -139,8 +142,8 @@
 .scientific-canvas-detail {
   position: absolute;
   top: 96px;
-  right: var(--xl-space-5);
-  bottom: 76px;
+  right: 0;
+  bottom: 64px;
   z-index: var(--xl-z-sticky, 10);
   width: 320px;
   padding: var(--xl-space-4);
@@ -155,10 +158,15 @@
   animation: xl-tide-rise var(--xl-motion-normal) var(--xl-ease-tide) both;
 }
 .scientific-canvas-detail.open { display: flex; }
+.scientific-canvas-detail.is-positioned { bottom: auto; right: auto; }
+.scientific-canvas-detail.is-dragging { user-select: none; }
 .scientific-canvas-detail > header { display: flex; justify-content: space-between; align-items: center; }
-.scientific-canvas-detail > header span { font-size: var(--xl-type-caption); letter-spacing: 0.1em; color: var(--xl-accent); font-weight: 600; }
+.scientific-canvas-detail > header span { display: inline-flex; align-items: center; gap: 6px; font-size: var(--xl-type-caption); letter-spacing: 0.1em; color: var(--xl-accent); font-weight: 600; }
 .scientific-canvas-detail > header button { color: var(--xl-faint); font-size: var(--xl-type-title); line-height: 1; }
 .scientific-canvas-detail > header button:hover { color: var(--xl-text); }
+.scientific-canvas-detail-handle { cursor: grab; touch-action: none; }
+.scientific-canvas-detail-handle:active, .scientific-canvas-detail.is-dragging .scientific-canvas-detail-handle { cursor: grabbing; }
+body.dragging-canvas-detail, body.dragging-canvas-detail * { cursor: grabbing !important; user-select: none !important; }
 .scientific-canvas-detail > h2 { font-size: var(--xl-type-lead); font-weight: 650; line-height: var(--xl-leading-ui); }
 .scientific-canvas-detail > p { font-size: var(--xl-type-small); line-height: var(--xl-leading-cjk); color: var(--xl-muted); }
 .scientific-canvas-detail dl { display: grid; gap: var(--xl-space-2); }
@@ -187,27 +195,38 @@
 /* 图例：全部 16 种关系 */
 .scientific-canvas-legend {
   position: absolute;
-  left: var(--xl-space-5);
+  left: 50%;
   bottom: var(--xl-space-3);
+  transform: translateX(-50%);
   z-index: 5;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
-  max-width: calc(100% - 380px);
+  width: max-content;
+  max-width: calc(100% - (var(--xl-space-5) + var(--xl-space-5)));
   padding: 5px;
-  border-radius: var(--xl-radius-lg);
+  box-sizing: border-box;
+  border-radius: var(--xl-radius-full);
   background: color-mix(in srgb, var(--xl-surface) 90%, transparent);
   border: 1px solid var(--xl-border);
   backdrop-filter: blur(4px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: none;
 }
+.scientific-canvas-legend::-webkit-scrollbar { display: none; }
 .scientific-canvas-legend button {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 5px;
   padding: 3px var(--xl-space-2);
   border-radius: var(--xl-radius-full);
   font-size: var(--xl-type-caption);
   color: var(--xl-muted);
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
 }
 .scientific-canvas-legend button:hover { background: var(--xl-hover); color: var(--xl-text); }
 .scientific-canvas-legend button.active { background: var(--xl-accent-soft); color: var(--xl-accent); font-weight: 600; }
@@ -233,7 +252,7 @@
 
 .scientific-proposal-tray {
   position: absolute;
-  left: var(--xl-space-5);
+  left: 0;
   top: 96px;
   z-index: var(--xl-z-sticky, 10);
   width: 300px;
