@@ -10,6 +10,7 @@ Thumbs.db
 Desktop.ini
 .idea/
 .vscode/
+.zcode/
 .env
 .env.*
 !.env.example

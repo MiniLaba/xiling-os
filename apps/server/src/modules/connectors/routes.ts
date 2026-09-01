@@ -1,3 +1,4 @@
+import { validationFailure } from "../../http-errors.js";
 import type { FastifyInstance } from "fastify";
 import { readFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
@@ -35,7 +36,7 @@ export function registerConnectorRoutes(app: FastifyInstance, dependencies: Conn
 
   app.post("/api/v1/connectors/preflight", async (request, reply) => {
     const parsed = connectorRequestSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     try {
       await credentialsReady;
       const { depth, expectedShape, bytesPerValue, ...required } = parsed.data;
@@ -50,7 +51,7 @@ export function registerConnectorRoutes(app: FastifyInstance, dependencies: Conn
 
   app.post("/api/v1/connectors/metadata", async (request, reply) => {
     const parsed = connectorRequestSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     await credentialsReady;
     const credentialId = credentialIdFor(parsed.data.connectorId);
     if (credentialId && !credentials.status(credentialId).configured) return reply.code(409).send({ error: "credential_required" });
@@ -69,7 +70,7 @@ export function registerConnectorRoutes(app: FastifyInstance, dependencies: Conn
   app.get("/api/v1/connector-jobs", async () => { await workflowReady; return workflow.list(); });
   app.post("/api/v1/connector-jobs", async (request, reply) => {
     const parsed = connectorJobSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     await Promise.all([credentialsReady, workflowReady]);
     const input = toOceanSubsetRequest(parsed.data.request);
     const preflight = preflightConnector(input);
@@ -82,15 +83,15 @@ export function registerConnectorRoutes(app: FastifyInstance, dependencies: Conn
 
   const parseId = (value: unknown) => idParamsSchema.safeParse(value);
   app.post("/api/v1/connector-jobs/:id/approve", async (request, reply) => {
-    const parsed = parseId(request.params); if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    const parsed = parseId(request.params); if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     await workflowReady; try { return await workflow.approve(parsed.data.id); } catch (error) { return reply.code(409).send({ error: error instanceof Error ? error.message : String(error) }); }
   });
   app.post("/api/v1/connector-jobs/:id/reject", async (request, reply) => {
-    const parsed = parseId(request.params); if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    const parsed = parseId(request.params); if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     await workflowReady; try { return await workflow.reject(parsed.data.id); } catch (error) { return reply.code(409).send({ error: error instanceof Error ? error.message : String(error) }); }
   });
   app.post("/api/v1/connector-jobs/:id/run", async (request, reply) => {
-    const parsed = parseId(request.params); if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    const parsed = parseId(request.params); if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     await workflowReady; if (activeRuns.has(parsed.data.id)) return reply.code(409).send({ error: "connector download is already active" });
     const controller = new AbortController(); activeRuns.set(parsed.data.id, controller);
     try { return await workflow.download(parsed.data.id, controller.signal); }
@@ -98,7 +99,7 @@ export function registerConnectorRoutes(app: FastifyInstance, dependencies: Conn
     finally { activeRuns.delete(parsed.data.id); }
   });
   app.post("/api/v1/connector-jobs/:id/cancel", async (request, reply) => {
-    const parsed = parseId(request.params); if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    const parsed = parseId(request.params); if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     const controller = activeRuns.get(parsed.data.id); if (!controller) return reply.code(409).send({ error: "connector download is not active" });
     controller.abort("cancelled by user"); return { status: "cancelling" };
   });

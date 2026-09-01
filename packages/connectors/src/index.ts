@@ -54,15 +54,25 @@ function validate(request: OceanSubsetRequest): void {
   if (request.time.start > request.time.end) throw new Error("invalid time range");
   if (request.depth && (request.depth.min < 0 || request.depth.min > request.depth.max)) throw new Error("invalid depth range");
   if (request.expectedShape?.some((size) => !Number.isInteger(size) || size <= 0)) throw new Error("invalid expected shape");
+  // Magnitude caps keep a hostile or broken shape from producing Infinity-style
+  // estimates that would flow into the approval disclosure unchanged.
+  if (request.expectedShape?.some((size) => size > 1e9) || (request.bytesPerValue !== undefined && (request.bytesPerValue <= 0 || request.bytesPerValue > 1024))) throw new Error("expected shape or byte scale is out of range");
 }
 
 function estimate(request: OceanSubsetRequest): number | undefined {
   if (!request.expectedShape || !request.bytesPerValue) return undefined;
-  return request.expectedShape.reduce((total, size) => total * size, request.variables.length * request.bytesPerValue);
+  const total = request.expectedShape.reduce((total, size) => total * Math.min(size, 1e9), request.variables.length * request.bytesPerValue);
+  return Number.isFinite(total) && total <= Number.MAX_SAFE_INTEGER ? total : undefined;
 }
 
 export function listConnectors(): ConnectorDescriptor[] {
   return Object.values(descriptors).map((descriptor) => structuredClone(descriptor));
+}
+
+/** Single canonical request hasher shared by the connector jobs and the
+ * project workflow so an approved hash is reproducible across both layers. */
+export function canonicalRequestHash(request: OceanSubsetRequest): string {
+  return createHash("sha256").update(canonical(request)).digest("hex");
 }
 
 export function preflightConnector(request: OceanSubsetRequest): ConnectorPreflight {
@@ -120,8 +130,15 @@ export function resolveConnectorMetadata(request: OceanSubsetRequest, metadata: 
   };
 }
 
+export interface ConnectorDownloadLimits {
+  /** Hard ceiling from the approved volume estimate; downloads past it must fail. */
+  maxBytes?: number;
+  /** Wall-clock ceiling for the whole download. */
+  timeoutMs?: number;
+}
+
 export interface ConnectorDownloader {
-  download(request: OceanSubsetRequest, targetUri: ResourceUri, signal?: AbortSignal, executionMode?: "fixture" | "live"): Promise<{ uri: ResourceUri; bytes: number; sha256: string }>;
+  download(request: OceanSubsetRequest, targetUri: ResourceUri, signal?: AbortSignal, executionMode?: "fixture" | "live", limits?: ConnectorDownloadLimits): Promise<{ uri: ResourceUri; bytes: number; sha256: string }>;
 }
 
 export interface ConnectorMetadataProbe {
@@ -191,9 +208,13 @@ export class ConnectorWorkflowService {
   }
   list() { return structuredClone(this.jobs); }
   async prepare(request: OceanSubsetRequest, metadata: ConnectorMetadataSummary, credentialsAvailable = false) {
-    const preflight = resolveConnectorMetadata(request, metadata, credentialsAvailable);
+    // The stored request is finalized (probe-selected shape attached) BEFORE the
+    // approval hash is computed, so preflight.requestHash stays reproducible
+    // from the persisted job rather than covering a stale subset.
+    const finalized: OceanSubsetRequest = { ...request, expectedShape: metadata.selectedShape, bytesPerValue: metadata.bytesPerValue };
+    const preflight = resolveConnectorMetadata(finalized, metadata, credentialsAvailable);
     if (preflight.status !== "ready" || preflight.estimatedBytes === undefined) throw new Error(`connector is not ready: ${preflight.status}; a disclosed volume is required`);
-    const job: ConnectorDownloadJob = { id: `connector-${randomUUID()}`, request: { ...request, expectedShape: metadata.selectedShape, bytesPerValue: metadata.bytesPerValue }, preflight, status: "pending_approval", createdAt: this.now(), executionMode: metadata.source === "fixture" ? "fixture" : "live" };
+    const job: ConnectorDownloadJob = { id: `connector-${randomUUID()}`, request: finalized, preflight, status: "pending_approval", createdAt: this.now(), executionMode: metadata.source === "fixture" ? "fixture" : "live" };
     this.jobs = [...this.jobs, job];
     await this.repository.save(this.jobs);
     return structuredClone(job);
@@ -220,7 +241,7 @@ export class ConnectorWorkflowService {
     job.status = "downloading";
     await this.repository.save(this.jobs);
     try {
-      const artifact = await this.downloader.download(job.request, job.preflight.targetUri, signal, job.executionMode ?? "fixture");
+      const artifact = await this.downloader.download(job.request, job.preflight.targetUri, signal, job.executionMode ?? "fixture", { ...(job.preflight.estimatedBytes === undefined ? {} : { maxBytes: job.preflight.estimatedBytes }), timeoutMs: 30 * 60_000 });
       if (!/^[a-f0-9]{64}$/.test(artifact.sha256) || artifact.bytes <= 0) throw new Error("downloader returned an invalid artifact");
       job.artifact = artifact;
       job.status = "completed";

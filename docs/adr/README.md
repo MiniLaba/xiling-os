@@ -29,6 +29,7 @@
 | 科研内核 | [0034 内容寻址 Artifact](0034-content-addressed-artifact-registry.md)、[0035 通用执行与领域组合](0035-generic-execution-and-domain-composition.md)、[0040 可安装科学领域包](0040-extensible-science-domain-packages.md) |
 | 模型 | [0015 多模态模型连接器](0015-extensible-multimodal-model-connectors.md)、[0037 真实模型路由与角色覆盖](0037-real-model-routing-and-role-overrides.md) |
 | 平台 | [0039 原生 Windows 与 Docker 沙箱](0039-native-windows-control-plane-and-docker-sandbox.md) |
+| 前端壳层 | [0041 两栏应用壳与 Chat 上下文产物面板](0041-two-column-shell-and-contextual-artifact-panel.md) |
 
 ## 已替代的主要决策
 

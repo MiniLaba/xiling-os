@@ -72,13 +72,15 @@ type GatewayParameters = {
   action?: "auth-start" | "auth-complete";
 };
 
-type WorkerResponse = { id?: string; ok?: boolean; result?: RuntimeToolResult; error?: string; event?: "status"; snapshot?: PiMcpStatusSnapshot };
+type WorkerResponse = { id?: string; ok?: boolean; result?: RuntimeToolResult; error?: string; event?: "status" | "fatal"; snapshot?: PiMcpStatusSnapshot };
 
 class McpHostWorker {
   private readonly process: ChildProcessWithoutNullStreams;
   private readonly pending = new Map<string, { resolve: (value: RuntimeToolResult) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout>; signal?: AbortSignal; onAbort?: () => void }>();
   private counter = 0;
   private closing = false;
+  private exited = false;
+  private fatalError: string | undefined;
   snapshot: PiMcpStatusSnapshot = emptySnapshot();
 
   private constructor(root: string, config: PiMcpHostConfig) {
@@ -95,8 +97,9 @@ class McpHostWorker {
     let stderr = "";
     this.process.stderr.on("data", (chunk: Buffer) => { stderr = `${stderr}${chunk.toString("utf8")}`.slice(-8_000); });
     this.process.once("exit", (code, signal) => {
+      this.exited = true;
       const message = this.closing ? "MCP host closed" : `MCP host exited (${code ?? signal ?? "unknown"})${stderr ? `: ${stderr.slice(-600)}` : ""}`;
-      for (const request of this.pending.values()) { clearTimeout(request.timer); if (request.signal && request.onAbort) request.signal.removeEventListener("abort", request.onAbort); request.reject(new Error(message)); }
+      for (const request of this.pending.values()) { clearTimeout(request.timer); if (request.signal && request.onAbort) request.signal.removeEventListener("abort", request.onAbort); request.reject(new Error(this.fatalError ?? message)); }
       this.pending.clear();
     });
     this.send({ op: "init", root, config });
@@ -105,17 +108,31 @@ class McpHostWorker {
   static async create(root: string, config: PiMcpHostConfig): Promise<McpHostWorker> {
     await mkdir(root, { recursive: true, mode: 0o700 });
     const worker = new McpHostWorker(root, config);
-    await worker.request("ready", {}, 20_000);
+    try { await worker.request("ready", {}, 20_000); }
+    catch (error) { await worker.close().catch(() => undefined); throw error; }
     return worker;
   }
 
-  private send(value: unknown): void { this.process.stdin.write(`${JSON.stringify(value)}\n`); }
+  private send(value: unknown): void {
+    if (this.exited) return;
+    try { this.process.stdin.write(`${JSON.stringify(value)}\n`); } catch { /* worker pipe is already gone */ }
+  }
 
   private receive(line: string): void {
     let message: WorkerResponse;
     try { message = JSON.parse(line) as WorkerResponse; }
     catch { return; }
     if (message.event === "status" && message.snapshot) { this.snapshot = message.snapshot; return; }
+    if (message.event === "fatal") {
+      // Init failures arrive without a request id; surface them to every pending
+      // caller (notably "ready") instead of answering success and failing later
+      // with a misleading "gateway tool not registered" error.
+      this.fatalError = `MCP host init failed: ${message.error ?? "unknown error"}`;
+      const pending = [...this.pending.values()];
+      this.pending.clear();
+      for (const request of pending) { clearTimeout(request.timer); if (request.signal && request.onAbort) request.signal.removeEventListener("abort", request.onAbort); request.reject(new Error(this.fatalError)); }
+      return;
+    }
     if (!message.id) return;
     const pending = this.pending.get(message.id);
     if (!pending) return;
@@ -155,11 +172,11 @@ class McpHostWorker {
   }
 
   async close(): Promise<void> {
-    if (this.closing) return;
+    if (this.closing || this.exited) { this.closing = true; return; }
     this.closing = true;
     const exited = new Promise<void>((resolvePromise) => this.process.once("exit", () => resolvePromise()));
     this.send({ op: "close" });
-    const timer = setTimeout(() => this.process.kill(), 5_000);
+    const timer = setTimeout(() => { try { this.process.kill(); } catch { /* already gone */ } }, 5_000);
     timer.unref?.();
     await exited;
     clearTimeout(timer);

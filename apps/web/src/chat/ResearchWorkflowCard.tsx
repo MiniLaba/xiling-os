@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ProjectResearchWorkflow } from "@xiling/domain-ocean";
+import { jsonInit } from "../lib/api-client.js";
 
 const stageLabels: Record<ProjectResearchWorkflow["status"], string> = {
   draft: "等待元数据探测", probing: "正在获取元数据", pending_approval: "等待审批", approved: "已批准", downloading: "正在下载", analyzing: "正在计算与审查", completed: "闭环完成", rejected: "已拒绝", failed: "执行失败", cancelled: "已取消",
@@ -14,7 +15,7 @@ export function ResearchWorkflowCard({ workflow, onChange }: { workflow: Project
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const invoke = async (action: string) => {
-    const response = await fetch(`/api/v1/research-workflows/${encodeURIComponent(workflow.id)}/${action}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ projectId: workflow.projectId }) });
+    const response = await fetch(`/api/v1/research-workflows/${encodeURIComponent(workflow.id)}/${action}`, jsonInit("POST", { projectId: workflow.projectId }));
     const body = await response.json() as ProjectResearchWorkflow | { error: string };
     if (!response.ok) throw new Error("error" in body ? body.error : `HTTP ${response.status}`);
     onChange(body as ProjectResearchWorkflow); return body as ProjectResearchWorkflow;

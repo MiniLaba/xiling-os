@@ -165,7 +165,7 @@ flowchart TB
 - Chat 与低密度 Agent 运行图，包括沿节点继续、组合引用和项目全景。
 - Research Graph、五类科研画布投影、类型化关系、局部上下文和独立布局恢复。
 - Project Workflow、审批、Connector Job、通用 Execution Plan/Spec/Receipt 与 RO-Crate 产物。
-- Wiki 不可变修订、FTS5、双向链接和 Research Graph 引用。
+- Wiki 不可变修订、全文搜索、双向链接和 Research Graph 引用。
 - Semantic Scholar/OpenAlex 文献发现、阅读标注和结构化证据提升。
 - 本地 NetCDF/GRIB/Zarr/CSV，以及 ERDDAP、Argo、Copernicus Marine、NASA Harmony 的连接器边界。
 - 内容寻址 Artifact Registry 和数据/运行/审查/产物的溯源投影。
@@ -268,7 +268,7 @@ packages/execution/         通用计划、审批、执行、收据与幂等
 packages/science-domains/   领域 Manifest、注册和项目级组合
 packages/domain-ocean/      当前优先完成的海洋与气候领域模块
 packages/domain-tabular/    表格实验领域模块
-packages/knowledge/         Knowledge ports、SQLite 与 FTS5
+packages/knowledge/         Knowledge ports、SQLite 与迁移
 packages/literature/        文献 Provider、缓存与图算法
 packages/connectors/        数据连接器与审批状态机
 packages/credentials/       加密凭据存储

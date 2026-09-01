@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 
 let session;
 let extensionsEnabled = true;
+let initError;
 const activeCalls = new Map();
 const send = (value) => process.stdout.write(`${JSON.stringify(value)}\n`);
 
@@ -44,8 +45,16 @@ async function handle(line) {
   let message;
   try { message = JSON.parse(line); } catch { return; }
   try {
-    if (message.op === "init") { await initialize(message.root, message.config); return; }
-    if (message.op === "ready") { send({ id: message.id, ok: true, result: { content: [{ type: "text", text: "ready" }], details: { ready: true } } }); return; }
+    if (message.op === "init") {
+      try { await initialize(message.root, message.config); }
+      catch (error) { initError = error instanceof Error ? error.message : String(error); throw error; }
+      return;
+    }
+    if (message.op === "ready") {
+      if (initError) throw new Error(`MCP host init failed: ${initError}`);
+      if (!session) throw new Error("MCP host session is not initialized");
+      send({ id: message.id, ok: true, result: { content: [{ type: "text", text: "ready" }], details: { ready: true } } }); return;
+    }
     if (message.op === "call") {
       const tool = session?.state.tools.find((candidate) => candidate.name === "mcp");
       if (!tool) throw new Error("pi-mcp-adapter did not register the MCP gateway tool");

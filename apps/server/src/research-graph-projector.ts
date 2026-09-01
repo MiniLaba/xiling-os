@@ -305,10 +305,16 @@ export class ResearchGraphReconciler {
     await this.graph.initialize();
     let knowledgeCount = 0;
     for (const record of this.knowledge.listProjectionOutbox(1000)) {
-      const project = this.knowledge.getProject(record.projectId);
-      await this.graph.applyProjection({ projectionKey: record.projectionKey, source: "knowledge", sourceId: record.sourceId, changeSet: knowledgeRecordToChangeSet(record, project) });
-      this.knowledge.markProjectionOutboxApplied([record.projectionKey]);
-      knowledgeCount += 1;
+      try {
+        const project = this.knowledge.getProject(record.projectId);
+        await this.graph.applyProjection({ projectionKey: record.projectionKey, source: "knowledge", sourceId: record.sourceId, changeSet: knowledgeRecordToChangeSet(record, project) });
+        this.knowledge.markProjectionOutboxApplied([record.projectionKey]);
+        knowledgeCount += 1;
+      } catch (error) {
+        // Poison isolation: one broken record must not block the rest of the
+        // batch or wedge every future reconcile. It stays unapplied and visible.
+        console.warn(`[xiling] knowledge projection ${record.projectionKey} failed: ${error instanceof Error ? error.message : error}`);
+      }
     }
     // Development databases created before the outbox schema have no source
     // event for their project root. Bootstrap only the missing root; old Wiki,
@@ -327,20 +333,37 @@ export class ResearchGraphReconciler {
       const result = await this.graph.applyProjection({ projectionKey: `knowledge:project-bootstrap:v1:${project.id}:${digest(JSON.stringify(project))}`, source: "knowledge", sourceId: project.id, changeSet });
       if (result.applied) knowledgeCount += 1;
     }
+    // The durable cursor keeps every reconcile O(delta) instead of rescanning
+    // the whole Agent journal; a failed event holds the cursor so it retries.
     let agentCount = 0;
-    for (const event of this.agents.listEventsByType(["workflow.projected"])) {
+    const cursorName = "agent-workflow-projected";
+    const cursor = this.agents.getProjectionCursor(cursorName);
+    let safeCursor = cursor;
+    for (const event of this.agents.listEventsByTypeAfter(["workflow.projected"], cursor)) {
       const projection = agentEventToProjection(event);
-      if (!projection) continue;
-      const result = await this.graph.applyProjection({ ...projection, source: "agent" });
-      if (result.applied) agentCount += 1;
+      if (projection) {
+        try {
+          const result = await this.graph.applyProjection({ ...projection, source: "agent" });
+          if (result.applied) agentCount += 1;
+        } catch (error) {
+          console.warn(`[xiling] agent projection ${projection.projectionKey} failed: ${error instanceof Error ? error.message : error}`);
+          continue;
+        }
+      }
+      if (event.eventId > safeCursor) safeCursor = event.eventId;
     }
+    if (safeCursor > cursor) this.agents.setProjectionCursor(cursorName, safeCursor);
     let workflowCount = 0;
     for (const record of this.workflows.listProjectionOutbox(1000)) {
-      const project = this.knowledge.getProject(record.projectId);
-      if (!project) continue;
-      await this.graph.applyProjection({ projectionKey: record.projectionKey, source: "workflow", sourceId: record.sourceId, changeSet: workflowRecordToChangeSet(record, project) });
-      this.workflows.markProjectionOutboxApplied([record.projectionKey]);
-      workflowCount += 1;
+      try {
+        const project = this.knowledge.getProject(record.projectId);
+        if (!project) continue;
+        await this.graph.applyProjection({ projectionKey: record.projectionKey, source: "workflow", sourceId: record.sourceId, changeSet: workflowRecordToChangeSet(record, project) });
+        this.workflows.markProjectionOutboxApplied([record.projectionKey]);
+        workflowCount += 1;
+      } catch (error) {
+        console.warn(`[xiling] workflow projection ${record.projectionKey} failed: ${error instanceof Error ? error.message : error}`);
+      }
     }
     return { knowledge: knowledgeCount, agent: agentCount, workflow: workflowCount };
   }

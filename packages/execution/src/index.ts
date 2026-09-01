@@ -22,7 +22,14 @@ export interface ExecutionOutput { name: string; path: string; mimeType: string;
 export interface ExecutionResult { outputs: ExecutionOutput[]; exitCode: number; startedAt: string; finishedAt: string; environmentDigest: string; logPath?: string; }
 export interface ExecutionRecord { id: string; projectId: string; specHash: string; idempotencyKey: string; status: "queued" | "running" | "succeeded" | "failed" | "cancelled"; createdAt: string; startedAt?: string; finishedAt?: string; result?: ExecutionResult; error?: string; }
 export interface ExecutionRunner { execute(spec: ExecutionSpec, signal: AbortSignal): Promise<ExecutionResult>; }
-export interface ExecutionRepository { getByKey(projectId: string, idempotencyKey: string): ExecutionRecord | undefined; save(record: ExecutionRecord): void; }
+export interface ExecutionRepository {
+  getByKey(projectId: string, idempotencyKey: string): ExecutionRecord | undefined;
+  save(record: ExecutionRecord): void;
+  /** Atomic claim of an idempotency key; returns false when the key already exists. */
+  insert(record: ExecutionRecord): boolean;
+  /** Marks records left non-terminal by a previous process as failed. Returns the count. */
+  recoverInterrupted(): number;
+}
 
 export interface DockerSandboxPolicy {
   network: "none" | "egress";
@@ -73,6 +80,22 @@ export class InMemoryExecutionRepository implements ExecutionRepository {
   private readonly records = new Map<string, ExecutionRecord>();
   getByKey(projectId: string, idempotencyKey: string) { const value = this.records.get(`${projectId}:${idempotencyKey}`); return value ? structuredClone(value) : undefined; }
   save(record: ExecutionRecord) { this.records.set(`${record.projectId}:${record.idempotencyKey}`, structuredClone(record)); }
+  insert(record: ExecutionRecord) {
+    const key = `${record.projectId}:${record.idempotencyKey}`;
+    if (this.records.has(key)) return false;
+    this.records.set(key, structuredClone(record));
+    return true;
+  }
+  recoverInterrupted() {
+    let recovered = 0;
+    for (const [key, record] of this.records) {
+      if (record.status === "queued" || record.status === "running") {
+        this.records.set(key, { ...record, status: "failed", finishedAt: new Date().toISOString(), error: "interrupted during previous server session" });
+        recovered += 1;
+      }
+    }
+    return recovered;
+  }
 }
 
 export class SqliteExecutionRepository implements ExecutionRepository {
@@ -84,6 +107,27 @@ export class SqliteExecutionRepository implements ExecutionRepository {
   }
   getByKey(projectId: string, idempotencyKey: string) { const row = this.database.prepare("SELECT payload_json FROM executions WHERE project_id = ? AND idempotency_key = ?").get(projectId, idempotencyKey) as { payload_json: string } | undefined; return row ? JSON.parse(row.payload_json) as ExecutionRecord : undefined; }
   save(record: ExecutionRecord) { this.database.prepare(`INSERT INTO executions (id, project_id, idempotency_key, spec_hash, payload_json) VALUES (?, ?, ?, ?, ?) ON CONFLICT(project_id, idempotency_key) DO UPDATE SET spec_hash = excluded.spec_hash, payload_json = excluded.payload_json`).run(record.id, record.projectId, record.idempotencyKey, record.specHash, JSON.stringify(record)); }
+  insert(record: ExecutionRecord) {
+    try {
+      this.database.prepare("INSERT INTO executions (id, project_id, idempotency_key, spec_hash, payload_json) VALUES (?, ?, ?, ?, ?)").run(record.id, record.projectId, record.idempotencyKey, record.specHash, JSON.stringify(record));
+      return true;
+    } catch (error) {
+      const code = (error as { code?: string }).code ?? "";
+      if (code.startsWith("SQLITE_CONSTRAINT") || /UNIQUE/i.test(String(error))) return false;
+      throw error;
+    }
+  }
+  recoverInterrupted() {
+    const rows = this.database.prepare("SELECT payload_json FROM executions").all() as Array<{ payload_json: string }>;
+    let recovered = 0;
+    for (const row of rows) {
+      const record = JSON.parse(row.payload_json) as ExecutionRecord;
+      if (record.status !== "queued" && record.status !== "running") continue;
+      this.save({ ...record, status: "failed", finishedAt: new Date().toISOString(), error: "interrupted during previous server session" });
+      recovered += 1;
+    }
+    return recovered;
+  }
   close() { this.database.close(); }
 }
 
@@ -101,7 +145,14 @@ export class ExecutionCoordinator {
       return existing;
     }
     const record: ExecutionRecord = { id: `execution-${randomUUID()}`, projectId: spec.projectId, specHash, idempotencyKey, status: "running", createdAt: this.now(), startedAt: this.now() };
-    this.repository.save(record);
+    // The claim is an atomic INSERT so that two concurrent runs with the same
+    // key cannot both pass the pre-check above; the loser re-reads the winner.
+    if (!this.repository.insert(record)) {
+      const winner = this.repository.getByKey(spec.projectId, idempotencyKey);
+      if (!winner) throw new Error("Execution idempotency state is inconsistent");
+      if (winner.specHash !== specHash) throw new Error("Execution idempotency conflict");
+      return winner;
+    }
     const controller = new AbortController(); this.active.set(record.id, controller);
     const timeout = setTimeout(() => controller.abort("execution timeout"), spec.resources.timeoutMs);
     try {

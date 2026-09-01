@@ -1,10 +1,16 @@
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FREE_EXPLORATION_PROJECT_ID } from "@xiling/contracts";
+import {
+  AlertTriangle, BookOpen, ChevronDown, FolderKanban, LayoutGrid, MessageSquare, Monitor, Moon, Network, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Sun, Trash2, X,
+} from "lucide-react";
 import { WorkspaceProvider, useWorkspace } from "./workspace/WorkspaceContext.js";
 import { ConversationProvider, useConversations } from "./workspace/ConversationContext.js";
+import { ToastProvider, useToast } from "./components/ui/toast.js";
+import { Dialog } from "./components/ui/dialog.js";
+import { useTheme, type ThemePreference } from "./lib/theme.js";
+import { DesignTweaks } from "./devtools/DesignTweaks.js";
 
 const ChatView = lazy(async () => ({ default: (await import("./chat/ChatView.js")).ChatView }));
-const OutputPanel = lazy(async () => ({ default: (await import("./chat/OutputPanel.js")).OutputPanel }));
 const PaperGraphView = lazy(async () => ({ default: (await import("./papers/PaperGraphView.js")).PaperGraphView }));
 const ProjectView = lazy(async () => ({ default: (await import("./project/ProjectView.js")).ProjectView }));
 const WikiView = lazy(async () => ({ default: (await import("./wiki/WikiView.js")).WikiView }));
@@ -20,39 +26,53 @@ const labels: Record<View, string> = {
   canvas: "科研画布",
   project: "项目",
   wiki: "Wiki",
-  papers: "文献图",
+  papers: "文献工作台",
   settings: "设置",
 };
 
-const icons: Record<View, ReactNode> = {
-  chat: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h7A2.5 2.5 0 0 1 16 5.5v4a2.5 2.5 0 0 1-2.5 2.5H9l-3.8 3v-3.3A2.5 2.5 0 0 1 4 9.5z" /></>,
-  attention: <><path d="M10 2.8 17 16H3z"/><path d="M10 7v4m0 2.5v.2"/></>,
-  canvas: <><circle cx="5" cy="5" r="2"/><circle cx="15" cy="6" r="2"/><circle cx="10" cy="15" r="2"/><path d="m7 5.2 6 .6M6.2 6.7l2.7 6.5m4.8-5.5-2.6 5.5"/></>,
-  project: <><path d="M3 6.5h14v10H3zM3 6.5l3-3h4l2 3" /></>,
-  wiki: <><path d="M4 3.5h9a3 3 0 0 1 3 3v10H7a3 3 0 0 1-3-3zM7 6.5h6M7 10h6" /></>,
-  papers: <><circle cx="6" cy="6" r="2.5" /><circle cx="14.5" cy="5" r="2.5" /><circle cx="11" cy="14.5" r="2.5" /><path d="m8.4 5.7 3.6-.4M7.2 8.2l2.7 4.1m3.1-5  -1.1 4.8" /></>,
-  settings: <><circle cx="10" cy="10" r="2.5" /><path d="M10 2.5v2m0 11v2m7.5-7.5h-2m-11 0h-2m12.8-5.3-1.4 1.4M6.1 13.9l-1.4 1.4m10.6 0-1.4-1.4M6.1 6.1 4.7 4.7" /></>,
+const iconSize = 17;
+const icons: Record<View, React.ReactNode> = {
+  chat: <MessageSquare size={iconSize} aria-hidden="true" />,
+  attention: <AlertTriangle size={iconSize} aria-hidden="true" />,
+  canvas: <LayoutGrid size={iconSize} aria-hidden="true" />,
+  project: <FolderKanban size={iconSize} aria-hidden="true" />,
+  wiki: <BookOpen size={iconSize} aria-hidden="true" />,
+  papers: <Network size={iconSize} aria-hidden="true" />,
+  settings: <Settings size={iconSize} aria-hidden="true" />,
 };
 
-const navigationGroups = [
-  { title: "科研工作台", items: ["chat", "attention", "canvas"] },
-  { title: "科研知识库", items: ["project", "wiki", "papers"] },
-] as const;
+const navigationItems: Exclude<View, "settings">[] = ["chat", "attention", "canvas", "project", "wiki", "papers"];
+
+const themeOrder: ThemePreference[] = ["system", "lingjing", "poxiao"];
+const themeMeta: Record<ThemePreference, { label: string; icon: React.ReactNode }> = {
+  system: { label: "跟随系统", icon: <Monitor size={16} aria-hidden="true" /> },
+  lingjing: { label: "灵境", icon: <Moon size={16} aria-hidden="true" /> },
+  poxiao: { label: "破晓", icon: <Sun size={16} aria-hidden="true" /> },
+};
 
 export function App() {
-  return <WorkspaceProvider><ConversationProvider><WorkspaceApp /></ConversationProvider></WorkspaceProvider>;
+  return (
+    <ToastProvider>
+      <WorkspaceProvider><ConversationProvider><WorkspaceApp /></ConversationProvider></WorkspaceProvider>
+    </ToastProvider>
+  );
 }
 
 function WorkspaceApp() {
   const [view, setView] = useState<View>("chat");
   const [viewHistory, setViewHistory] = useState<View[]>([]);
-  const lastViewRef = useRef<View>("chat");
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem("xiling:sidebar-collapsed") === "true");
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
+  const [commandIndex, setCommandIndex] = useState(0);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | undefined>();
   const projectMenuRef = useRef<HTMLDivElement>(null);
+  const commandListRef = useRef<HTMLDivElement>(null);
   const { projects, activeProject, activeProjectId, setActiveProjectId, refreshProjects, loading, error } = useWorkspace();
   const { sessions, activeSessionId, loading: sessionsLoading, selectSession, startNewConversation, deleteSession } = useConversations();
+  const theme = useTheme();
+  const { push } = useToast();
 
   useEffect(() => {
     if (!projectMenuOpen) return;
@@ -61,54 +81,101 @@ function WorkspaceApp() {
     return () => document.removeEventListener("pointerdown", close);
   }, [projectMenuOpen]);
   useEffect(() => {
-    const shortcut = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "k") { event.preventDefault(); setCommandOpen((open) => !open); } if (event.key === "Escape") setCommandOpen(false); };
+    const shortcut = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "k") { event.preventDefault(); setCommandOpen((open) => !open); setCommandIndex(0); } if (event.key === "Escape") setCommandOpen(false); };
     window.addEventListener("keydown", shortcut); return () => window.removeEventListener("keydown", shortcut);
   }, []);
-  // 视图导航历史：任何视图切换都把来源视图压栈，顶栏返回键据此回到上一视图
-  useEffect(() => {
-    if (view === lastViewRef.current) return;
-    setViewHistory((history) => [...history.slice(-19), lastViewRef.current]);
-    lastViewRef.current = view;
+  const navigateToView = useCallback((next: View) => {
+    if (next === view) return;
+    setViewHistory((history) => [...history.slice(-19), view]);
+    setView(next);
   }, [view]);
   const goBack = () => {
     const previous = viewHistory[viewHistory.length - 1];
     if (previous === undefined) return;
-    lastViewRef.current = previous;
     setViewHistory((history) => history.slice(0, -1));
     setView(previous);
+  };
+
+  const commandActions = useMemo(() => {
+    const query = commandQuery.trim().toLocaleLowerCase();
+    const viewActions = (Object.keys(labels) as View[])
+      .filter((target) => !query || labels[target].includes(query))
+      .map((target) => ({ id: `view:${target}`, label: labels[target], hint: "打开视图", run: () => { navigateToView(target); } }));
+    const projectActions = [...projects]
+      .sort((a, b) => (a.id === FREE_EXPLORATION_PROJECT_ID ? -1 : b.id === FREE_EXPLORATION_PROJECT_ID ? 1 : 0))
+      .filter((project) => !query || `${project.name} ${project.researchQuestion}`.toLocaleLowerCase().includes(query))
+      .map((project) => ({ id: `project:${project.id}`, label: project.name, hint: project.id === activeProjectId ? "当前项目" : "切换项目", run: () => { setActiveProjectId(project.id); } }));
+    return [...viewActions, ...projectActions];
+  }, [commandQuery, projects, activeProjectId, setActiveProjectId, navigateToView]);
+
+  const runCommandAction = (index: number) => {
+    const action = commandActions[index];
+    if (!action) return;
+    action.run();
+    setCommandOpen(false);
+    setCommandQuery("");
+    setCommandIndex(0);
+  };
+
+  const onCommandKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const delta = event.key === "ArrowDown" ? 1 : -1;
+      setCommandIndex((index) => commandActions.length ? (index + delta + commandActions.length) % commandActions.length : 0);
+      const list = commandListRef.current;
+      const active = list?.querySelector<HTMLElement>('[data-active="true"]');
+      active?.scrollIntoView({ block: "nearest" });
+    }
+    if (event.key === "Enter") { event.preventDefault(); runCommandAction(commandIndex); }
+  };
+
+  const confirmDeleteSession = () => {
+    if (!pendingDelete) return;
+    void deleteSession(pendingDelete.id);
+    push({ title: `对话「${pendingDelete.title}」已删除`, tone: "info" });
+    setPendingDelete(undefined);
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed;
+      localStorage.setItem("xiling:sidebar-collapsed", String(next));
+      return next;
+    });
   };
 
   if (loading && !activeProject) return <main className="shell"><div className="view-loading">正在恢复科研工作区…</div></main>;
   if (!activeProject) return <main className="shell"><div className="view-loading">{error ?? "没有可用科研项目"}</div></main>;
 
   return (
-    <main className={`shell ${view === "settings" ? "settings-mode" : ""}`}>
+    <main className={`shell ${view === "settings" ? "settings-mode" : ""} ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       {view !== "settings" ? <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-mark"><img src="/brand/xiling-mark.png" alt="" /></div>
           <div className="brand-text"><b>汐灵</b><small>SCIENCE OS</small></div>
+          <button className="sidebar-collapse" aria-label={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"} title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"} onClick={toggleSidebar}>
+            {sidebarCollapsed ? <PanelLeftOpen size={16} aria-hidden="true" /> : <PanelLeftClose size={16} aria-hidden="true" />}
+          </button>
         </div>
         <div className="project-switcher" ref={projectMenuRef}>
           <button className="project-switcher-trigger" aria-expanded={projectMenuOpen} onClick={() => setProjectMenuOpen((open) => !open)}>
-            <span><small>当前项目</small><b>{activeProject.name}{activeProject.id === FREE_EXPLORATION_PROJECT_ID ? <em className="project-badge-free">开放问答</em> : null}</b><em>{activeProject.researchQuestion}</em></span><i>⌄</i>
+            <span><small>当前项目</small><b>{activeProject.name}{activeProject.id === FREE_EXPLORATION_PROJECT_ID ? <em className="project-badge-free">开放问答</em> : null}</b><em>{activeProject.researchQuestion}</em></span><ChevronDown size={15} aria-hidden="true" />
           </button>
           {projectMenuOpen ? <div className="project-switcher-menu">
             <header><b>科研项目</b><small>{projects.length} 个进行中</small></header>
             <div>{[...projects].sort((a, b) => (a.id === FREE_EXPLORATION_PROJECT_ID ? -1 : b.id === FREE_EXPLORATION_PROJECT_ID ? 1 : 0)).map((project) => <button className={project.id === activeProjectId ? "active" : ""} key={project.id} onClick={() => { setActiveProjectId(project.id); setProjectMenuOpen(false); }}><i>{project.id === activeProjectId ? "✓" : ""}</i><span><b>{project.name}{project.id === FREE_EXPLORATION_PROJECT_ID ? <em className="project-badge-free">开放问答</em> : null}</b><small>{project.researchQuestion}</small></span></button>)}</div>
-            <footer><button onClick={() => { setView("project"); setProjectMenuOpen(false); }}>＋ 新建或管理项目</button></footer>
+            <footer><button onClick={() => { navigateToView("project"); setProjectMenuOpen(false); }}><Plus size={14} aria-hidden="true" /> 新建或管理项目</button></footer>
           </div> : null}
         </div>
+        <button className="new-conversation-btn" onClick={() => { startNewConversation(); navigateToView("chat"); }}>
+          <Plus size={16} aria-hidden="true" /><span>新建对话</span>
+        </button>
         <nav className="sidebar-nav">
-          {navigationGroups.map((group) => (
-            <div className="nav-group" key={group.title}>
-              <div className="nav-group-title">{group.title}</div>
-              {group.items.map((item) => (
-                <button aria-current={view === item ? "page" : undefined} className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}>
-                  <svg viewBox="0 0 20 20" aria-hidden="true">{icons[item]}</svg>
-                  {labels[item]}
-                </button>
-              ))}
-            </div>
+          {navigationItems.map((item) => (
+            <button aria-current={view === item ? "page" : undefined} className={view === item ? "active" : ""} key={item} onClick={() => navigateToView(item)}>
+              {icons[item]}
+              <span>{labels[item]}</span>
+            </button>
           ))}
         </nav>
         <div className="recent-work">
@@ -117,26 +184,26 @@ function WorkspaceApp() {
             <div className="session-list">
               {sessions.map((session) => (
                 <div className={`session-item ${view === "chat" && session.id === activeSessionId ? "active" : ""}`} key={session.id}>
-                  <button onClick={() => { selectSession(session.id); setView("chat"); }}>
+                  <button onClick={() => { selectSession(session.id); navigateToView("chat"); }}>
                     <i>●</i>
                     <span><b>{session.title}</b><small>{formatSessionTime(session.updatedAt)} · {session.messageCount} 条</small></span>
                   </button>
-                  <button className="session-delete" aria-label={`删除对话「${session.title}」`} title="删除对话" onClick={(event) => { event.stopPropagation(); if (window.confirm(`确定删除对话「${session.title}」吗？删除后不可恢复。`)) void deleteSession(session.id); }}>✕</button>
+                  <button className="session-delete" aria-label={`删除对话「${session.title}」`} title="删除对话" onClick={(event) => { event.stopPropagation(); setPendingDelete({ id: session.id, title: session.title }); }}><Trash2 size={13} aria-hidden="true" /></button>
                 </div>
               ))}
             </div>
           ) : <p className="session-empty">这个项目还没有对话</p>}
         </div>
         <div className="sidebar-footer">
-          <button className="new-conversation-btn" onClick={() => { startNewConversation(); setView("chat"); }}>
-            <span>＋</span><span>新建对话</span>
+          <button className="settings-btn" onClick={() => theme.setPreference(themeOrder[(themeOrder.indexOf(theme.preference) + 1) % themeOrder.length]!)} aria-label={`主题：${themeMeta[theme.preference].label}（点击切换）`} title={`主题：${themeMeta[theme.preference].label}`}>
+            {themeMeta[theme.preference].icon}
           </button>
-          <button className="settings-btn" onClick={() => setView("settings")} aria-label="设置">
-            <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true" style={{stroke:"currentColor",fill:"none",strokeWidth:"1.8",strokeLinecap:"round",strokeLinejoin:"round"}}><circle cx="10" cy="10" r="2.5"/><path d="M10 2.5v2m0 11v2m7.5-7.5h-2m-11 0h-2m12.8-5.3-1.4 1.4M6.1 13.9l-1.4 1.4m10.6 0-1.4-1.4M6.1 6.1 4.7 4.7"/></svg>
+          <button className="settings-entry" onClick={() => navigateToView("settings")} aria-label="设置">
+            <Settings size={16} aria-hidden="true" /><span>设置</span>
           </button>
         </div>
       </aside> : null}
-      <section className="workspace">
+      <section className={`workspace workspace-${view}`}>
         <header className="workspace-header">
           <div className="workspace-title">
             <button aria-label="返回上一视图" title="返回上一视图" disabled={!viewHistory.length} onClick={goBack}>‹</button>
@@ -146,55 +213,70 @@ function WorkspaceApp() {
           {view === "settings"
             ? <div className="settings-top-status"><i />本地设置 · 凭据不会回传</div>
             : <div className="workspace-actions">
-                <span className="save-state">● 本地已保存</span>
-                <button onClick={() => setCommandOpen(true)}><kbd aria-hidden="true">Ctrl K</kbd> 搜索与跳转</button>
+                <button onClick={() => { setCommandOpen(true); setCommandIndex(0); }}><Search size={14} aria-hidden="true" /><kbd aria-hidden="true">Ctrl K</kbd> 搜索与跳转</button>
               </div>
           }
         </header>
         <div className="workspace-body">
           <Suspense fallback={<div className="view-loading">按需加载当前视图…</div>}>
             {view === "chat" ? <ChatView project={activeProject} />
-              : view === "attention" ? <AttentionView projectId={activeProjectId} onNavigate={setView} />
-              : view === "canvas" ? <ScientificCanvasView projectId={activeProjectId} onNavigate={setView} />
+              : view === "attention" ? <AttentionView projectId={activeProjectId} onNavigate={navigateToView} />
+              : view === "canvas" ? <ScientificCanvasView projectId={activeProjectId} onNavigate={navigateToView} />
               : view === "project" ? <ProjectView projectId={activeProjectId} projects={projects} onProjectChange={setActiveProjectId} onProjectsChange={refreshProjects} />
-              : view === "wiki" ? <WikiView projectId={activeProjectId} onNavigate={setView} />
-              : view === "papers" ? <PaperGraphView projectId={activeProjectId} onNavigate={setView} />
+              : view === "wiki" ? <WikiView projectId={activeProjectId} onNavigate={navigateToView} />
+              : view === "papers" ? <PaperGraphView projectId={activeProjectId} onNavigate={navigateToView} />
               : view === "settings" ? <SettingsView />
               : <Placeholder title={labels[view]} />}
           </Suspense>
         </div>
       </section>
-      {view === "chat" ? <OutputPanel project={activeProject} activeSessionId={activeSessionId} /> : null}
-      {commandOpen ? <div className="command-palette" role="dialog" aria-modal="true" aria-label="搜索与跳转">
+      {commandOpen ? <div className="command-palette" role="dialog" aria-modal="true" aria-label="搜索与跳转" onKeyDown={onCommandKeyDown} onPointerDown={(event) => { if (event.target === event.currentTarget) setCommandOpen(false); }}>
         <div>
           <header>
-            <input autoFocus placeholder="跳转页面、切换项目或新建对话…" value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} />
+            <input autoFocus placeholder="跳转页面、切换项目或新建对话…" value={commandQuery} onChange={(event) => { setCommandQuery(event.target.value); setCommandIndex(0); }} />
             <kbd>ESC</kbd>
           </header>
-          <section>
-            <small>工作区</small>
-            {(Object.keys(labels) as View[]).filter((target) => labels[target].includes(commandQuery.trim()) || !commandQuery.trim()).map((target) => (
-              <button key={target} onClick={() => { setView(target); setCommandOpen(false); setCommandQuery(""); }}>
-                <svg viewBox="0 0 20 20">{icons[target]}</svg>
-                <span>{labels[target]}</span>
-                <em>打开</em>
-              </button>
-            ))}
-          </section>
-          <section>
-            <small>科研项目</small>
-            {[...projects].sort((a, b) => (a.id === FREE_EXPLORATION_PROJECT_ID ? -1 : b.id === FREE_EXPLORATION_PROJECT_ID ? 1 : 0)).filter((project) => `${project.name} ${project.researchQuestion}`.toLocaleLowerCase().includes(commandQuery.trim().toLocaleLowerCase()) || !commandQuery.trim()).map((project) => (
-              <button key={project.id} onClick={() => { setActiveProjectId(project.id); setCommandOpen(false); setCommandQuery(""); }}>
-                <span>◎ {project.name}{project.id === FREE_EXPLORATION_PROJECT_ID ? <em className="project-badge-free">开放问答</em> : null}</span>
-                <em>{project.id === activeProjectId ? "当前" : "切换"}</em>
-              </button>
-            ))}
-          </section>
+          <div ref={commandListRef} style={{ overflow: "auto", minHeight: 0 }}>
+            <section>
+              <small>工作区</small>
+              {commandActions.filter((action) => action.id.startsWith("view:")).map((action) => {
+                const index = commandActions.indexOf(action);
+                const target = action.id.slice(5) as View;
+                return (
+                  <button key={action.id} data-active={index === commandIndex} onClick={() => runCommandAction(index)} onPointerMove={() => setCommandIndex(index)}>
+                    {icons[target]}
+                    <span>{action.label}</span>
+                    <em>{action.hint}</em>
+                  </button>
+                );
+              })}
+            </section>
+            <section>
+              <small>科研项目</small>
+              {commandActions.filter((action) => action.id.startsWith("project:")).map((action) => {
+                const index = commandActions.indexOf(action);
+                return (
+                  <button key={action.id} data-active={index === commandIndex} onClick={() => runCommandAction(index)} onPointerMove={() => setCommandIndex(index)}>
+                    <span>◎ {action.label}</span>
+                    <em>{action.hint}</em>
+                  </button>
+                );
+              })}
+            </section>
+          </div>
           <footer>
-            <button onClick={() => { startNewConversation(); setView("chat"); setCommandOpen(false); }}>＋ 新建研究对话</button>
+            <button onClick={() => { startNewConversation(); navigateToView("chat"); setCommandOpen(false); }}><Plus size={14} aria-hidden="true" /> 新建研究对话</button>
           </footer>
         </div>
       </div> : null}
+      <DesignTweaks />
+      <Dialog open={pendingDelete !== undefined} onClose={() => setPendingDelete(undefined)} title="删除对话" width={420}
+        footer={<>
+          <button className="xl-btn" data-variant="ghost" onClick={() => setPendingDelete(undefined)}>取消</button>
+          <button className="xl-btn" data-variant="danger" onClick={confirmDeleteSession}>删除</button>
+        </>}>
+        <p>确定删除对话「<b>{pendingDelete?.title}</b>」吗？对话中的推演记录将一并移除，删除后不可恢复。</p>
+      </Dialog>
     </main>
   );
 }

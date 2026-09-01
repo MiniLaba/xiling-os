@@ -29,8 +29,11 @@ class FixtureRuntime implements HarnessRuntime {
     await this.listener?.({ type: "session.started", sessionId: "fixture" });
     await this.listener?.({ type: "tool.started", toolName: "read_ocean_fixture", callId: "call-1" });
     if (this.delayed) {
+      // Mirrors pi-agent-core: an aborted prompt() resolves (never rejects) and
+      // surfaces the abort as an agent_end/session.error event instead of an error.
       while (!this.aborted) await new Promise((resolve) => setTimeout(resolve, 2));
-      throw new Error("cancelled");
+      await this.listener?.({ type: "session.error", sessionId: "fixture", message: "模型调用已取消" });
+      return;
     }
     await this.listener?.({ type: "tool.finished", toolName: "read_ocean_fixture", callId: "call-1", details: { temperature: 28.4, unit: "degC" } });
     await this.onUsage(totals);
@@ -137,6 +140,28 @@ describe("ResearchAgentHarness durable vertical slice", () => {
     const cancelled = await waitForStatus(harness, run.id, "cancelled");
     expect(cancelled.operations).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "cancel", status: "completed" }), expect.objectContaining({ kind: "model", status: "cancelled" })]));
     expect(cancelled.events.at(-1)?.type).toBe("run.cancelled");
+    store.close();
+  });
+
+  it("settles a cancel that arrives while the runtime is still being created without calling the model or bricking the session", async () => {
+    const root = await mkdtemp(join(tmpdir(), "xiling-agent-cancel-create-"));
+    const store = new SqliteAgentSessionStore(join(root, "agent-center.sqlite"));
+    let releaseCreate: (() => void) | undefined;
+    let promptCalled = false;
+    const slowFactory: HarnessRuntimeFactory = { create: async () => {
+      await new Promise<void>((resolve) => { releaseCreate = resolve; });
+      return { subscribe: () => () => {}, abort: () => {}, async prompt() { promptCalled = true; } };
+    } };
+    const harness = new ResearchAgentHarness(store, slowFactory);
+    const session = harness.createSession({ projectId: "ocean-project" });
+    const run = harness.startTurn({ sessionId: session.id, prompt: "创建期取消", clientCommandId: "cancel-create-1" }).run;
+    harness.cancel(run.id);
+    releaseCreate?.();
+    const cancelled = await waitForStatus(harness, run.id, "cancelled");
+    expect(promptCalled).toBe(false);
+    expect(cancelled.events.at(-1)?.type).toBe("run.cancelled");
+    // The single-writer slot must be free again: a follow-up turn starts normally.
+    expect(() => harness.startTurn({ sessionId: session.id, prompt: "继续对话", clientCommandId: "cancel-create-2" })).not.toThrow();
     store.close();
   });
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { DockerSandboxPolicy, ExecutionCoordinator, InMemoryExecutionRepository, SqliteExecutionRepository, dockerSandboxArgs, executionPlanHash, materializeExecution, type ExecutionPlan } from "./index.js";
+import { DockerSandboxPolicy, ExecutionCoordinator, InMemoryExecutionRepository, SqliteExecutionRepository, dockerSandboxArgs, executionPlanHash, materializeExecution, type ExecutionPlan, type ExecutionRecord } from "./index.js";
 
 const plan: ExecutionPlan = { projectId: "p1", recipe: { id: "statistics.summary", version: "1.0.0" }, inputSelectors: { dataset: "approved-dataset-snapshot" }, code: { uri: "artifact://sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", sha256: "b".repeat(64) }, parameters: { alpha: 0.05, columns: ["x", "y"] }, randomSeed: 42, environment: { imageDigest: `sha256:${"c".repeat(64)}` }, resources: { cpu: 1, memoryBytes: 512_000_000, timeoutMs: 1_000 }, network: { mode: "none" } };
 const spec = materializeExecution(plan, [{ name: "data", uri: "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", sha256: "a".repeat(64) }]);
@@ -45,5 +45,27 @@ describe("discipline-neutral execution kernel", () => {
     const root = await mkdtemp(join(tmpdir(), "xiling-execution-")); const path = join(root, "executions.sqlite");
     const first = new SqliteExecutionRepository(path); first.save({ id: "execution-1", projectId: "p1", idempotencyKey: "retry-1", specHash: "hash", status: "succeeded", createdAt: "2026-01-01T00:00:00Z" }); first.close();
     const restored = new SqliteExecutionRepository(path); expect(restored.getByKey("p1", "retry-1")).toMatchObject({ id: "execution-1", status: "succeeded" }); restored.close();
+  });
+
+  it("marks executions left running by a previous session as failed on recovery", async () => {
+    const root = await mkdtemp(join(tmpdir(), "xiling-execution-recover-")); const path = join(root, "executions.sqlite");
+    const crashed = new SqliteExecutionRepository(path);
+    crashed.save({ id: "execution-ghost", projectId: "p1", idempotencyKey: "ghost-1", specHash: "hash", status: "running", createdAt: "2026-01-01T00:00:00Z" });
+    crashed.close();
+    const restored = new SqliteExecutionRepository(path);
+    expect(restored.recoverInterrupted()).toBe(1);
+    expect(restored.getByKey("p1", "ghost-1")).toMatchObject({ status: "failed", error: "interrupted during previous server session" });
+    expect(restored.recoverInterrupted()).toBe(0);
+    restored.close();
+  });
+
+  it("resolves a concurrent idempotency claim without overwriting a different spec", async () => {
+    const repository = new InMemoryExecutionRepository();
+    const coordinator = new ExecutionCoordinator(repository, { execute: async () => ({ outputs: [], exitCode: 0, environmentDigest: "sha256:fixture", startedAt: "2026-01-01T00:00:00Z", finishedAt: "2026-01-01T00:00:01Z" }) });
+    const approval = { id: "approval-3", projectId: "p1", planHash: executionPlanHash(plan), approvedAt: "2026-01-01T00:00:00Z" };
+    const ghost: ExecutionRecord = { id: "execution-other", projectId: "p1", specHash: "different-spec", idempotencyKey: "race-1", status: "running", createdAt: "2026-01-01T00:00:00Z" };
+    expect(repository.insert(ghost)).toBe(true);
+    await expect(coordinator.run(spec, approval, "race-1")).rejects.toThrow("Execution idempotency conflict");
+    expect(repository.getByKey("p1", "race-1")).toMatchObject({ id: "execution-other", specHash: "different-spec" });
   });
 });

@@ -12,6 +12,13 @@ import { dockerSandboxArgs } from "@xiling/execution";
 
 const executeFile = promisify(execFile);
 
+/** Resolves the immutable image ID behind the configured tag (see connector-runner). */
+async function pinnedImageId(image: string): Promise<string> {
+  const inspected = await executeFile("docker", ["image", "inspect", "--format", "{{.Id}}", image], { timeout: 10_000, maxBuffer: 4096 });
+  const id = inspected.stdout.trim();
+  return /^sha256:[a-f0-9]{64}$/.test(id) ? id : image;
+}
+
 interface RunnerResult {
   outputs: Array<{ path: string; sha256: string }>;
   review: { verdict: "accepted" | "rejected"; checks: ReviewerReport["checks"] };
@@ -59,7 +66,7 @@ export class LocalWorkflowArtifactRegistrar implements WorkflowArtifactRegistrar
 }
 
 export class DockerProjectAnalysisRunner implements ProjectAnalysisRunner {
-  constructor(private readonly workspaceRoot: string, private readonly image = "xiling-runner:research-os") {}
+  constructor(private readonly workspaceRoot: string, private readonly image = "xiling-runner:research-os", private readonly analysisTimeoutMs = 15 * 60_000) {}
 
   async execute(workflow: ProjectResearchWorkflow, signal?: AbortSignal) {
     if (workflow.request.connectorId !== "argo-gdac" || workflow.request.outputFormat !== "NetCDF") throw new Error("首版原生分析配方仅支持 Argo GDAC NetCDF");
@@ -72,14 +79,15 @@ export class DockerProjectAnalysisRunner implements ProjectAnalysisRunner {
     const request = workflow.request;
     const plan = { id: workflow.id, datasetUri: workflow.datasetArtifact.uri, variables: request.variables, region: request.region, depth: request.depth ?? { min: 0, max: 2_000 }, time: request.time, estimatedBytes: workflow.datasetArtifact.bytes, targetUri: `artifact://workflow/${workflow.id}` as ResourceUri, planHash: createHash("sha256").update(JSON.stringify(request)).digest("hex") };
     const planPath = join(runRoot, "plan.json"); await writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`, "utf8");
-    const created = await executeFile("docker", ["create", ...dockerSandboxArgs({ network: "none", memoryBytes: 4 * 1024 ** 3, cpu: 2 }), this.image, "python", "run_ocean_analysis.py", "--plan", "/workspace/plan.json", "--input", "/workspace/input.nc", "--workspace", "/workspace"], { signal, timeout: 15_000, maxBuffer: 1024 * 1024 });
+    const image = await pinnedImageId(this.image);
+    const created = await executeFile("docker", ["create", ...dockerSandboxArgs({ network: "none", memoryBytes: 4 * 1024 ** 3, cpu: 2 }), image, "python", "run_ocean_analysis.py", "--plan", "/workspace/plan.json", "--input", "/workspace/input.nc", "--workspace", "/workspace"], { signal, timeout: 15_000, maxBuffer: 1024 * 1024 });
     const containerId = created.stdout.trim(); if (!containerId) throw new Error("Docker did not return a container id");
     try {
       await executeFile("docker", ["cp", planPath, `${containerId}:/workspace/plan.json`], { signal, timeout: 15_000 });
       await executeFile("docker", ["cp", inputPath, `${containerId}:/workspace/input.nc`], { signal, timeout: 30_000 });
-      await executeFile("docker", ["start", "--attach", containerId], { signal, timeout: 120_000, maxBuffer: 1024 * 1024 });
+      await executeFile("docker", ["start", "--attach", containerId], { signal, timeout: this.analysisTimeoutMs, maxBuffer: 1024 * 1024 });
       await executeFile("docker", ["cp", `${containerId}:/workspace/.`, runRoot], { signal, timeout: 30_000 });
-    } finally { await executeFile("docker", ["rm", "--force", containerId], { timeout: 15_000 }).catch(() => undefined); }
+    } finally { await executeFile("docker", ["rm", "--force", containerId], { timeout: 15_000 }).catch((error) => console.warn(`[xiling] sandbox cleanup failed for ${containerId}: ${error instanceof Error ? error.message : error}`)); }
     const result = JSON.parse(await readFile(join(runRoot, "result.json"), "utf8")) as RunnerResult;
     if (!Array.isArray(result.outputs) || !result.outputs.length || !result.outputs.every((output) => isSafeArtifactPath(output.path) && /^[a-f0-9]{64}$/.test(output.sha256))) throw new Error("Runner returned an invalid artifact manifest");
     for (const output of result.outputs) if (await sha256(resolve(runRoot, "artifacts", output.path)) !== output.sha256) throw new Error(`Artifact hash mismatch: ${output.path}`);

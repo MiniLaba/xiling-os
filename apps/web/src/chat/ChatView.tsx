@@ -5,6 +5,7 @@ import type { ProjectResearchWorkflow } from "@xiling/domain-ocean";
 import { useConversations } from "../workspace/ConversationContext.js";
 import { ResearchWorkflowCard } from "./ResearchWorkflowCard.js";
 import { runResearchTurn } from "../lib/research-session-client.js";
+import { jsonInit } from "../lib/api-client.js";
 import { formatAttachmentSize, nativeImageUpload, NATIVE_IMAGE_ACCEPT, readNativeImages, type PendingNativeImage } from "../lib/native-image-input.js";
 import { AgentExecutionGraphView } from "./AgentExecutionGraphView.js";
 import { ArtifactViewer } from "../components/ArtifactViewer.js";
@@ -260,12 +261,12 @@ export function ChatView({ project }: { project: ResearchProject }) {
     try {
       if (target === "task") {
         const provenance = lastAssistant.runId ? `\n\n来源 Agent Run：${lastAssistant.runId}` : "";
-        const response = await fetch("/api/v1/project-items", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ projectId: project.id, kind: "task", title, notes: `${lastAssistant.text.slice(0, 1_700)}${provenance}` }) });
+        const response = await fetch("/api/v1/project-items", jsonInit("POST", { projectId: project.id, kind: "task", title, notes: `${lastAssistant.text.slice(0, 1_700)}${provenance}` }));
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         await response.json() as ProjectItem;
       } else if (target === "wiki") {
         const provenance = lastAssistant.runId ? `\n\n---\n\n> 来源：Agent Run \`${lastAssistant.runId}\`。发布前请核对证据与结论。` : "";
-        const response = await fetch("/api/v1/wiki/pages", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ projectId: project.id, title, markdown: `# ${title}\n\n${lastAssistant.text}${provenance}` }) });
+        const response = await fetch("/api/v1/wiki/pages", jsonInit("POST", { projectId: project.id, title, markdown: `# ${title}\n\n${lastAssistant.text}${provenance}` }));
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         await response.json() as WikiPageDetail;
       }

@@ -1,0 +1,266 @@
+/* 汐语灵境 · 科研画布。 */
+
+.scientific-canvas-shell {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--xl-bg);
+}
+
+.scientific-canvas-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--xl-space-3);
+  padding: var(--xl-space-4) var(--xl-space-5) var(--xl-space-2);
+}
+.scientific-canvas-views {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--xl-radius-md);
+  background: var(--xl-bg-secondary);
+  border: 1px solid var(--xl-border);
+}
+.scientific-canvas-views button {
+  padding: 4px var(--xl-space-3);
+  border-radius: var(--xl-radius-sm);
+  font-size: var(--xl-type-small);
+  color: var(--xl-muted);
+  transition: background var(--xl-motion-fast) var(--xl-ease-tide), color var(--xl-motion-fast) var(--xl-ease-tide);
+}
+.scientific-canvas-views button.active { background: var(--xl-surface); color: var(--xl-text); font-weight: 600; box-shadow: var(--xl-shadow-sm); }
+
+.scientific-canvas-actions { display: flex; align-items: center; gap: var(--xl-space-2); }
+.scientific-canvas-actions > button, .scientific-focus-switch {
+  padding: 6px var(--xl-space-3);
+  border-radius: var(--xl-radius-md);
+  border: 1px solid var(--xl-border);
+  background: var(--xl-surface);
+  color: var(--xl-muted);
+  font-size: var(--xl-type-small);
+  transition: background var(--xl-motion-fast) var(--xl-ease-tide), color var(--xl-motion-fast) var(--xl-ease-tide);
+}
+.scientific-canvas-actions > button:hover:not(:disabled) { background: var(--xl-hover); color: var(--xl-text); }
+.scientific-canvas-actions > button:disabled { opacity: 0.4; }
+.scientific-focus-switch { display: inline-flex; gap: 2px; padding: 3px; }
+.scientific-focus-switch button { padding: 3px var(--xl-space-2); border-radius: var(--xl-radius-sm); color: var(--xl-muted); font-size: var(--xl-type-small); }
+.scientific-focus-switch button.active { background: var(--xl-accent-soft); color: var(--xl-accent); font-weight: 600; }
+
+.scientific-canvas-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--xl-space-2);
+  margin: 0 var(--xl-space-5) var(--xl-space-2);
+  padding: 0 var(--xl-space-3);
+  max-width: 460px;
+  border: 1px solid var(--xl-border);
+  border-radius: var(--xl-radius-md);
+  background: var(--xl-surface);
+  color: var(--xl-faint);
+}
+.scientific-canvas-search input { flex: 1; padding: 7px 0; background: none; border: 0; outline: none; font-size: var(--xl-type-small); color: var(--xl-text); }
+.scientific-canvas-search > span { font-size: var(--xl-type-caption); white-space: nowrap; }
+.scientific-search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: var(--xl-z-overlay);
+  background: var(--xl-elevated);
+  border: 1px solid var(--xl-border-strong);
+  border-radius: var(--xl-radius-md);
+  box-shadow: var(--xl-shadow-lg);
+  overflow: hidden;
+}
+.scientific-search-results button { width: 100%; display: flex; gap: var(--xl-space-2); align-items: baseline; padding: var(--xl-space-2) var(--xl-space-3); text-align: left; font-size: var(--xl-type-small); color: var(--xl-text); }
+.scientific-search-results button:hover { background: var(--xl-hover); }
+.scientific-search-results button span { flex: none; font-size: var(--xl-type-caption); color: var(--xl-accent); }
+
+.scientific-canvas-shell .react-flow { flex: 1; margin: 0 var(--xl-space-5) var(--xl-space-3); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-lg); background: var(--xl-bg-secondary); }
+.scientific-background { stroke: var(--xl-border); }
+.scientific-canvas-shell .react-flow__controls { box-shadow: var(--xl-shadow-md); border-radius: var(--xl-radius-md); overflow: hidden; }
+.scientific-canvas-shell .react-flow__controls-button { background: var(--xl-surface); border-bottom: 1px solid var(--xl-border); color: var(--xl-muted); }
+.scientific-canvas-shell .react-flow__controls-button:hover { background: var(--xl-hover); color: var(--xl-text); }
+.scientific-minimap { background: var(--xl-surface) !important; border-radius: var(--xl-radius-md); overflow: hidden; box-shadow: var(--xl-shadow-md); }
+.scientific-minimap .react-flow__minimap-mask { fill: color-mix(in srgb, var(--xl-bg) 55%, transparent); }
+.scientific-minimap .react-flow__minimap-node { fill: var(--xl-border-strong); }
+.scientific-canvas-shell .react-flow__edge-text { font-size: 11px; fill: var(--xl-muted); }
+.scientific-canvas-shell .react-flow__edge-textbg { fill: var(--xl-surface); }
+.scientific-canvas-shell .react-flow__edge.selected .react-flow__edge-path { stroke-width: 2.4 !important; opacity: 1 !important; }
+
+/* 节点卡 */
+.scientific-node {
+  width: 258px;
+  padding: var(--xl-space-3);
+  border-radius: var(--xl-radius-lg);
+  background: var(--xl-surface);
+  border: 1px solid var(--xl-border);
+  border-left: 3px solid var(--xl-border-strong);
+  box-shadow: var(--xl-shadow-sm);
+  display: grid;
+  gap: var(--xl-space-2);
+  transition: box-shadow var(--xl-motion-fast) var(--xl-ease-tide), border-color var(--xl-motion-fast) var(--xl-ease-tide), transform var(--xl-motion-fast) var(--xl-ease-tide);
+}
+.scientific-node:hover { box-shadow: var(--xl-shadow-md); transform: translateY(-1px); }
+.scientific-node.selected { border-color: var(--xl-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--xl-accent) 18%, transparent); }
+.scientific-node.ref-tier-1 { width: 272px; }
+.scientific-node.ref-tier-2 { width: 288px; }
+.scientific-node > header { display: flex; justify-content: space-between; align-items: center; gap: var(--xl-space-2); }
+.scientific-kind { display: inline-flex; align-items: center; gap: 5px; font-size: var(--xl-type-caption); font-weight: 600; letter-spacing: 0.04em; }
+.scientific-status { font-style: normal; font-size: var(--xl-type-caption); color: var(--xl-muted); }
+.scientific-node > h3 { font-size: var(--xl-type-control); font-weight: 650; line-height: var(--xl-leading-ui); }
+.scientific-node > p { font-size: var(--xl-type-small); line-height: var(--xl-leading-cjk); color: var(--xl-muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.scientific-node > footer { display: flex; gap: var(--xl-space-3); align-items: center; font-size: var(--xl-type-caption); color: var(--xl-faint); }
+.scientific-stance { padding: 1px 7px; border-radius: var(--xl-radius-full); font-size: var(--xl-type-caption); }
+.scientific-stance.stance-supports { color: var(--xl-stance-support); background: color-mix(in srgb, var(--xl-stance-support) 14%, transparent); }
+.scientific-stance.stance-refutes { color: var(--xl-stance-refute); background: color-mix(in srgb, var(--xl-stance-refute) 14%, transparent); }
+.scientific-stance.stance-qualifies { color: var(--xl-stance-qualify); background: color-mix(in srgb, var(--xl-stance-qualify) 14%, transparent); }
+.scientific-stance.stance-insufficient { color: var(--xl-stance-insufficient); background: color-mix(in srgb, var(--xl-stance-insufficient) 14%, transparent); }
+
+/* 渐进披露：缩小时的色点形态 */
+.scientific-node-compact {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--xl-radius-full);
+  border: 2px solid var(--xl-border-strong);
+  background: var(--xl-surface);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--xl-shadow-sm);
+}
+.scientific-node-compact i { width: 10px; height: 10px; border-radius: var(--xl-radius-full); }
+.scientific-node-compact.selected { border-color: var(--xl-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--xl-accent) 22%, transparent); }
+
+/* 详情面板 */
+.scientific-canvas-detail {
+  position: absolute;
+  top: 96px;
+  right: var(--xl-space-5);
+  bottom: 76px;
+  z-index: var(--xl-z-sticky, 10);
+  width: 320px;
+  padding: var(--xl-space-4);
+  display: none;
+  flex-direction: column;
+  gap: var(--xl-space-3);
+  overflow: auto;
+  background: var(--xl-elevated);
+  border: 1px solid var(--xl-border-strong);
+  border-radius: var(--xl-radius-lg);
+  box-shadow: var(--xl-shadow-lg);
+  animation: xl-tide-rise var(--xl-motion-normal) var(--xl-ease-tide) both;
+}
+.scientific-canvas-detail.open { display: flex; }
+.scientific-canvas-detail > header { display: flex; justify-content: space-between; align-items: center; }
+.scientific-canvas-detail > header span { font-size: var(--xl-type-caption); letter-spacing: 0.1em; color: var(--xl-accent); font-weight: 600; }
+.scientific-canvas-detail > header button { color: var(--xl-faint); font-size: var(--xl-type-title); line-height: 1; }
+.scientific-canvas-detail > header button:hover { color: var(--xl-text); }
+.scientific-canvas-detail > h2 { font-size: var(--xl-type-lead); font-weight: 650; line-height: var(--xl-leading-ui); }
+.scientific-canvas-detail > p { font-size: var(--xl-type-small); line-height: var(--xl-leading-cjk); color: var(--xl-muted); }
+.scientific-canvas-detail dl { display: grid; gap: var(--xl-space-2); }
+.scientific-canvas-detail dl > div { display: flex; gap: var(--xl-space-3); font-size: var(--xl-type-small); }
+.scientific-canvas-detail dt { min-width: 48px; color: var(--xl-faint); }
+.scientific-canvas-detail dd { margin: 0; word-break: break-all; }
+.scientific-canvas-detail code { display: block; padding: var(--xl-space-2); border-radius: var(--xl-radius-sm); background: var(--xl-bg-secondary); font-size: var(--xl-type-caption); word-break: break-all; color: var(--xl-muted); }
+.scientific-source-action { display: grid; gap: 4px; }
+.scientific-source-action a, .scientific-source-action button { justify-self: start; color: var(--xl-accent); font-size: var(--xl-type-small); }
+.scientific-source-action small { font-size: var(--xl-type-caption); color: var(--xl-faint); word-break: break-all; }
+.scientific-canvas-detail section { display: grid; gap: var(--xl-space-2); }
+.scientific-canvas-detail section > b { font-size: var(--xl-type-small); }
+.scientific-canvas-detail section button { display: flex; gap: var(--xl-space-2); align-items: baseline; padding: var(--xl-space-2); border-radius: var(--xl-radius-md); text-align: left; font-size: var(--xl-type-small); color: var(--xl-text); background: var(--xl-bg-secondary); }
+.scientific-canvas-detail section button:hover { background: var(--xl-hover); }
+.scientific-canvas-detail section button span { flex: none; font-size: var(--xl-type-caption); color: var(--xl-accent); }
+.scientific-canvas-detail section small { color: var(--xl-faint); font-size: var(--xl-type-caption); }
+.scientific-context-actions { display: flex; gap: var(--xl-space-2); margin-top: auto; }
+.scientific-context-actions button { flex: 1; padding: 7px var(--xl-space-2); border-radius: var(--xl-radius-md); border: 1px solid var(--xl-border); color: var(--xl-muted); font-size: var(--xl-type-small); background: var(--xl-surface); }
+.scientific-context-actions button:hover:not(:disabled) { background: var(--xl-hover); color: var(--xl-text); }
+.scientific-context-actions button.active { color: var(--xl-evidence); border-color: color-mix(in srgb, var(--xl-evidence) 40%, transparent); background: var(--xl-evidence-soft); }
+.scientific-context-actions button.primary { background: var(--xl-accent-strong); border-color: transparent; color: var(--xl-on-accent); }
+.scientific-context-actions button.primary:hover:not(:disabled) { background: var(--xl-accent); color: var(--xl-bg); }
+.scientific-context-actions button:disabled { opacity: 0.45; }
+.scientific-context-hint { font-size: var(--xl-type-caption); color: var(--xl-faint); }
+
+/* 图例：全部 16 种关系 */
+.scientific-canvas-legend {
+  position: absolute;
+  left: var(--xl-space-5);
+  bottom: var(--xl-space-3);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: calc(100% - 380px);
+  padding: 5px;
+  border-radius: var(--xl-radius-lg);
+  background: color-mix(in srgb, var(--xl-surface) 90%, transparent);
+  border: 1px solid var(--xl-border);
+  backdrop-filter: blur(4px);
+}
+.scientific-canvas-legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px var(--xl-space-2);
+  border-radius: var(--xl-radius-full);
+  font-size: var(--xl-type-caption);
+  color: var(--xl-muted);
+}
+.scientific-canvas-legend button:hover { background: var(--xl-hover); color: var(--xl-text); }
+.scientific-canvas-legend button.active { background: var(--xl-accent-soft); color: var(--xl-accent); font-weight: 600; }
+.scientific-canvas-legend button i { width: 9px; height: 9px; border-radius: var(--xl-radius-full); }
+
+/* 提案 */
+.scientific-proposal-dialog { position: fixed; inset: 0; z-index: var(--xl-z-modal); display: grid; place-items: center; background: color-mix(in srgb, var(--xl-bg) 62%, transparent); backdrop-filter: blur(6px); }
+.scientific-proposal-dialog > div { width: min(560px, calc(100vw - 48px)); background: var(--xl-elevated); border: 1px solid var(--xl-border-strong); border-radius: var(--xl-radius-lg); box-shadow: var(--xl-shadow-lg); animation: xl-tide-rise var(--xl-motion-fast) var(--xl-ease-tide) both; }
+.scientific-proposal-dialog header { display: flex; justify-content: space-between; align-items: flex-start; padding: var(--xl-space-4) var(--xl-space-4) 0; }
+.scientific-proposal-dialog header small { font-size: var(--xl-type-caption); letter-spacing: 0.14em; color: var(--xl-faint); }
+.scientific-proposal-dialog header h2 { font-size: var(--xl-type-lead); font-weight: 650; margin-top: 2px; }
+.scientific-proposal-dialog header button { color: var(--xl-faint); font-size: var(--xl-type-title); line-height: 1; }
+.scientific-proposal-dialog label { display: grid; gap: 6px; padding: var(--xl-space-3) var(--xl-space-4) 0; }
+.scientific-proposal-dialog label span { font-size: var(--xl-type-small); color: var(--xl-muted); }
+.scientific-proposal-dialog input, .scientific-proposal-dialog textarea { padding: var(--xl-space-2) var(--xl-space-3); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-md); background: var(--xl-surface); color: var(--xl-text); font-size: var(--xl-type-control); outline: none; }
+.scientific-proposal-dialog input:focus, .scientific-proposal-dialog textarea:focus { border-color: var(--xl-accent); }
+.scientific-proposal-dialog textarea { min-height: 120px; resize: vertical; line-height: var(--xl-leading-cjk); }
+.scientific-proposal-dialog p { padding: var(--xl-space-3) var(--xl-space-4) 0; font-size: var(--xl-type-small); color: var(--xl-evidence); }
+.scientific-proposal-dialog footer { display: flex; justify-content: flex-end; gap: var(--xl-space-2); padding: var(--xl-space-3) var(--xl-space-4); }
+.scientific-proposal-dialog footer button { padding: 6px var(--xl-space-4); border-radius: var(--xl-radius-md); border: 1px solid var(--xl-border); color: var(--xl-muted); font-size: var(--xl-type-control); }
+.scientific-proposal-dialog footer button.primary { background: var(--xl-accent-strong); border-color: transparent; color: var(--xl-on-accent); }
+.scientific-proposal-dialog footer button.primary:disabled { opacity: 0.45; }
+
+.scientific-proposal-tray {
+  position: absolute;
+  left: var(--xl-space-5);
+  top: 96px;
+  z-index: var(--xl-z-sticky, 10);
+  width: 300px;
+  max-height: 60%;
+  overflow: auto;
+  display: grid;
+  gap: var(--xl-space-2);
+  padding: var(--xl-space-3);
+  background: var(--xl-elevated);
+  border: 1px solid color-mix(in srgb, var(--xl-evidence) 40%, transparent);
+  border-radius: var(--xl-radius-lg);
+  box-shadow: var(--xl-shadow-lg);
+  animation: xl-tide-rise var(--xl-motion-normal) var(--xl-ease-tide) both;
+}
+.scientific-proposal-tray > header { display: flex; justify-content: space-between; align-items: baseline; }
+.scientific-proposal-tray > header b { font-size: var(--xl-type-control); }
+.scientific-proposal-tray > header span { font-size: var(--xl-type-caption); color: var(--xl-evidence); }
+.scientific-proposal-tray article { display: grid; gap: 4px; padding: var(--xl-space-3); border-radius: var(--xl-radius-md); background: var(--xl-bg-secondary); border: 1px solid var(--xl-border); }
+.scientific-proposal-tray article small { font-size: var(--xl-type-caption); color: var(--xl-evidence); }
+.scientific-proposal-tray article b { font-size: var(--xl-type-small); }
+.scientific-proposal-tray article p { font-size: var(--xl-type-small); color: var(--xl-muted); line-height: var(--xl-leading-cjk); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.scientific-proposal-tray article footer { display: flex; justify-content: flex-end; gap: var(--xl-space-2); margin-top: 4px; }
+.scientific-proposal-tray article footer button { padding: 4px var(--xl-space-3); border-radius: var(--xl-radius-sm); border: 1px solid var(--xl-border); color: var(--xl-muted); font-size: var(--xl-type-caption); }
+.scientific-proposal-tray article footer button.primary { background: var(--xl-accent-strong); border-color: transparent; color: var(--xl-on-accent); }
+
+@media (max-width: 900px) {
+  .scientific-canvas-detail { width: calc(100% - 64px); }
+  .scientific-canvas-legend { max-width: calc(100% - 48px); }
+  .scientific-canvas-topbar { flex-direction: column; align-items: flex-start; }
+}

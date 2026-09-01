@@ -22,12 +22,14 @@
 3. [科研内核架构宪法](architecture/research-os-constitution.md)：不可破坏的设计约束。
 4. [模块化单体架构](architecture/modular-monolith.md)：包、Server 模块和依赖方向。
 5. [领域模型](architecture/domain-model.md)：Project、Evidence、Run、Artifact 等对象的语义。
-6. 根据任务阅读下方专题和对应 ADR。
+6. [汐语灵境设计系统](design-system.md)：UI/交互的唯一参照规范与设计令牌。
+7. 根据任务阅读下方专题和对应 ADR。
 
 ## 当前架构专题
 
 | 主题 | 文档 | 回答的问题 |
 | --- | --- | --- |
+| 界面设计 | [汐语灵境设计系统](design-system.md) | UI 令牌、术语、布局、组件与两个图视图的交互规范是什么？ |
 | 模块边界 | [模块化单体架构](architecture/modular-monolith.md) | 哪个包拥有哪项职责，依赖可以指向哪里？ |
 | 科研对象 | [领域模型](architecture/domain-model.md) | Project、Claim、Evidence、Run、Artifact 如何关联？ |
 | Research Graph | [科研图架构](architecture/research-graph.md) | 科研事实、证据链、溯源和画布投影如何保存？ |
@@ -54,6 +56,7 @@
 - [真实模型路由与角色覆盖](adr/0037-real-model-routing-and-role-overrides.md)
 - [原生 Windows 控制面与 Docker 科研沙箱](adr/0039-native-windows-control-plane-and-docker-sandbox.md)
 - [可安装科学领域包](adr/0040-extensible-science-domain-packages.md)
+- [两栏应用壳与 Chat 上下文产物面板](adr/0041-two-column-shell-and-contextual-artifact-panel.md)
 
 ## 质量、测试与合规
 

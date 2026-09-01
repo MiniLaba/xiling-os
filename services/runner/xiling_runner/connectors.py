@@ -27,7 +27,7 @@ class DownloadedArtifact:
 
 
 class ConnectorAdapter(Protocol):
-    def download(self, request: dict[str, Any], output: Path, credentials: dict[str, str]) -> list[Path]: ...
+    def download(self, request: dict[str, Any], output: Path, credentials: dict[str, str], max_bytes: int | None = None) -> list[Path]: ...
 
 
 def _canonical_hash(value: Any) -> str:
@@ -184,12 +184,20 @@ def build_erddap_subset_url(request: dict[str, Any], xml: bytes) -> str:
     return f"https://coastwatch.noaa.gov/erddap/griddap/{dataset}.{extension}?{query}"
 
 
-def _download_to_file(url: str, target: Path) -> None:
+def _download_to_file(url: str, target: Path, max_bytes: int | None = None) -> None:
     request = urllib.request.Request(url, headers={"User-Agent": "XiLingOS/0.1 approved-download (research; contact local-user)"})
     for attempt in range(4):
         try:
+            received = 0
             with urllib.request.urlopen(request, timeout=60) as response, target.open("wb") as output:
-                shutil.copyfileobj(response, output, length=1024 * 1024)
+                while True:
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    received += len(chunk)
+                    if max_bytes is not None and received > max_bytes:
+                        raise ConnectorError(f"download exceeded the approved volume budget ({max_bytes} bytes)")
+                    output.write(chunk)
             if target.stat().st_size <= 0:
                 raise ConnectorError("ERDDAP returned an empty subset")
             return
@@ -327,18 +335,18 @@ def build_execution_spec(request: dict[str, Any]) -> dict[str, Any]:
 
 
 class ErddapAdapter:
-    def download(self, request: dict[str, Any], output: Path, credentials: dict[str, str]) -> list[Path]:
+    def download(self, request: dict[str, Any], output: Path, credentials: dict[str, str], max_bytes: int | None = None) -> list[Path]:
         del credentials
         response = {"NetCDF": "nc", "CSV": "csv", "Zarr": "nc"}[request["outputFormat"]]
         target = output / f"subset.{response}"
         dataset = urllib.parse.quote(request["datasetId"], safe="")
         xml = _read_bytes(f"https://coastwatch.noaa.gov/erddap/griddap/{dataset}.ncml")
-        _download_to_file(build_erddap_subset_url(request, xml), target)
+        _download_to_file(build_erddap_subset_url(request, xml), target, max_bytes)
         return [target]
 
 
 class ArgoAdapter:
-    def download(self, request: dict[str, Any], output: Path, credentials: dict[str, str]) -> list[Path]:
+    def download(self, request: dict[str, Any], output: Path, credentials: dict[str, str], max_bytes: int | None = None) -> list[Path]:
         del credentials
         DataFetcher = load_argopy_data_fetcher()
 
@@ -355,7 +363,7 @@ class ArgoAdapter:
 
 
 class CopernicusAdapter:
-    def download(self, request: dict[str, Any], output: Path, credentials: dict[str, str]) -> list[Path]:
+    def download(self, request: dict[str, Any], output: Path, credentials: dict[str, str], max_bytes: int | None = None) -> list[Path]:
         import copernicusmarine
 
         username, password = credentials.get("username"), credentials.get("password")
@@ -380,7 +388,7 @@ class CopernicusAdapter:
 
 
 class HarmonyAdapter:
-    def download(self, request: dict[str, Any], output: Path, credentials: dict[str, str]) -> list[Path]:
+    def download(self, request: dict[str, Any], output: Path, credentials: dict[str, str], max_bytes: int | None = None) -> list[Path]:
         from harmony import BBox, Client, Collection, Request
 
         token = credentials.get("token")
@@ -395,7 +403,10 @@ class HarmonyAdapter:
             temporal={"start": time["start"], "stop": time["end"]}, max_results=10,
         )
         job_id = client.submit(job_request)
-        client.wait_for_processing(job_id, show_progress=False)
+        try:
+            client.wait_for_processing(job_id, show_progress=False, timeout=1500)
+        except TypeError:  # harmony-py builds without the timeout kwarg
+            client.wait_for_processing(job_id, show_progress=False)
         return [Path(future.result()) for future in client.download_all(job_id, directory=output, overwrite=False)]
 
 
@@ -419,7 +430,7 @@ def load_argopy_data_fetcher():
     return DataFetcher
 
 
-def execute_download(request: dict[str, Any], workspace: Path, credentials: dict[str, str], fixture_source: Path | None = None) -> dict[str, Any]:
+def execute_download(request: dict[str, Any], workspace: Path, credentials: dict[str, str], fixture_source: Path | None = None, max_bytes: int | None = None) -> dict[str, Any]:
     validate_request(request)
     output = workspace.resolve() / "artifacts"
     output.mkdir(parents=True, exist_ok=True)
@@ -430,7 +441,7 @@ def execute_download(request: dict[str, Any], workspace: Path, credentials: dict
         paths = [Path(shutil.copyfile(source, output / source.name))]
         source_kind = "fixture"
     else:
-        paths = ADAPTERS[request["connectorId"]].download(request, output, credentials)
+        paths = ADAPTERS[request["connectorId"]].download(request, output, credentials, max_bytes)
         source_kind = "live"
     artifacts: list[DownloadedArtifact] = []
     for path in paths:
@@ -439,6 +450,8 @@ def execute_download(request: dict[str, Any], workspace: Path, credentials: dict
             raise ConnectorError("connector returned an unsafe artifact path")
         digest = hashlib.sha256(resolved.read_bytes()).hexdigest()
         artifacts.append(DownloadedArtifact(resolved, digest, resolved.stat().st_size))
+    if max_bytes is not None and sum(item.bytes for item in artifacts) > max_bytes:
+        raise ConnectorError(f"download exceeded the approved volume budget ({max_bytes} bytes)")
     return {
         "source": source_kind,
         "plan": build_execution_spec(request),

@@ -1,3 +1,4 @@
+import { validationFailure } from "../../http-errors.js";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { ArtifactLifecycle } from "@xiling/contracts";
@@ -20,7 +21,7 @@ export function registerArtifactRoutes(app: FastifyInstance, artifacts: Artifact
 
   app.get("/api/v1/artifacts", async (request, reply) => {
     const query = projectQuery.safeParse(request.query);
-    if (!query.success) return reply.code(400).send({ error: query.error.issues });
+    if (!query.success) return reply.code(400).send(validationFailure(query.error));
     if (!requireProject(query.data.projectId)) return reply.code(404).send({ error: "Project not found" });
     return artifacts.list(query.data.projectId);
   });

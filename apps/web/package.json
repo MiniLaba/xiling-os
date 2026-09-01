@@ -10,12 +10,14 @@
   },
   "dependencies": {
     "@assistant-ui/react": "0.15.16",
-    "@xiling/api-contracts": "workspace:*",
     "@milkdown/kit": "catalog:",
+    "@xiling/api-contracts": "workspace:*",
     "@xiling/contracts": "workspace:*",
     "@xiling/domain-ocean": "workspace:*",
+    "@xiling/ui-tokens": "workspace:*",
     "@xyflow/react": "12.11.3",
     "cytoscape": "3.34.1",
+    "lucide-react": "catalog:",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

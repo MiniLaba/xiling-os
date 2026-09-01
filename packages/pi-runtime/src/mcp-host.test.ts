@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { PiMcpGatewayManager } from "./mcp-host.js";
@@ -26,6 +26,17 @@ describe("PiMcpGatewayManager", () => {
     const cancelled = manager.tool().execute("cancel", { tool: "echo_lab_echo", server: "echo-lab", args: { text: "slow", delayMs: 5_000 } }, controller.signal);
     setTimeout(() => controller.abort(new Error("test cancellation")), 25);
     await expect(cancelled).rejects.toThrow("test cancellation");
+    await manager.close();
+  }, 30_000);
+
+  it("fails configure with a visible error and leaves no orphan process when worker init dies", async () => {
+    const root = await mkdtemp(resolve(tmpdir(), "xiling-mcp-host-fatal-")); roots.push(root);
+    // The first configure() uses runtime-1; making its agent dir a file forces
+    // the worker's initialize() to fail with EEXIST before "ready" is answered.
+    await mkdir(resolve(root, "runtime-1"), { recursive: true });
+    await writeFile(resolve(root, "runtime-1", "agent"), "not a directory");
+    const manager = new PiMcpGatewayManager(root);
+    await expect(manager.configure({ servers: [{ name: "broken-lab", description: "初始化即失败的连接器", keywords: [], definition: { command: process.execPath, args: ["-e", ""], lifecycle: "lazy", approveTools: false } }] })).rejects.toThrow(/MCP host/i);
     await manager.close();
   }, 30_000);
 });

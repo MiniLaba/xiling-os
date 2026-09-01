@@ -3,6 +3,8 @@ import {
   Background,
   Controls,
   Handle,
+  MarkerType,
+  MiniMap,
   Position,
   ReactFlow,
   useEdgesState,
@@ -14,6 +16,7 @@ import {
   type ReactFlowInstance,
 } from "@xyflow/react";
 import { unstable_useComposerInput } from "@assistant-ui/react";
+import { Bot, Clock3, Cpu, Layers, MessageSquare, Play, RotateCcw, Search, User, Users, Wrench, X } from "lucide-react";
 import type { AgentExecutionGraphProjection, AgentExecutionNode, AgentExecutionGraphScope } from "@xiling/contracts";
 import { RecordDetailModal } from "../components/RecordDetailModal.js";
 
@@ -26,9 +29,14 @@ export interface ConversationNodeData extends Record<string, unknown> {
   summary: string;
   hiddenDetailCount: number;
   toolNames: string[];
-  active?: boolean;
-  quoted?: boolean;
-  dimmed?: boolean;
+  /** 折叠进回答卡片的执行细节（模型/工具/用量等），点击就地展开。 */
+  detailNodes: AgentExecutionNode[];
+  active?: boolean | undefined;
+  quoted?: boolean | undefined;
+  dimmed?: boolean | undefined;
+  expanded?: boolean | undefined;
+  onToggleExpand?: ((id: string) => void) | undefined;
+  onRetry?: (nodeId: string, promptText: string) => void;
 }
 
 export type ConversationNode = Node<ConversationNodeData, "conversation">;
@@ -41,17 +49,84 @@ const displayLabel: Record<ConversationDisplayKind, string> = {
   "agent-task": "子智能体",
 };
 
+const displayIcon: Record<ConversationDisplayKind, ReactNode> = {
+  thread: <MessageSquare size={13} aria-hidden="true" />,
+  prompt: <User size={13} aria-hidden="true" />,
+  response: <Bot size={13} aria-hidden="true" />,
+  "agent-task": <Users size={13} aria-hidden="true" />,
+};
+
+const runStatusLabel: Record<string, string> = {
+  queued: "排队中",
+  running: "推演中",
+  completed: "已完成",
+  failed: "已失败",
+  cancelled: "已取消",
+  suspended: "挂起",
+};
+
+const edgeKindLabel: Record<"thread" | "answer" | "follow-up" | "delegation", string> = {
+  thread: "对话",
+  answer: "回答",
+  "follow-up": "追问",
+  delegation: "委派",
+};
+
 const formatNodeTime = (timestamp: string) => new Date(timestamp).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
-function ConversationCard({ data, selected }: NodeProps<ConversationNode>) {
+const formatDuration = (value?: number) => value === undefined ? "—" : value < 1_000 ? `${value} ms` : `${(value / 1_000).toFixed(1)} s`;
+
+function ConversationCard({ data, selected, id }: NodeProps<ConversationNode>) {
+  const status = data.sourceNode.status ?? "";
+  const running = status === "running" || status === "queued";
+  const failed = status === "failed" || status === "cancelled";
+  const expandable = data.displayKind === "response" && data.hiddenDetailCount > 0;
+  const drillable = data.displayKind === "agent-task";
   return (
-    <article className={`execution-card execution-${data.displayKind} ${data.active ? "active-context" : ""} ${data.quoted ? "quoted-context" : ""} ${data.dimmed ? "dimmed" : ""} ${selected ? "selected" : ""}`}>
+    <article
+      className={`execution-card execution-${data.displayKind} ${data.active ? "active-context" : ""} ${data.quoted ? "quoted-context" : ""} ${data.dimmed ? "dimmed" : ""} ${selected ? "selected" : ""} ${running ? "is-running" : ""} ${failed ? "is-failed" : ""} ${data.expanded ? "expanded" : ""}`}
+    >
       <Handle type="target" position={Position.Top} isConnectable={false} />
-      <header><span><i />{displayLabel[data.displayKind]}</span>{data.sourceNode.status ? <em>{data.sourceNode.status}</em> : null}</header>
+      <header>
+        <span className="execution-kind"><i>{displayIcon[data.displayKind]}</i>{displayLabel[data.displayKind]}</span>
+        {status ? <em className={`execution-status status-${status}`}>{running ? <i className="execution-pulse" /> : null}{runStatusLabel[status] ?? status}</em> : null}
+      </header>
       <p>{data.summary || "已记录"}</p>
       <footer>
-        <time>{formatNodeTime(data.sourceNode.timestamp)}</time>
-        <span>{data.toolNames.length ? `${data.toolNames.length} 工具` : data.hiddenDetailCount ? `${data.hiddenDetailCount} 细节` : data.sourceNode.metrics?.totalTokens ? `${data.sourceNode.metrics.totalTokens.toLocaleString()} tok` : ""}</span>
+        <time><Clock3 size={11} aria-hidden="true" />{formatNodeTime(data.sourceNode.timestamp)}</time>
+        <span className="execution-card-meta">
+          {data.toolNames.length ? <em>{data.toolNames.length} 工具</em> : null}
+          {data.sourceNode.metrics?.totalTokens ? <em>{data.sourceNode.metrics.totalTokens.toLocaleString()} tok</em> : null}
+        </span>
       </footer>
+      {failed && data.displayKind === "prompt" && data.onRetry ? (
+        <button className="execution-retry" onClick={(event) => { event.stopPropagation(); data.onRetry?.(id, data.sourceNode.title); }}><RotateCcw size={12} aria-hidden="true" />重新推演</button>
+      ) : null}
+      {(expandable || drillable) ? (
+        <button className="execution-expand" onClick={(event) => { event.stopPropagation(); data.onToggleExpand?.(data.sourceNode.id); }}>
+          {data.expanded ? "收起细节" : drillable ? "查看子任务" : `${data.hiddenDetailCount} 条执行细节`}
+        </button>
+      ) : null}
+      {data.expanded && expandable ? (
+        <ul className="execution-detail-list">
+          {data.detailNodes.map((detail) => (
+            <li key={detail.id}>
+              <i>{detail.kind === "model" ? <Cpu size={11} aria-hidden="true" /> : detail.kind === "tool" ? <Wrench size={11} aria-hidden="true" /> : <Layers size={11} aria-hidden="true" />}</i>
+              <span>{detail.title}</span>
+              <em>{detail.metrics?.durationMs !== undefined ? formatDuration(detail.metrics.durationMs) : detail.metrics?.totalTokens !== undefined ? `${detail.metrics.totalTokens.toLocaleString()} tok` : detail.status ?? ""}</em>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {data.expanded && drillable ? (
+        <div className="execution-detail-list execution-drill">
+          <dl>
+            <div><dt>目标</dt><dd>{data.summary}</dd></div>
+            <div><dt>状态</dt><dd>{runStatusLabel[status] ?? status ?? "已记录"}</dd></div>
+            {data.sourceNode.childRunId ? <div><dt>子运行</dt><dd className="execution-mono">{String(data.sourceNode.childRunId).slice(0, 18)}…</dd></div> : null}
+            {data.sourceNode.metrics?.durationMs !== undefined ? <div><dt>耗时</dt><dd>{formatDuration(data.sourceNode.metrics.durationMs)}</dd></div> : null}
+          </dl>
+        </div>
+      ) : null}
       <Handle type="source" position={Position.Bottom} isConnectable={false} />
     </article>
   );
@@ -69,11 +144,10 @@ const toEdge = (id: string, source: string, target: string, kind: "thread" | "an
   target,
   type: "bezier",
   data: { kind },
-  style: {
-    stroke: kind === "delegation" ? "#75a9b4" : kind === "answer" ? "#9eb7c8" : "#b6c0ca",
-    strokeWidth: kind === "answer" || kind === "delegation" ? 1.5 : 1.2,
-    ...(kind === "follow-up" || kind === "thread" ? { strokeDasharray: "4 5" } : {}),
-  },
+  label: edgeKindLabel[kind],
+  labelShowBg: true,
+  markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+  className: `execution-edge execution-edge-${kind}`,
   focusable: false,
 });
 
@@ -98,7 +172,7 @@ export function buildConversationCanvas(projection: AgentExecutionGraphProjectio
         id: `thread:${session.source.sessionId ?? session.id}`,
         type: "conversation",
         position: { x: 0, y: 0 },
-        data: { sourceNode: session, displayKind: "thread", summary: session.title, hiddenDetailCount: 0, toolNames: [] },
+        data: { sourceNode: session, displayKind: "thread", summary: session.title, hiddenDetailCount: 0, toolNames: [], detailNodes: [] },
       });
     }
   }
@@ -120,7 +194,7 @@ export function buildConversationCanvas(projection: AgentExecutionGraphProjectio
       id: promptId,
       type: "conversation",
       position: { x: 0, y: 0 },
-      data: { sourceNode: run, displayKind: "prompt", summary: compactText(run.title), hiddenDetailCount: 0, toolNames: [] },
+      data: { sourceNode: run, displayKind: "prompt", summary: compactText(run.title), hiddenDetailCount: 0, toolNames: [], detailNodes: [] },
     });
     if (!firstPromptBySession.has(sessionId)) firstPromptBySession.set(sessionId, promptId);
     const previous = previousBySession.get(sessionId);
@@ -137,6 +211,7 @@ export function buildConversationCanvas(projection: AgentExecutionGraphProjectio
           summary: response ? compactText(response.summary) : run.status === "running" ? "正在处理这项研究任务…" : "等待开始…",
           hiddenDetailCount,
           toolNames,
+          detailNodes: runNodes.filter((node) => node.id !== response?.id),
         },
       });
       edges.push(toEdge(`answer:${promptId}:${responseId}`, promptId, responseId, "answer"));
@@ -160,7 +235,7 @@ export function buildConversationCanvas(projection: AgentExecutionGraphProjectio
       id: taskId,
       type: "conversation",
       position: { x: 0, y: 0 },
-      data: { sourceNode: delegation, displayKind: "agent-task", summary: compactText(delegation.summary), hiddenDetailCount: 0, toolNames: [] },
+      data: { sourceNode: delegation, displayKind: "agent-task", summary: compactText(delegation.summary), hiddenDetailCount: 0, toolNames: [], detailNodes: [] },
     });
     if (parentRunId) {
       const parentResponse = nodes.some((node) => node.id === `response:${parentRunId}`) ? `response:${parentRunId}` : `prompt:${parentRunId}`;
@@ -203,8 +278,6 @@ export function arrangeConversationCanvas(nodes: ConversationNode[], edges: Conv
   });
 }
 
-const formatDuration = (value?: number) => value === undefined ? "—" : value < 1_000 ? `${value} ms` : `${(value / 1_000).toFixed(1)} s`;
-
 export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey = 0, onReturnToChat }: { projectId: string; activeSessionId: string; refreshKey?: number; onReturnToChat?: () => void }) {
   const [scope, setScope] = useState<AgentExecutionGraphScope>(() => activeSessionId ? "session" : "project");
   const [projection, setProjection] = useState<AgentExecutionGraphProjection>();
@@ -216,6 +289,10 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
   const [quotedNodeIds, setQuotedNodeIds] = useState<string[]>([]);
   const quotedNodeIdsRef = useRef<string[]>([]);
   const [inspected, setInspected] = useState<AgentExecutionNode>();
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [replayTick, setReplayTick] = useState(0);
+  const [retryPrompt, setRetryPrompt] = useState("");
   const [nodes, setNodes, onNodesChange] = useNodesState<ConversationNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ConversationEdge>([]);
   const flow = useRef<ReactFlowInstance<ConversationNode, ConversationEdge> | null>(null);
@@ -223,6 +300,14 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
   useEffect(() => { if (activeSessionId) setScope("session"); }, [activeSessionId]);
   const fit = useCallback(() => { window.setTimeout(() => void flow.current?.fitView({ padding: 0.22, duration: 260, maxZoom: 1.08 }), 40); }, []);
   const autoArrange = useCallback(() => { setNodes((current) => arrangeConversationCanvas(current, edges)); fit(); }, [edges, fit, setNodes]);
+
+  const hasLiveRun = useMemo(() => Boolean(projection?.nodes.some((node) => node.kind === "run" && (node.status === "running" || node.status === "queued"))), [projection]);
+  const [liveTick, setLiveTick] = useState(0);
+  useEffect(() => {
+    if (!hasLiveRun) return;
+    const timer = window.setInterval(() => setLiveTick((tick) => tick + 1), 1_500);
+    return () => window.clearInterval(timer);
+  }, [hasLiveRun]);
 
   useEffect(() => {
     let cancelled = false;
@@ -241,10 +326,11 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
       setActiveNodeId("");
       setQuotedNodeIds([]);
       quotedNodeIdsRef.current = [];
-      fit();
+      if (liveTick === 0) fit();
     }).catch((cause) => { if (!cancelled) { setProjection(undefined); setEdges([]); setNodes([]); setError(cause instanceof Error ? cause.message : String(cause)); } });
     return () => { cancelled = true; };
-  }, [projectId, activeSessionId, scope, refreshKey, fit, setEdges, setNodes]);
+    // liveTick：运行中的会话按 1.5s 轮询重取投影，实现卡片的实时推进。
+  }, [projectId, activeSessionId, scope, refreshKey, liveTick, fit, setEdges, setNodes]);
 
   const ancestorIds = useCallback((selectedIds: string[]) => {
     const selected = new Set(selectedIds.filter(Boolean));
@@ -257,6 +343,16 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
     }
     return selected;
   }, [edges]);
+
+  const toggleExpand = useCallback((sourceId: string) => {
+    setExpandedNodeIds((current) => {
+      const next = new Set(current);
+      if (next.has(sourceId)) next.delete(sourceId);
+      else next.add(sourceId);
+      return next;
+    });
+  }, []);
+
   const applyFocus = useCallback((activeId: string, quotes: string[]) => {
     const focused = ancestorIds(activeId ? [activeId] : quotes);
     setNodes((current) => current.map((node) => ({ ...node, data: { ...node.data, active: node.id === activeId, quoted: quotes.includes(node.id), dimmed: focused.size > 0 && !focused.has(node.id) } })));
@@ -275,6 +371,45 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
   }, [applyFocus]);
   const clearSelection = useCallback(() => { setActiveNodeId(""); setQuotedNodeIds([]); quotedNodeIdsRef.current = []; applyFocus("", []); }, [applyFocus]);
 
+  const retryNode = useCallback((nodeId: string, promptText: string) => {
+    setRetryPrompt(promptText);
+    followUp(nodeId);
+  }, [followUp]);
+
+  // 搜索：多结果列表 + 全部命中高亮 + 逐个定位
+  const searchMatches = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase();
+    if (!query) return [];
+    return nodes.filter((node) => `${node.data.summary} ${node.data.sourceNode.title}`.toLocaleLowerCase().includes(query));
+  }, [nodes, searchQuery]);
+  const jumpToNode = useCallback((id: string) => {
+    const node = nodes.find((item) => item.id === id);
+    if (!node) return;
+    flow.current?.setCenter(node.position.x + 130, node.position.y + 90, { zoom: 1.05, duration: 320 });
+    followUp(id);
+  }, [nodes, followUp]);
+
+  // 时间线回放：按时间戳逐张揭示卡片（潮汐叙事）
+  const startReplay = useCallback(() => {
+    const ordered = [...nodes].sort((a, b) => a.data.sourceNode.timestamp.localeCompare(b.data.sourceNode.timestamp));
+    if (!ordered.length) return;
+    setReplayTick(1);
+    ordered.forEach((node, index) => {
+      window.setTimeout(() => {
+        setNodes((current) => current.map((item): ConversationNode => item.id === node.id ? { ...item, className: "execution-replay-in" } : item));
+        if (index === ordered.length - 1) window.setTimeout(() => setReplayTick(0), 600);
+      }, 180 * index);
+    });
+    setNodes((current) => current.map((item): ConversationNode => ({ ...item, className: "execution-replay-hidden" })));
+  }, [nodes, setNodes]);
+
+  // 搜索 dim 与焦点 dim 一样只是派生展示状态：在渲染时合成，绝不写回 nodes（避免 setState 自激循环）。
+  const displayNodes = useMemo(() => {
+    const matched = new Set(searchMatches.map((node) => node.id));
+    const searching = searchQuery.trim().length > 0;
+    return nodes.map((node) => ({ ...node, data: { ...node.data, dimmed: searching ? !matched.has(node.id) : node.data.dimmed, expanded: expandedNodeIds.has(node.data.sourceNode.id), onToggleExpand: toggleExpand, onRetry: retryNode } }));
+  }, [nodes, searchMatches, searchQuery, expandedNodeIds, toggleExpand, retryNode]);
+
   const turns = nodes.filter((node) => node.data.displayKind === "prompt").length;
   return (
     <section className="agent-execution-graph" aria-label="Agent 对话运行画布">
@@ -282,6 +417,7 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
         <div><small>AGENT FLOW</small><b>{scope === "project" ? "项目对话全景" : "当前对话脉络"}</b><span>默认只显示研究指令与关键回答；执行细节按需查看</span></div>
         <div className="execution-graph-actions">
           <div className="execution-scope-switch"><button className={scope === "session" ? "active" : ""} disabled={!activeSessionId} onClick={() => setScope("session")}>当前对话</button><button className={scope === "project" ? "active" : ""} onClick={() => setScope("project")}>项目全景</button></div>
+          <button onClick={startReplay} disabled={replayTick > 0 || !nodes.length} title="按时间回放推演过程"><Play size={13} aria-hidden="true" />回放</button>
           <button onClick={autoArrange}>整理</button><button onClick={fit}>居中</button>
         </div>
       </header>
@@ -289,11 +425,22 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
         <span>{projection ? `${turns} 轮 · ${nodes.length} 个可见节点` : "正在读取 Agent Store…"}</span>
         <span>{foldedDetails ? `${foldedDetails} 条执行细节已折叠` : "没有额外执行细节"}</span>
         <div className="execution-interaction-switch" aria-label="节点交互方式"><button className={interactionMode === "follow-up" ? "active" : ""} onClick={() => { interactionModeRef.current = "follow-up"; setInteractionMode("follow-up"); clearSelection(); }}>沿节点继续</button><button className={interactionMode === "quote" ? "active" : ""} onClick={() => { interactionModeRef.current = "quote"; setInteractionMode("quote"); clearSelection(); }}>组合引用</button></div>
+        <em className="execution-layout-note">布局仅当前视图有效</em>
         {projection?.truncated ? <em>当前为有界投影</em> : null}
+      </div>
+      <div className="execution-search">
+        <Search size={13} aria-hidden="true" />
+        <input value={searchQuery} placeholder="搜索节点内容…" onChange={(event) => setSearchQuery(event.target.value)} />
+        {searchQuery ? <button aria-label="清除搜索" onClick={() => setSearchQuery("")}><X size={12} /></button> : null}
+        {searchMatches.length ? (
+          <div className="execution-search-results">
+            {searchMatches.slice(0, 8).map((node) => <button key={node.id} onClick={() => jumpToNode(node.id)}><span>{displayLabel[node.data.displayKind]}</span>{compactText(node.data.summary, 60)}</button>)}
+          </div>
+        ) : null}
       </div>
       <div className="execution-flow">
         {error ? <div className="execution-graph-empty"><b>暂无对话脉络</b><span>{error}</span></div> : nodes.length ? <ReactFlow<ConversationNode, ConversationEdge>
-          nodes={nodes}
+          nodes={displayNodes}
           edges={edges}
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
@@ -308,16 +455,22 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
           deleteKeyCode={null}
           minZoom={0.2}
           maxZoom={1.8}
-          panOnScroll
-          panOnScrollSpeed={0.85}
-          zoomOnScroll={false}
+          panOnDrag
+          zoomOnScroll
           fitView
-        ><Background color="#dde3e8" gap={34} size={1} /><Controls position="bottom-left" /></ReactFlow> : <div className="execution-graph-empty"><b>这段对话还没有运行节点</b><span>回到对话发送研究问题后，这里会形成可继续和引用的脉络。</span></div>}
+        >
+          <Background gap={34} size={1} className="execution-background" />
+          <Controls position="bottom-left" />
+          <MiniMap pannable zoomable position="bottom-right" className="execution-minimap" />
+        </ReactFlow> : <div className="execution-graph-empty"><b>这段对话还没有运行节点</b><span>回到对话发送研究问题后，这里会形成可继续和引用的脉络。</span></div>}
+        <div className="execution-legend" aria-label="连线图例">
+          {(["answer", "follow-up", "delegation"] as const).map((kind) => <span key={kind} className={`execution-legend-item execution-edge-${kind}`}><i />{edgeKindLabel[kind]}</span>)}
+        </div>
         <ComposerBridgeBoundary fallback={<div className="execution-canvas-composer execution-canvas-composer-degraded"><div><textarea disabled placeholder="追问输入已停用：当前视图未接入会话上下文，请返回对话页提问…" /><button aria-label="从运行画布发送" disabled>↑</button></div><footer><span>返回对话页可继续追问</span><div /></footer></div>}>
-          <CanvasComposerSection projectId={projectId} activeSessionId={activeSessionId} nodes={nodes} activeNodeId={activeNodeId} quotedNodeIds={quotedNodeIds} interactionMode={interactionMode} displayLabel={displayLabel} onClearSelection={clearSelection} onQuote={quote} onInspect={(sourceNode) => setInspected(sourceNode)} onReturnToChat={onReturnToChat} />
+          <CanvasComposerSection projectId={projectId} activeSessionId={activeSessionId} nodes={displayNodes} activeNodeId={activeNodeId} quotedNodeIds={quotedNodeIds} interactionMode={interactionMode} retryPrompt={retryPrompt} onRetryConsumed={() => setRetryPrompt("")} onClearSelection={clearSelection} onQuote={quote} onInspect={(sourceNode) => setInspected(sourceNode)} onReturnToChat={onReturnToChat} />
         </ComposerBridgeBoundary>
       </div>
-      {inspected ? <RecordDetailModal eyebrow="AGENT JOURNAL" title={inspected.title} onClose={() => setInspected(undefined)}><div className="execution-node-detail"><p>{inspected.summary}</p><dl><div><dt>类型</dt><dd>{inspected.kind}</dd></div><div><dt>状态</dt><dd>{inspected.status ?? "recorded"}</dd></div><div><dt>时间</dt><dd>{new Date(inspected.timestamp).toLocaleString("zh-CN", { hour12: false })}</dd></div><div><dt>耗时</dt><dd>{formatDuration(inspected.metrics?.durationMs)}</dd></div><div><dt>Tokens</dt><dd>{inspected.metrics?.totalTokens?.toLocaleString() ?? "—"}</dd></div><div><dt>Run</dt><dd>{inspected.source.runId ?? "—"}</dd></div></dl></div></RecordDetailModal> : null}
+      {inspected ? <RecordDetailModal eyebrow="AGENT JOURNAL" title={inspected.title} onClose={() => setInspected(undefined)}><div className="execution-node-detail"><p>{inspected.summary}</p><dl><div><dt>类型</dt><dd>{inspected.kind}</dd></div><div><dt>状态</dt><dd>{runStatusLabel[inspected.status ?? ""] ?? inspected.status ?? "recorded"}</dd></div><div><dt>时间</dt><dd>{new Date(inspected.timestamp).toLocaleString("zh-CN", { hour12: false })}</dd></div><div><dt>耗时</dt><dd>{formatDuration(inspected.metrics?.durationMs)}</dd></div><div><dt>Tokens</dt><dd>{inspected.metrics?.totalTokens?.toLocaleString() ?? "—"}</dd></div><div><dt>Run</dt><dd>{inspected.source.runId ?? "—"}</dd></div></dl></div></RecordDetailModal> : null}
     </section>
   );
 }
@@ -337,14 +490,15 @@ class ComposerBridgeBoundary extends Component<{ fallback: ReactNode; children: 
   }
 }
 
-function CanvasComposerSection({ nodes, activeNodeId, quotedNodeIds, interactionMode, displayLabel, onClearSelection, onQuote, onInspect, onReturnToChat }: {
+function CanvasComposerSection({ nodes, activeNodeId, quotedNodeIds, interactionMode, retryPrompt, onRetryConsumed, onClearSelection, onQuote, onInspect, onReturnToChat }: {
   projectId: string;
   activeSessionId?: string;
   nodes: ConversationNode[];
   activeNodeId: string;
   quotedNodeIds: string[];
   interactionMode: InteractionMode;
-  displayLabel: Record<ConversationDisplayKind, string>;
+  retryPrompt: string;
+  onRetryConsumed: () => void;
   onClearSelection: () => void;
   onQuote: (id: string) => void;
   onInspect: (sourceNode: AgentExecutionNode) => void;
@@ -356,6 +510,13 @@ function CanvasComposerSection({ nodes, activeNodeId, quotedNodeIds, interaction
     const ids = interactionMode === "follow-up" ? [activeNodeId].filter(Boolean) : quotedNodeIds;
     return ids.map((id) => nodes.find((node) => node.id === id)).filter((node): node is ConversationNode => Boolean(node));
   }, [nodes, activeNodeId, quotedNodeIds, interactionMode]);
+  // 失败节点的「重新推演」：原指令进入 composer，直接再次发送。
+  useEffect(() => {
+    if (!retryPrompt || composer.isDisabled) return;
+    composer.setText(retryPrompt);
+    queueMicrotask(() => composer.send());
+    onRetryConsumed();
+  }, [retryPrompt, composer, onRetryConsumed]);
   const submitFromCanvas = () => {
     if (!draft.trim() || composer.isDisabled) return;
     const context = references.length ? `\n\n参考的 Agent 节点：\n${references.map((node, index) => `${index + 1}. [${displayLabel[node.data.displayKind]}] ${node.data.summary}`).join("\n")}` : "";

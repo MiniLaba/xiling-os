@@ -1,3 +1,4 @@
+import { validationFailure } from "../../http-errors.js";
 import type { FastifyInstance } from "fastify";
 import { literatureQuerySchema, projectIdQuerySchema, scopedPaperSchema, toPaperRecord } from "@xiling/api-contracts";
 import type { EvidenceStore } from "@xiling/knowledge";
@@ -6,12 +7,12 @@ import { buildLiteratureGraph, type LiteratureSearchService } from "@xiling/lite
 export function registerLiteratureRoutes(app: FastifyInstance, dependencies: { literature: LiteratureSearchService; credentialsReady: Promise<unknown>; evidence: EvidenceStore; validateClaimRevision(projectId: string, entityId: string): Promise<boolean> }): void {
   app.get("/api/v1/literature/search", async (request, reply) => {
     const parsed = literatureQuerySchema.safeParse(request.query);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     await dependencies.credentialsReady;
     try { const result = await dependencies.literature.search(parsed.data.q, parsed.data.limit); const graph = result.papers.length ? buildLiteratureGraph(result.papers, [result.papers[0]!.id], { limit: parsed.data.limit, fetchedAt: result.fetchedAt }) : undefined; return { ...result, ...(graph ? { graph } : {}) }; }
     catch (error) { return reply.code(503).send({ error: error instanceof Error ? error.message : String(error) }); }
   });
-  app.get("/api/v1/evidence", async (request, reply) => { const parsed = projectIdQuerySchema.safeParse(request.query); return parsed.success ? dependencies.evidence.listEvidence(parsed.data.projectId) : reply.code(400).send({ error: parsed.error.issues }); });
+  app.get("/api/v1/evidence", async (request, reply) => { const parsed = projectIdQuerySchema.safeParse(request.query); return parsed.success ? dependencies.evidence.listEvidence(parsed.data.projectId) : reply.code(400).send(validationFailure(parsed.error)); });
   app.post("/api/v1/evidence", async (request, reply) => {
     const scoped = scopedPaperSchema.safeParse(request.body);
     if (scoped.success) {
@@ -30,6 +31,6 @@ export function registerLiteratureRoutes(app: FastifyInstance, dependencies: { l
       },
       ));
     }
-    return reply.code(400).send({ error: scoped.error.issues });
+    return reply.code(400).send(validationFailure(scoped.error));
   });
 }

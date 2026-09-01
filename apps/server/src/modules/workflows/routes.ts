@@ -1,3 +1,4 @@
+import { validationFailure } from "../../http-errors.js";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { idParamsSchema, projectWorkflowCreateSchema, toOceanSubsetRequest } from "@xiling/api-contracts";
@@ -16,14 +17,14 @@ export function registerWorkflowRoutes(app: FastifyInstance, dependencies: {
   const { workflow, ready, projects, conversations, settle } = dependencies;
   app.get("/api/v1/research-workflows", async (request, reply) => {
     const parsed = z.object({ projectId: z.string().min(1).max(120), sessionId: z.string().min(1).max(160).optional() }).safeParse(request.query);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     const project = projects.getProject(parsed.data.projectId);
     if (!project || project.status === "archived") return reply.code(404).send({ error: "Project not found" });
     await ready; return workflow.list({ projectId: parsed.data.projectId, ...(parsed.data.sessionId ? { sessionId: parsed.data.sessionId } : {}) });
   });
   app.post("/api/v1/research-workflows", async (request, reply) => {
     const parsed = projectWorkflowCreateSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     const project = projects.getProject(parsed.data.projectId); const session = conversations.getChatSession(parsed.data.sessionId);
     if (!project || project.status === "archived" || !session || session.projectId !== project.id) return reply.code(404).send({ error: "Project or chat session not found" });
     await ready;
@@ -32,7 +33,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, dependencies: {
   });
 
   const action = async (params: unknown, body: unknown, reply: FastifyReply, name: "probe" | "approve" | "reject" | "run" | "reset" | "cancel" | "settle") => {
-    const parsed = idParamsSchema.safeParse(params); if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    const parsed = idParamsSchema.safeParse(params); if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     const scope = z.object({ projectId: z.string().min(1).max(120) }).safeParse(body);
     if (!scope.success) return reply.code(400).send({ error: "Workflow action requires projectId" });
     await ready;

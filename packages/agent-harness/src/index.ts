@@ -2,10 +2,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { AgentInputAttachment, AgentStreamEvent } from "@xiling/contracts";
+import { estimateTextTokens as estimateTextTokensShared, type AgentInputAttachment, type AgentStreamEvent } from "@xiling/contracts";
 
 export const AGENT_SESSION_FORMAT_VERSION = 1;
-export const AGENT_STORE_SCHEMA_VERSION = 5;
+export const AGENT_STORE_SCHEMA_VERSION = 6;
 
 export type AgentSessionStatus = "active" | "archived";
 export type AgentRunStatus = "queued" | "running" | "completed" | "failed" | "cancelled" | "suspended";
@@ -163,6 +163,9 @@ export interface HarnessRuntime {
   subscribe(listener: (event: AgentStreamEvent) => void | Promise<void>): () => void;
   prompt(text: string): Promise<void>;
   abort(): void;
+  /** False when the route's pricing is unknown (custom/uncatalogued model);
+   * the harness then lets the cost guard rail degrade to tool-call/duration. */
+  costAccountingKnown?: boolean;
 }
 
 export interface HarnessRuntimeFactory {
@@ -321,19 +324,39 @@ const migrations = [{
     CREATE UNIQUE INDEX IF NOT EXISTS agent_delegations_child_session ON agent_delegations(child_session_id);
     CREATE UNIQUE INDEX IF NOT EXISTS agent_delegations_child_run ON agent_delegations(child_run_id) WHERE child_run_id IS NOT NULL;
   `,
+}, {
+  version: 6,
+  sql: `
+    CREATE TABLE IF NOT EXISTS projection_cursors (
+      name TEXT PRIMARY KEY,
+      last_event_id INTEGER NOT NULL
+    );
+  `,
 }];
 
 export class SqliteAgentSessionStore {
   private readonly sqlite: DatabaseSync;
+  private closed = false;
 
   constructor(private readonly path: string) {
     mkdirSync(dirname(path), { recursive: true });
     this.sqlite = new DatabaseSync(path);
-    this.sqlite.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
-    this.migrate();
+    try {
+      this.sqlite.exec("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
+      this.migrate();
+    } catch (error) {
+      // Never leak the handle when a migration rejects (e.g. a newer database
+      // version than this build supports).
+      try { this.sqlite.close(); } catch { /* already closed */ }
+      throw error;
+    }
   }
 
-  close(): void { this.sqlite.close(); }
+  close(): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.sqlite.close();
+  }
 
   private backupBeforeMigration(current: number): void {
     if (current >= AGENT_STORE_SCHEMA_VERSION) return;
@@ -347,7 +370,8 @@ export class SqliteAgentSessionStore {
       const source = `${path}${suffix}`;
       if (existsSync(source)) copyFileSync(source, join(backupDir, `${base}${suffix}.${stamp}.bak`));
     }
-    const backups = readdirSync(backupDir).filter((name) => name.startsWith(`${base}.`) && name.endsWith(".bak")).sort();
+    // Match every `<base>*.bak` variant (main, -wal, -shm) when trimming retention.
+    const backups = readdirSync(backupDir).filter((name) => name.startsWith(base) && name.endsWith(".bak")).sort();
     for (const name of backups.slice(0, Math.max(0, backups.length - 5))) rmSync(join(backupDir, name));
   }
 
@@ -598,6 +622,24 @@ export class SqliteAgentSessionStore {
     return rows.map((row) => ({ sessionId: row.session_id, runId: row.run_id, sequence: row.sequence, type: row.type, payload: JSON.parse(row.payload_json) as unknown, createdAt: row.created_at }));
   }
 
+  /** Incremental variant used by cross-store projectors: only events inserted
+   * after `afterEventId` (the global autoincrement row id), in insertion order. */
+  listEventsByTypeAfter(types: string[], afterEventId: number): Array<AgentRunEvent & { eventId: number }> {
+    if (!types.length) return [];
+    const placeholders = types.map(() => "?").join(", ");
+    const rows = this.sqlite.prepare(`SELECT id, session_id, run_id, sequence, type, payload_json, created_at FROM agent_events WHERE type IN (${placeholders}) AND id > ? ORDER BY id`).all(...types, afterEventId) as Array<{ id: number; session_id: string; run_id: string; sequence: number; type: string; payload_json: string; created_at: string }>;
+    return rows.map((row) => ({ sessionId: row.session_id, runId: row.run_id, sequence: row.sequence, type: row.type, payload: JSON.parse(row.payload_json) as unknown, createdAt: row.created_at, eventId: row.id }));
+  }
+
+  getProjectionCursor(name: string): number {
+    const row = this.sqlite.prepare("SELECT last_event_id FROM projection_cursors WHERE name = ?").get(name) as { last_event_id: number } | undefined;
+    return row?.last_event_id ?? 0;
+  }
+
+  setProjectionCursor(name: string, lastEventId: number): void {
+    this.sqlite.prepare("INSERT INTO projection_cursors (name, last_event_id) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET last_event_id = excluded.last_event_id").run(name, lastEventId);
+  }
+
   listSessionEntries(sessionId: string): AgentSessionEntry[] {
     const rows = this.sqlite.prepare("SELECT id, session_id, run_id, sequence, kind, role, text, metadata_json, created_at FROM agent_entries WHERE session_id = ? ORDER BY sequence").all(sessionId) as Array<{ id: string; session_id: string; run_id: string; sequence: number; kind: AgentEntryKind; role: AgentSessionEntry["role"] | null; text: string; metadata_json: string | null; created_at: string }>;
     return rows.map((row) => ({ id: row.id, sessionId: row.session_id, runId: row.run_id, sequence: row.sequence, kind: row.kind, ...(row.role ? { role: row.role } : {}), text: row.text, ...(row.metadata_json ? { metadata: parseJson(row.metadata_json) } : {}), createdAt: row.created_at }));
@@ -733,13 +775,12 @@ export class SqliteAgentSessionStore {
 }
 
 const terminalStatuses = new Set<AgentRunStatus>(["completed", "failed", "cancelled"]);
-const estimateTextTokens = (text: string): number => {
-  const cjk = text.match(/[\u3400-\u9fff\uf900-\ufaff]/gu)?.length ?? 0;
-  return cjk + Math.ceil((text.length - cjk) / 4);
-};
+// Token estimates share the single conservative CJK-aware implementation in
+// @xiling/contracts so compaction pressure and context budgets agree.
+const estimateTextTokens = (text: string): number => estimateTextTokensShared(text);
 
 export class ResearchAgentHarness {
-  private readonly active = new Map<string, { runtime: HarnessRuntime; shutdown: boolean; cancel: boolean; guardError?: string }>();
+  private readonly active = new Map<string, { runtime?: HarnessRuntime; shutdown: boolean; cancel: boolean; guardError?: string }>();
   private readonly executions = new Map<string, Promise<void>>();
   private readonly waiters = new Map<string, Set<() => void>>();
   private readonly limits: Required<Omit<ResearchAgentHarnessOptions, "compaction">>;
@@ -797,7 +838,7 @@ export class ResearchAgentHarness {
     const active = this.active.get(runId);
     this.store.appendOperation(runId, { kind: "cancel", status: "completed", name: "user-cancel", finishedAt: isoNow() });
     this.emit(run, "run.cancel.requested", {});
-    if (active) { active.cancel = true; active.runtime.abort(); }
+    if (active) { active.cancel = true; active.runtime?.abort(); }
     else this.finish(run, "cancelled", "cancelled_without_live_runtime");
     return this.store.snapshot(runId);
   }
@@ -821,13 +862,15 @@ export class ResearchAgentHarness {
         const done = () => { clearTimeout(timeout); set.delete(done); resolve(); };
         set.add(done); this.waiters.set(runId, set);
       });
+      const waiters = this.waiters.get(runId);
+      if (waiters?.size === 0) this.waiters.delete(runId);
     }
   }
 
   async shutdown(): Promise<void> {
     for (const [runId, active] of this.active) {
       active.shutdown = true;
-      active.runtime.abort();
+      active.runtime?.abort();
       const run = this.store.getRun(runId);
       if (run && !terminalStatuses.has(run.status)) this.finish(run, "suspended", "server_shutdown");
     }
@@ -865,6 +908,12 @@ export class ResearchAgentHarness {
       maxToolCalls: Math.min(this.limits.maxToolCalls, positiveNumber(delegatedBudget?.maxToolCalls) ?? this.limits.maxToolCalls),
       maxRunCost: Math.min(this.limits.maxRunCost, positiveNumber(delegatedBudget?.maxCost) ?? this.limits.maxRunCost),
     };
+    // The active state is registered before the runtime is created so that a
+    // cancel/shutdown arriving during factory.create() converges on a terminal
+    // run instead of executing a paid model turn on an already-settled record.
+    const state: { runtime?: HarnessRuntime; shutdown: boolean; cancel: boolean; guardError?: string } = { shutdown: false, cancel: false };
+    this.active.set(run.id, state);
+    let costAccountingKnown = true;
     try {
       this.store.transitionRun(run.id, "running");
       modelOperation = this.store.appendOperation(run.id, { kind: "model", status: "running", name: resumed ? "pi.prompt.resume" : "pi.prompt", request: { prompt: run.prompt, ...(run.attachments?.length ? { attachmentIds: run.attachments.map(({ id }) => id) } : {}) } });
@@ -875,14 +924,15 @@ export class ResearchAgentHarness {
           this.store.appendUsage(run.sessionId, run.id, { ...usage, ...(modelOperation ? { operationId: modelOperation.id } : {}) });
           this.emit(run, "usage.recorded", usage);
           const current = this.active.get(run.id);
-          if (current && totalCost > runLimits.maxRunCost) {
+          if (current && costAccountingKnown && totalCost > runLimits.maxRunCost) {
             current.guardError = `run_cost_limit_exceeded:${runLimits.maxRunCost}`;
-            current.runtime.abort();
+            current.runtime?.abort();
           }
         },
       });
-      const state: { runtime: HarnessRuntime; shutdown: boolean; cancel: boolean; guardError?: string } = { runtime, shutdown: false, cancel: false };
-      this.active.set(run.id, state);
+      state.runtime = runtime;
+      costAccountingKnown = runtime.costAccountingKnown !== false;
+      if (state.shutdown || state.cancel) throw new Error(state.shutdown ? "server_shutdown" : "cancelled");
       timer = setTimeout(() => {
         state.guardError = `run_duration_limit_exceeded:${this.limits.maxRunMs}`;
         runtime.abort();
@@ -917,7 +967,11 @@ export class ResearchAgentHarness {
       });
       this.emit(run, "run.started", { resumed });
       await runtime.prompt(run.prompt);
-      if (state.shutdown || state.cancel) return;
+      // pi-agent-core resolves prompt() after an abort (emitting session.error)
+      // instead of rejecting, so a cancelled run must be settled here explicitly
+      // or it would stay "running" and brick the session's single-writer slot.
+      if (state.shutdown) return;
+      if (state.cancel) throw new Error("cancelled");
       if (state.guardError) throw new Error(state.guardError);
       if (runtimeError) throw new Error(runtimeError);
       if (answer.trim()) {
@@ -928,10 +982,9 @@ export class ResearchAgentHarness {
       await this.maybeCompact(run);
       this.finish(run, "completed");
     } catch (error) {
-      const state = this.active.get(run.id);
-      if (state?.shutdown) return;
-      const status: AgentRunStatus = state?.cancel ? "cancelled" : "failed";
-      const message = state?.guardError ?? (error instanceof Error ? error.message : String(error));
+      if (state.shutdown) return;
+      const status: AgentRunStatus = state.cancel ? "cancelled" : "failed";
+      const message = state.guardError ?? (error instanceof Error ? error.message : String(error));
       if (modelOperation) this.store.finishOperation(modelOperation.id, status === "cancelled" ? "cancelled" : "failed", { error: message });
       this.finish(run, status, message);
     } finally {

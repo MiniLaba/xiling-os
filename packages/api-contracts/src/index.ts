@@ -80,8 +80,30 @@ export const literatureQuerySchema = z.object({ q: z.string().trim().min(2).max(
 
 export const credentialIdSchema = z.object({ id: z.enum(["openai", "anthropic", "google", "openrouter", "deepseek", "xai", "mistral", "moonshotai", "zai", "groq", "custom", "semantic-scholar", "openalex", "copernicus-marine", "nasa-earthdata"]) });
 export const credentialValuesSchema = z.object({ values: z.record(z.string().min(1).max(80), z.string().min(1).max(20_000)) });
-export const modelRouteSchema = z.object({ providerId: z.enum(["openai", "anthropic", "google", "openrouter", "deepseek", "xai", "mistral", "moonshotai", "zai", "groq", "custom"]), modelId: z.string().trim().min(1).max(240), inputModalities: z.array(z.enum(["text", "image"])).min(1).max(2).optional(), reasoning: z.enum(["off", "low", "medium", "high"]) }).refine((value) => !value.inputModalities || value.inputModalities.includes("text"), { message: "text input must remain enabled" });
+export const modelProviderIdSchema = z.enum(["openai", "anthropic", "google", "openrouter", "deepseek", "xai", "mistral", "moonshotai", "zai", "groq", "custom"]);
+export const modelRouteSchema = z.object({ providerId: modelProviderIdSchema, modelId: z.string().trim().min(1).max(240), inputModalities: z.array(z.enum(["text", "image"])).min(1).max(2).optional(), reasoning: z.enum(["off", "low", "medium", "high"]) }).refine((value) => !value.inputModalities || value.inputModalities.includes("text"), { message: "text input must remain enabled" });
 export const modelRuntimeSchema = z.object({ primary: modelRouteSchema, roleRoutes: z.record(z.string().min(1).max(80), modelRouteSchema).refine((routes) => Object.keys(routes).length <= 16, { message: "too many role routes" }).default({}) });
 export const providerTestSchema = z.object({ modelId: z.string().trim().min(1).max(240).optional() });
+
+
+// ── Agent Center（正式 Chat command API）───────────────────────────────
+export const agentCenterIdSchema = z.string().min(1).max(160);
+export const agentAttachmentUploadSchema = z.object({
+  name: z.string().trim().min(1).max(240),
+  modality: z.enum(["image", "audio", "video"]),
+  mimeType: z.string().trim().min(1).max(120),
+  size: z.number().int().positive().max(8 * 1024 * 1024),
+  data: z.string().min(4).max(12 * 1024 * 1024),
+});
+export const agentSessionCreateSchema = z.object({ id: agentCenterIdSchema.optional(), projectId: projectIdSchema });
+export const agentRunCommandSchema = z.object({
+  sessionId: agentCenterIdSchema,
+  projectId: projectIdSchema,
+  prompt: z.string().min(1).max(50_000),
+  clientCommandId: agentCenterIdSchema,
+  modelRoute: z.object({ providerId: modelProviderIdSchema, modelId: z.string().trim().min(1).max(240) }).optional(),
+  context: z.object({ activeNodeId: z.string().min(1).max(120), quotedNodeIds: z.array(z.string().min(1).max(120)).max(12) }).optional(),
+  attachments: z.array(agentAttachmentUploadSchema).max(4).optional(),
+});
 
 export interface ApiErrorBody { error: unknown; }

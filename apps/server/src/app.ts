@@ -1,3 +1,6 @@
+import { registerErrorHandlers, validationFailure } from "./http-errors.js";
+import { registerLocalAccessControl, loadOrCreateLocalAccessToken } from "./local-access.js";
+import { reapOrphanSandboxes } from "./sandbox-reaper.js";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import fastifyStatic from "@fastify/static";
@@ -12,7 +15,7 @@ import { ContextAssemblyCache, assembleContext, createNodeContextCapsule, estima
 import type { AgentStreamEvent, ContextCapsule, ModelProviderId, ModelRouteSettings, ResourceUri } from "@xiling/contracts";
 import { FREE_EXPLORATION_PROJECT_ID } from "@xiling/contracts";
 import type { ConnectorMetadataSummary, OceanSubsetRequest } from "@xiling/domain-ocean";
-import { LazySkillCatalog, PiMcpGatewayManager, PiRuntimeAdapter, ModelRuntimeStore, TokenLedger, createLiveRoute, createOfflineRoute, resolveModelCatalogEntry } from "@xiling/pi-runtime";
+import { LazySkillCatalog, PiMcpGatewayManager, PiRuntimeAdapter, ModelRuntimeStore, TokenLedger, createLiveRoute, createOfflineRoute, findKnownModelCatalogEntry, resolveModelCatalogEntry } from "@xiling/pi-runtime";
 import { DockerProjectAnalysisRunner, LocalWorkflowArtifactRegistrar } from "./research-runner.js";
 import { ConnectorWorkflowService, FixtureConnectorAdapter, JsonConnectorJobRepository, type ConnectorDownloader, type ConnectorMetadataProbe } from "@xiling/connectors";
 import { FileLiteratureCache, LiteratureSearchService, OpenAlexProvider, SemanticScholarProvider } from "@xiling/literature";
@@ -50,7 +53,10 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
   const app = Fastify({ logger: false });
   void app.register(cors, { origin: /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/ });
   const webRoot = options.webRoot ?? resolve(dirname(fileURLToPath(import.meta.url)), "../../web/dist");
-  void app.register(fastifyStatic, { root: webRoot, wildcard: false });
+  // wildcard 静态服务按请求实时解析路径：wildcard:false 会在启动时冻结文件
+  // 清单，web 重新构建后新哈希资产全部 404（需重启服务才能恢复的隐性故障）。
+  void app.register(fastifyStatic, { root: webRoot });
+  registerErrorHandlers(app);
   const defaultDataRoot = process.env.VITEST || process.env.NODE_ENV === "test"
     ? resolve(tmpdir(), `xiling-app-test-${randomUUID()}`)
     : process.platform === "win32" && process.env.LOCALAPPDATA
@@ -58,6 +64,7 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
       : resolve(dirname(fileURLToPath(import.meta.url)), "../../../data");
   const dataRoot = options.dataRoot ?? process.env.XILING_DATA_ROOT ?? defaultDataRoot;
   const workspaceRoot = resolve(dataRoot, "workspace");
+  registerLocalAccessControl(app, loadOrCreateLocalAccessToken(resolve(dataRoot, "runtime")));
   let artifactStore: ArtifactRegistry;
   const readManagedArtifact = async (projectId: string, uri: string, offsetBytes: number, maxBytes: number) => {
     if (!uri.startsWith("artifact://sha256/")) throw new Error("Only content-addressed managed Artifacts can be read through this tool");
@@ -82,6 +89,11 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
   if (!options.artifactStore) app.addHook("onClose", async () => (artifactStore as LocalArtifactStore).close());
   registerArtifactRoutes(app, artifactStore, (projectId) => Boolean(knowledge.getProject(projectId)));
   const executionRepository = new SqliteExecutionRepository(resolve(workspaceRoot, "executions.sqlite"));
+  const executionRecovered = executionRepository.recoverInterrupted();
+  if (executionRecovered > 0) console.warn(`[xiling] marked ${executionRecovered} interrupted execution(s) from a previous session as failed`);
+  void reapOrphanSandboxes()
+    .then((removed) => { if (removed > 0) console.warn(`[xiling] removed ${removed} orphaned sandbox container(s) from a previous session`); })
+    .catch(() => undefined);
   const executionCoordinator = new ExecutionCoordinator(executionRepository, createTabularExecutionRunner(artifactStore));
   app.addHook("onClose", async () => executionRepository.close());
   registerTabularExecutionRoutes(app, { artifacts: artifactStore, executions: executionCoordinator, projectExists: (projectId) => Boolean(knowledge.getProject(projectId)) });
@@ -194,6 +206,7 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
     let projection = projectResearchGraphContext(projectionRequest, graph, capsuleMap, projectCapabilityCatalog);
     const selectedIds = [...new Set([...projection.activeBranchNodeIds, ...projection.quotedNodeIds])];
     const resolvedNodes = new Map<string, ContextNodeContent>(graph.nodes.map((node) => [node.id, { id: node.id, title: node.title, body: node.summary, sourceLabel: "科研图结构化摘要（非原文）", sourceKind: "structured-summary", ...(node.sourceLocator || node.uri ? { sourceLocator: node.sourceLocator ?? node.uri } : {}) }]));
+    let capsuleRefreshed = false;
     for (const nodeId of selectedIds) {
       const node = graph.nodes.find((candidate) => candidate.id === nodeId);
       if (!node) continue;
@@ -202,9 +215,14 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
       const artifactUris = (node.uri && /^(artifact|dataset|project):\/\//.test(node.uri) ? [node.uri as ResourceUri] : []) as ContextCapsule["artifactUris"];
       const candidate = createNodeContextCapsule({ projectId, nodeId: node.id, title: node.title, body: resolved.body, artifactUris, updatedAt: node.updatedAt });
       const existing = capsuleMap.get(candidate.id);
-      capsuleMap.set(node.id, existing?.sourceRevision === candidate.sourceRevision ? existing : knowledge.upsertContextCapsule(projectId, candidate));
+      if (existing?.sourceRevision !== candidate.sourceRevision) {
+        capsuleMap.set(node.id, knowledge.upsertContextCapsule(projectId, candidate));
+        capsuleRefreshed = true;
+      }
     }
-    projection = projectResearchGraphContext(projectionRequest, graph, capsuleMap, projectCapabilityCatalog);
+    // Re-projecting is only meaningful when a selected node's capsule actually
+    // changed; otherwise the first projection already reflects current state.
+    if (capsuleRefreshed) projection = projectResearchGraphContext(projectionRequest, graph, capsuleMap, projectCapabilityCatalog);
     return { graph, projection, resolvedNodes };
   };
   const agentRoles = new AgentRoleRegistry(scienceDomains.list().flatMap((domain) => domain.agentRoles));
@@ -254,7 +272,10 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
         };
         resolvedContext = { activeNodeId: "isolated-task-packet", quotedNodeIds: [] };
       } else try { researchProjection = await projectResearchContext(activeProject.id, { ...requestedContext, activatedCapabilityIds: activeCapabilities.map((capability) => capability.id) }); }
-      catch {
+      catch (error) {
+        // The persisted context pointing at a removed entity (or a graph cycle)
+        // must stay explainable: log the fallback before degrading to defaults.
+        console.warn(`[xiling] falling back to default research context for session ${sessionId}: ${error instanceof Error ? error.message : error}`);
         resolvedContext = defaultContext;
         researchProjection = await projectResearchContext(activeProject.id, { ...resolvedContext, activatedCapabilityIds: activeCapabilities.map((capability) => capability.id) });
       }
@@ -430,6 +451,9 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
         },
         prompt: (text: string) => runtime.prompt(text, currentImages),
         abort: () => runtime.abort(),
+        // Custom providers and model IDs missing from the catalog report zero
+        // cost; flag it so the harness cost guard degrades to tool/duration.
+        costAccountingKnown: useFixtureModel || !requestedRoute ? true : requestedRoute.providerId !== "custom" && Boolean(findKnownModelCatalogEntry(requestedRoute.providerId, requestedRoute.modelId)),
       };
     },
   }, {
@@ -503,6 +527,19 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
       const snapshot = agentHarness.snapshot(started.run.id);
       const text = [...snapshot.entries].reverse().find((entry) => entry.kind === "assistant")?.text ?? "";
       if (snapshot.run.status === "failed") throw new Error(snapshot.run.error ?? "Delegated Agent failed");
+      // A suspended child run (server shutdown/interruption) must not be
+      // reported as a completed empty result to the Director.
+      if (snapshot.run.status === "suspended") {
+        return {
+          status: "failed",
+          summary: "",
+          sourceUris: [],
+          artifactUris: [],
+          limitations: ["子智能体运行在服务关闭或中断时被挂起，未产出可用的审查结果。"],
+          usage: { totalTokens: snapshot.usageTotals.totalTokens, cost: snapshot.usageTotals.cost },
+          error: snapshot.run.error ?? "delegated run suspended",
+        };
+      }
       const parsed = extractTaskResultText(text);
       const access = createChildAccessPolicy(input.contextManifest, input.isolation);
       for (const uri of [...parsed.sourceUris, ...parsed.artifactUris]) if (/^(artifact|dataset|project):\/\//.test(uri)) access.assertSource(uri);
@@ -576,7 +613,7 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
 
   app.post("/api/context/project", async (request, reply) => {
     const parsed = projectionSchema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
     if (!knowledge.getProject(parsed.data.projectId)) return reply.code(404).send({ error: "Project not found" });
     try {
       const { projection } = await projectResearchContext(parsed.data.projectId, { activeNodeId: parsed.data.activeNodeId, quotedNodeIds: parsed.data.quotedNodeIds, ...(parsed.data.capabilityQuery ? { capabilityQuery: parsed.data.capabilityQuery } : {}) });
@@ -586,7 +623,7 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
 
   app.get("/api/metrics/tokens", async (request, reply) => {
     const parsed = z.object({ limit: z.coerce.number().int().min(1).max(1000).default(100) }).safeParse(request.query);
-    return parsed.success ? tokenLedger.list(parsed.data.limit) : reply.code(400).send({ error: parsed.error.issues });
+    return parsed.success ? tokenLedger.list(parsed.data.limit) : reply.code(400).send(validationFailure(parsed.error));
   });
 
   app.get("/api/metrics/context", async () => {

@@ -7,7 +7,16 @@ import { LocalArtifactStore } from "@xiling/artifacts";
 
 const oceanTestProject = { id: "ocean-heatwave", name: "海洋领域测试", description: "test fixture", researchQuestion: "层结如何变化？", domainIds: ["general-science", "ocean-climate"] };
 function createApp(options: Parameters<typeof createAppBase>[0] = {}) {
-  return createAppBase({ ...options, additionalProjects: [...(options.additionalProjects ?? []), oceanTestProject] });
+  const app = createAppBase({ ...options, additionalProjects: [...(options.additionalProjects ?? []), oceanTestProject] });
+  const token = (app as unknown as { localAccessToken: string }).localAccessToken;
+  const rawInject = app.inject.bind(app) as (options: Record<string, unknown>) => ReturnType<TestApp["inject"]>;
+  // Mutations require the local access token; tests reuse the app's own token.
+  app.inject = ((options: Record<string, unknown>) => {
+    const method = String(options.method ?? "GET").toUpperCase();
+    const headers = (options.headers ?? {}) as Record<string, unknown>;
+    return rawInject(method !== "GET" && method !== "HEAD" && !headers["x-xiling-token"] ? { ...options, headers: { ...headers, "x-xiling-token": token } } : options);
+  }) as unknown as TestApp["inject"];
+  return app;
 }
 type TestApp = ReturnType<typeof createAppBase>;
 
