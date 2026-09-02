@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import { BUILT_IN_APPS } from "./app-registry.js";
 import { SystemStore } from "./system-store.js";
 
-test("system store initializes the unified schema and restores desktop state", () => {
-  const store = new SystemStore(":memory:");
+test("system store initializes the unified schema and restores desktop state", (context) => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), "xiling-system-store-"));
+  context.after(() => rmSync(temporary, { recursive: true, force: true }));
+  const databasePath = path.join(temporary, "system.sqlite");
+  const store = new SystemStore(databasePath);
   assert.equal(store.getSchemaVersion(), 1);
   const root = store.setWorkspaceRoot({ id: "primary", label: "研究桌面", nativePath: "/tmp/研究 桌面" });
   assert.equal(root.label, "研究桌面");
@@ -28,6 +34,14 @@ test("system store initializes the unified schema and restores desktop state", (
     payload: { folder: "workspace://primary/数据" },
     updatedAt: new Date().toISOString(),
   });
-  assert.equal(store.listWindows()[0]?.payload.folder, "workspace://primary/数据");
   store.close();
+
+  const restored = new SystemStore(databasePath);
+  assert.equal(restored.getWorkspaceRoot("primary")?.label, "研究桌面");
+  assert.deepEqual(
+    restored.listApps().map((app) => app.id).sort(),
+    BUILT_IN_APPS.map((app) => app.id).sort(),
+  );
+  assert.equal(restored.listWindows()[0]?.payload.folder, "workspace://primary/数据");
+  restored.close();
 });

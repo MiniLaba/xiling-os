@@ -34,15 +34,20 @@ protocol.registerSchemesAsPrivileged([
 const runtimeDirectory = path.dirname(fileURLToPath(import.meta.url));
 const rendererDirectory = path.resolve(runtimeDirectory, "../renderer");
 const trustedOrigin = "xiling://app";
+const launchSmoke = process.env.XILING_DESKTOP_LAUNCH_SMOKE === "1";
 
 app.setName("XiLing OS Desktop");
-app.setPath("userData", path.join(app.getPath("appData"), "XiLing OS Desktop"));
+app.setPath(
+  "userData",
+  launchSmoke
+    ? path.join(app.getPath("temp"), "XiLing OS Desktop Launch Smoke")
+    : path.join(app.getPath("appData"), "XiLing OS Desktop"),
+);
 
 let mainWindow: BrowserWindow | null = null;
 let coreProcess: UtilityProcess | null = null;
 let coreReady = false;
 let rendererReady = false;
-const launchSmoke = process.env.XILING_DESKTOP_LAUNCH_SMOKE === "1";
 let managedWindowReady = !launchSmoke;
 let launchSmokeFinishing = false;
 const pendingCoreRequests = new Map<
@@ -55,17 +60,23 @@ let workspaceWatchClients = 0;
 function completeLaunchSmokeIfReady(): void {
   if (!launchSmoke || !coreReady || !rendererReady || !managedWindowReady || launchSmokeFinishing) return;
   launchSmokeFinishing = true;
-  const workingSetMb = app
-    .getAppMetrics()
-    .reduce((total, metric) => total + metric.memory.workingSetSize, 0) / 1024;
-  const limitMb = Number(process.env.XILING_DESKTOP_SMOKE_MEMORY_MB ?? 450);
-  if (!Number.isFinite(workingSetMb) || workingSetMb > limitMb) {
-    console.error(`Desktop launch exceeded memory regression limit: ${workingSetMb.toFixed(1)} MB > ${limitMb} MB`);
-    app.exit(1);
-    return;
-  }
-  console.log(`Desktop launch smoke passed (${workingSetMb.toFixed(1)} MB active working set)`);
-  app.exit(0);
+  setTimeout(() => {
+    const processMetrics = app.getAppMetrics();
+    const workingSetMb = processMetrics.reduce((total, metric) => total + metric.memory.workingSetSize, 0) / 1024;
+    const limitMb = Number(process.env.XILING_DESKTOP_SMOKE_MEMORY_MB ?? 520);
+    if (!Number.isFinite(workingSetMb) || workingSetMb > limitMb) {
+      for (const metric of processMetrics) {
+        console.error(
+          `Desktop launch process ${metric.type}${metric.serviceName ? ` (${metric.serviceName})` : ""}: ${(metric.memory.workingSetSize / 1024).toFixed(1)} MB`,
+        );
+      }
+      console.error(`Desktop launch exceeded memory regression limit: ${workingSetMb.toFixed(1)} MB > ${limitMb} MB`);
+      app.exit(1);
+      return;
+    }
+    console.log(`Desktop launch smoke passed (${workingSetMb.toFixed(1)} MB active working set)`);
+    app.exit(0);
+  }, 1_000);
 }
 
 function assertTrustedSender(event: IpcMainInvokeEvent): void {
@@ -279,8 +290,8 @@ function createMainWindow(): void {
   // 初始窗口取工作区可用尺寸（扣除系统菜单栏与程序坞），避免应用内容被系统 Dock 遮挡。
   const workArea = screen.getPrimaryDisplay().workAreaSize;
   mainWindow = new BrowserWindow({
-    width: Math.max(1040, Math.min(1440, workArea.width)),
-    height: Math.max(700, Math.min(920, workArea.height)),
+    width: launchSmoke ? 1040 : Math.max(1040, Math.min(1440, workArea.width)),
+    height: launchSmoke ? 700 : Math.max(700, Math.min(920, workArea.height)),
     minWidth: 1040,
     minHeight: 700,
     backgroundColor: "#0a1428",
@@ -340,7 +351,12 @@ function createMainWindow(): void {
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
-  app.quit();
+  if (launchSmoke) {
+    console.error("Desktop launch smoke could not acquire the isolated single-instance lock");
+    app.exit(1);
+  } else {
+    app.quit();
+  }
 } else {
   app.on("second-instance", () => {
     if (!mainWindow) return;

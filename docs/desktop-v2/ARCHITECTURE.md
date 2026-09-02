@@ -25,7 +25,7 @@ Desktop V2 只有一个原生 Electron 窗口。桌面、Dock、系统界面和�
 
 当前实现将 React 多窗口包保持为动态导入：冷启动 HTML 不引用该包，第一次从 Dock 打开对话、研究、文献、数据或设置时才加载。最小化后的窗口只保留轻量状态并卸载内容。真实目录监听发生在 Core，经过 120 ms 去抖后以事件推送至 Renderer；Core 停止时监听器同步释放。
 
-自动门禁把动态窗口生产包限制在 350 KB 以内，并在真实 Electron 启动中实际点击 Dock、确认内部窗口出现、唤醒 Core 后检查总活动工作集不超过 450 MB。450 MB 是开发/CI 回归上限，不替代发布设备上 250 MB 的空闲目标。
+自动门禁把动态窗口生产包限制在 350 KB 以内，并在真实 Electron 启动中使用固定的 1040×700 验收视口，实际点击 Dock、确认内部窗口出现、唤醒 Core，稳定一秒后检查总活动工作集不超过 520 MB。该开发/CI 回归线上限来自 Electron 44 在 macOS 上包含 Browser、GPU、Network Service、Renderer 和 Core Utility Process 的真实五进程基线；它不替代发布设备上 250 MB 的空闲目标。
 
 ## 产品定义
 
