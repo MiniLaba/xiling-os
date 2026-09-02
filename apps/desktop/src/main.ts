@@ -1,8 +1,10 @@
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   net,
   protocol,
@@ -11,6 +13,10 @@ import {
   type IpcMainInvokeEvent,
   type UtilityProcess,
 } from "electron";
+
+import type { CoreMethod, CoreRequest, CoreResponse, CoreResultMap } from "./core/protocol.js";
+import { LazyResource } from "./core/resource-lifecycle.js";
+import type { DesktopWindowState } from "./core/types.js";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -36,6 +42,10 @@ let coreProcess: UtilityProcess | null = null;
 let coreReady = false;
 let rendererReady = false;
 const launchSmoke = process.env.XILING_DESKTOP_LAUNCH_SMOKE === "1";
+const pendingCoreRequests = new Map<
+  string,
+  { resolve: (value: unknown) => void; reject: (error: Error) => void; release: () => void }
+>();
 
 function completeLaunchSmokeIfReady(): void {
   if (launchSmoke && coreReady && rendererReady) {
@@ -64,30 +74,149 @@ function registerDesktopProtocol(): void {
   });
 }
 
-function startCore(): void {
-  coreProcess = utilityProcess.fork(path.join(runtimeDirectory, "core-entry.js"), [], {
-    serviceName: "XiLing Core",
-    stdio: "pipe",
-  });
+const coreResource = new LazyResource<UtilityProcess>(
+  {
+    start: () =>
+      new Promise<UtilityProcess>((resolve, reject) => {
+        const child = utilityProcess.fork(path.join(runtimeDirectory, "core-entry.js"), [], {
+          serviceName: "XiLing Core",
+          stdio: "pipe",
+          env: {
+            ...process.env,
+            XILING_SYSTEM_DB_PATH: path.join(app.getPath("userData"), "system.sqlite"),
+          },
+        });
+        coreProcess = child;
+        const timeout = setTimeout(() => {
+          child.kill();
+          reject(new Error("XiLing Core startup timed out"));
+        }, 8_000);
+        timeout.unref();
+        child.on("message", (message: unknown) => {
+          const coreEvent = message as CoreResponse | { type?: string };
+          if (coreEvent.type === "core-ready") {
+            clearTimeout(timeout);
+            coreReady = true;
+            completeLaunchSmokeIfReady();
+            resolve(child);
+            mainWindow?.webContents.send("desktop:core-state", "ready");
+            return;
+          }
+          if (coreEvent.type === "core-response") {
+            const response = coreEvent as CoreResponse;
+            const pending = pendingCoreRequests.get(response.id);
+            if (!pending) return;
+            pendingCoreRequests.delete(response.id);
+            pending.release();
+            if (response.ok) pending.resolve(response.result);
+            else pending.reject(new Error(response.error ?? "XiLing Core request failed"));
+          }
+          if (coreEvent.type === "core-stopped") coreReady = false;
+        });
+        child.on("exit", () => {
+          clearTimeout(timeout);
+          coreReady = false;
+          coreProcess = null;
+          for (const [id, pending] of pendingCoreRequests) {
+            pendingCoreRequests.delete(id);
+            pending.release();
+            pending.reject(new Error("XiLing Core stopped before completing the request"));
+          }
+          mainWindow?.webContents.send("desktop:core-state", "stopped");
+        });
+      }),
+    stop: (child) =>
+      new Promise<void>((resolve) => {
+        if (child.pid === undefined) return resolve();
+        const timeout = setTimeout(() => {
+          child.kill();
+          resolve();
+        }, 2_000);
+        timeout.unref();
+        child.once("exit", () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        child.postMessage({ type: "shutdown" });
+      }),
+  },
+  5 * 60_000,
+);
 
-  coreProcess.on("message", (message: unknown) => {
-    const event = message as { type?: string };
-    if (event.type === "core-ready") {
-      coreReady = true;
-      completeLaunchSmokeIfReady();
-    }
-    if (event.type === "core-stopped") coreReady = false;
-  });
-  coreProcess.on("exit", () => {
-    coreReady = false;
-    coreProcess = null;
+async function requestCore<M extends CoreMethod>(method: M, params: unknown): Promise<CoreResultMap[M]> {
+  const lease = await coreResource.acquire();
+  const id = randomUUID();
+  return new Promise<CoreResultMap[M]>((resolve, reject) => {
+    pendingCoreRequests.set(id, {
+      resolve: (value) => resolve(value as CoreResultMap[M]),
+      reject,
+      release: lease.release,
+    });
+    lease.value.postMessage({ type: "core-request", id, method, params } satisfies CoreRequest);
   });
 }
 
 function registerIpc(): void {
   ipcMain.handle("desktop:get-runtime-info", (event) => {
     assertTrustedSender(event);
-    return { appVersion: app.getVersion(), platform: process.platform, coreReady };
+    return {
+      appVersion: app.getVersion(),
+      platform: process.platform,
+      coreReady,
+      coreState: coreResource.state,
+    };
+  });
+
+  ipcMain.handle("desktop:apps-list", async (event) => {
+    assertTrustedSender(event);
+    return requestCore("apps.list", {});
+  });
+
+  ipcMain.handle("desktop:workspace-get", async (event) => {
+    assertTrustedSender(event);
+    return requestCore("workspace.get", {});
+  });
+
+  ipcMain.handle("desktop:workspace-select", async (event) => {
+    assertTrustedSender(event);
+    if (!mainWindow) return null;
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: "选择汐灵桌面文件夹",
+      properties: ["openDirectory", "createDirectory"],
+    });
+    const nativePath = result.filePaths[0];
+    if (result.canceled || !nativePath) return null;
+    return requestCore("workspace.set", {
+      nativePath,
+      label: path.basename(nativePath),
+    });
+  });
+
+  ipcMain.handle("desktop:workspace-list", async (event, relativeDirectory: unknown) => {
+    assertTrustedSender(event);
+    if (typeof relativeDirectory !== "string") throw new Error("Invalid workspace directory");
+    return requestCore("workspace.list", {
+      appId: "system.files",
+      relativeDirectory,
+    });
+  });
+
+  ipcMain.handle("desktop:workspace-import", async (event, sourcePaths: unknown) => {
+    assertTrustedSender(event);
+    if (!Array.isArray(sourcePaths) || sourcePaths.some((item) => typeof item !== "string")) {
+      throw new Error("Invalid import paths");
+    }
+    return requestCore("workspace.import", { appId: "system.files", sourcePaths });
+  });
+
+  ipcMain.handle("desktop:windows-list", async (event) => {
+    assertTrustedSender(event);
+    return requestCore("windows.list", {});
+  });
+
+  ipcMain.handle("desktop:window-state-save", async (event, state: unknown) => {
+    assertTrustedSender(event);
+    return requestCore("windows.save", { state: state as DesktopWindowState });
   });
 
   ipcMain.handle("desktop:window", (event, action: unknown) => {
@@ -125,6 +254,7 @@ function createMainWindow(): void {
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   mainWindow.webContents.once("did-finish-load", () => {
     rendererReady = true;
+    if (launchSmoke) void requestCore("system.ping", {});
     completeLaunchSmokeIfReady();
   });
   mainWindow.webContents.on("will-navigate", (event, targetUrl) => {
@@ -157,7 +287,6 @@ if (!gotSingleInstanceLock) {
   void app.whenReady().then(() => {
     registerDesktopProtocol();
     registerIpc();
-    startCore();
     createMainWindow();
   });
 }
@@ -171,5 +300,5 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
-  coreProcess?.postMessage({ type: "shutdown" });
+  void coreResource.stopNow();
 });
