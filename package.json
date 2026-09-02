@@ -1,6 +1,6 @@
 {
   "name": "xiling-os",
-  "version": "0.1.0-beta.1",
+  "version": "2.0.0-alpha.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.19.0",
@@ -8,31 +8,18 @@
     "node": ">=22.19.0"
   },
   "scripts": {
-    "desktop:build": "pnpm --filter @xiling/desktop build",
-    "desktop:start": "pnpm --filter @xiling/desktop start",
-    "desktop:smoke": "pnpm --filter @xiling/desktop smoke",
-    "build": "pnpm -r build",
-    "predev": "pnpm -r --filter \"!@xiling/server\" --filter \"!@xiling/web\" build",
-    "dev": "pnpm --parallel --filter \"@xiling/*\" dev",
-    "start": "pnpm build && node scripts/start.mjs",
-    "start:no-browser": "pnpm build && node scripts/start.mjs --no-browser",
-    "test": "pnpm -r --filter \"!@xiling/server\" --filter \"!@xiling/web\" build && vitest run",
-    "typecheck": "pnpm -r --filter \"!@xiling/server\" --filter \"!@xiling/web\" build && pnpm -r typecheck",
-    "smoke": "node scripts/smoke.mjs",
-    "smoke:web": "pnpm --filter @xiling/web build",
-    "smoke:runner": "python3 services/runner/smoke.py",
+    "build": "pnpm --filter @xiling/desktop build",
+    "dev": "pnpm --filter @xiling/desktop start",
+    "start": "pnpm --filter @xiling/desktop start",
+    "typecheck": "pnpm --filter @xiling/desktop typecheck",
+    "test": "pnpm --filter @xiling/desktop smoke",
+    "smoke": "pnpm --filter @xiling/desktop smoke",
     "compliance": "node scripts/compliance.mjs",
     "sbom:generate": "node scripts/compliance.mjs --write-sbom",
-    "docs:check": "node scripts/design-doc-check.mjs",
-    "check:offline": "node scripts/offline-check.mjs",
-    "architecture": "node scripts/architecture-check.mjs && pnpm docs:check",
-    "pi:compat": "node scripts/pi-compatibility-check.mjs && pnpm --filter @xiling/pi-runtime typecheck && pnpm exec vitest run packages/pi-runtime/src/index.test.ts packages/pi-runtime/src/harness-spike.test.ts",
-    "check": "pnpm architecture && pnpm pi:compat && pnpm typecheck && pnpm test && pnpm smoke"
+    "check": "pnpm typecheck && pnpm smoke && pnpm compliance"
   },
   "devDependencies": {
     "@types/node": "22.19.19",
-    "tsx": "4.22.1",
-    "typescript": "5.9.3",
-    "vitest": "4.1.11"
+    "typescript": "5.9.3"
   }
 }

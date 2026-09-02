@@ -1,6 +1,6 @@
 # 汐灵 OS 设计文档
 
-> **Desktop V2 提示（2026-09-02）**：本分支已经进入原生科研桌面的全新实现。桌面目标架构、破坏性迁移范围和阶段状态以 [`docs/desktop-v2/`](docs/desktop-v2/README.md) 与 [ADR 0043](docs/adr/0043-greenfield-electron-desktop-v2.md) 为准。下文描述冻结旧版的科研内核和产品语义，用作选择性移植依据，不再要求保留其网页组合方式与页面布局。
+> **Desktop V2 提示（2026-09-02）**：本分支已经进入原生科研桌面的全新实现。V2 不依赖 Docker、WSL2 或浏览器启动；桌面目标架构、破坏性迁移范围和阶段状态以 [`docs/desktop-v2/`](docs/desktop-v2/README.md)、[ADR 0043](docs/adr/0043-greenfield-electron-desktop-v2.md) 与 [ADR 0044](docs/adr/0044-container-free-native-execution.md) 为准。下文描述冻结旧版的科研内核和产品语义，用作选择性移植依据，其中的容器、网页组合方式与页面布局均不是 V2 约束。
 
 > 本文档是汐灵 OS 当前产品与软件架构的首要入口（living design document）。
 >

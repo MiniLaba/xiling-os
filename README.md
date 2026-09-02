@@ -1,3 +1,17 @@
+> **Desktop V2 当前入口**：本分支是全新的原生科研桌面，不依赖 Docker、WSL2 或浏览器启动。旧版网页产品完整冻结在 `v1-legacy-freeze` 和 `codex/legacy-v1`；下方旧版说明仅作为选择性移植参考，不代表 V2 的运行要求。V2 的有效架构与启动方式见 [`docs/desktop-v2/`](docs/desktop-v2/README.md)。
+
+## Desktop V2 快速启动
+
+```sh
+corepack pnpm install --frozen-lockfile && corepack pnpm start
+```
+
+该命令直接打开原生桌面窗口。当前只执行受信任的内置科研配方；在三平台系统级沙箱完成前，模型生成代码和不可信插件代码保持禁用。
+
+---
+
+## 冻结旧版说明（非 V2 运行文档）
+
 <p align="center">
   <img src="docs/assets/xiling-logo.png" alt="汐灵 XiLing" width="220" />
 </p>

@@ -33,6 +33,15 @@ app.setPath("userData", path.join(app.getPath("appData"), "XiLing OS Desktop"));
 let mainWindow: BrowserWindow | null = null;
 let coreProcess: UtilityProcess | null = null;
 let coreReady = false;
+let rendererReady = false;
+const launchSmoke = process.env.XILING_DESKTOP_LAUNCH_SMOKE === "1";
+
+function completeLaunchSmokeIfReady(): void {
+  if (launchSmoke && coreReady && rendererReady) {
+    console.log("Desktop launch smoke passed");
+    app.exit(0);
+  }
+}
 
 function assertTrustedSender(event: IpcMainInvokeEvent): void {
   if (!event.senderFrame?.url.startsWith(trustedOrigin)) {
@@ -62,7 +71,10 @@ function startCore(): void {
 
   coreProcess.on("message", (message: unknown) => {
     const event = message as { type?: string };
-    if (event.type === "core-ready") coreReady = true;
+    if (event.type === "core-ready") {
+      coreReady = true;
+      completeLaunchSmokeIfReady();
+    }
     if (event.type === "core-stopped") coreReady = false;
   });
   coreProcess.on("exit", () => {
@@ -108,6 +120,10 @@ function createMainWindow(): void {
   });
 
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  mainWindow.webContents.once("did-finish-load", () => {
+    rendererReady = true;
+    completeLaunchSmokeIfReady();
+  });
   mainWindow.webContents.on("will-navigate", (event, targetUrl) => {
     if (!targetUrl.startsWith(trustedOrigin)) event.preventDefault();
   });
@@ -116,6 +132,13 @@ function createMainWindow(): void {
     mainWindow = null;
   });
   void mainWindow.loadURL(`${trustedOrigin}/index.html`);
+
+  if (launchSmoke) {
+    setTimeout(() => {
+      console.error("Desktop launch smoke timed out before renderer/core readiness");
+      app.exit(1);
+    }, 10_000).unref();
+  }
 }
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
