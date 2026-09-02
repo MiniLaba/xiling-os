@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'" />
+    <title>汐灵科研桌面</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <main class="desktop-shell">
+      <header class="system-bar">
+        <div class="brand"><span class="brand-mark">汐</span><span>汐灵科研桌面</span></div>
+        <button class="command-trigger" type="button">搜索项目、论文、数据或命令</button>
+        <div class="system-status"><span id="clock"></span><span id="runtime">核心启动中</span></div>
+      </header>
+
+      <section class="workspace">
+        <nav class="dock" aria-label="主要功能">
+          <button class="active" type="button"><span>◌</span>桌面</button>
+          <button type="button"><span>◇</span>对话</button>
+          <button type="button"><span>⌁</span>研究</button>
+          <button type="button"><span>▱</span>文献</button>
+          <button type="button"><span>▦</span>数据</button>
+          <button type="button"><span>□</span>产物</button>
+          <button class="dock-bottom" type="button"><span>⚙</span>设置</button>
+        </nav>
+
+        <section class="desktop-content">
+          <div class="welcome-row">
+            <div><p class="eyebrow">科研工作空间</p><h1>继续你的研究</h1><p>从问题出发，让证据、计算和产物留在同一个可追溯空间。</p></div>
+            <button class="primary-action" type="button">＋ 新建研究</button>
+          </div>
+
+          <div class="content-grid">
+            <section class="panel projects-panel">
+              <div class="panel-heading"><div><p class="eyebrow">项目空间</p><h2>最近研究</h2></div><button type="button">查看全部</button></div>
+              <article class="project-row"><span class="project-symbol ocean">∿</span><div><h3>海洋环流研究</h3><p>4 项证据 · 2 次运行 · 更新于今天</p></div><span class="project-state">研究中</span></article>
+              <article class="project-row"><span class="project-symbol neutral">⌬</span><div><h3>新建通用科学项目</h3><p>从研究问题或已有资料开始</p></div><span class="project-state quiet">未开始</span></article>
+            </section>
+
+            <section class="panel attention-panel">
+              <div class="panel-heading"><div><p class="eyebrow">需要关注</p><h2>任务中心</h2></div><span class="count">2</span></div>
+              <article class="attention-item"><span class="status-dot running"></span><div><h3>文献检索智能体</h3><p>正在核对来源与引用关系</p></div><button type="button">打开</button></article>
+              <article class="attention-item"><span class="status-dot waiting"></span><div><h3>数据切片计划</h3><p>等待确认范围、时间与预计体积</p></div><button type="button">审阅</button></article>
+            </section>
+
+            <section class="panel artifacts-panel">
+              <div class="panel-heading"><div><p class="eyebrow">最近产物</p><h2>研究成果</h2></div><button type="button">产物库</button></div>
+              <div class="artifact-grid"><article><span>▧</span><h3>环流异常分布图</h3><p>图像 · 已溯源</p></article><article><span>≡</span><h3>证据审查报告</h3><p>PDF · Reviewer通过</p></article><article><span>⌗</span><h3>温盐剖面数据</h3><p>NetCDF · 版本 3</p></article></div>
+            </section>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script src="./shell.js"></script>
+  </body>
+</html>

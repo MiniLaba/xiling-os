@@ -8,6 +8,9 @@
     "node": ">=22.19.0"
   },
   "scripts": {
+    "desktop:build": "pnpm --filter @xiling/desktop build",
+    "desktop:start": "pnpm --filter @xiling/desktop start",
+    "desktop:smoke": "pnpm --filter @xiling/desktop smoke",
     "build": "pnpm -r build",
     "predev": "pnpm -r --filter \"!@xiling/server\" --filter \"!@xiling/web\" build",
     "dev": "pnpm --parallel --filter \"@xiling/*\" dev",
