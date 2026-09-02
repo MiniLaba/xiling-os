@@ -42,13 +42,14 @@ let coreProcess: UtilityProcess | null = null;
 let coreReady = false;
 let rendererReady = false;
 const launchSmoke = process.env.XILING_DESKTOP_LAUNCH_SMOKE === "1";
+let managedWindowReady = !launchSmoke;
 const pendingCoreRequests = new Map<
   string,
   { resolve: (value: unknown) => void; reject: (error: Error) => void; release: () => void }
 >();
 
 function completeLaunchSmokeIfReady(): void {
-  if (launchSmoke && coreReady && rendererReady) {
+  if (launchSmoke && coreReady && rendererReady && managedWindowReady) {
     console.log("Desktop launch smoke passed");
     app.exit(0);
   }
@@ -254,7 +255,27 @@ function createMainWindow(): void {
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   mainWindow.webContents.once("did-finish-load", () => {
     rendererReady = true;
-    if (launchSmoke) void requestCore("system.ping", {});
+    if (launchSmoke) {
+      void requestCore("system.ping", {});
+      void mainWindow?.webContents
+        .executeJavaScript(`
+          document.querySelector('[data-app="chat"]')?.click();
+          new Promise((resolve) => {
+            const started = Date.now();
+            const check = () => {
+              if (document.querySelector('.managed-window')) return resolve(true);
+              if (Date.now() - started > 5000) return resolve(false);
+              setTimeout(check, 25);
+            };
+            check();
+          });
+        `)
+        .then((ready) => {
+          managedWindowReady = ready === true;
+          if (!managedWindowReady) throw new Error("React internal window did not open");
+          completeLaunchSmokeIfReady();
+        });
+    }
     completeLaunchSmokeIfReady();
   });
   mainWindow.webContents.on("will-navigate", (event, targetUrl) => {

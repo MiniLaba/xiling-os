@@ -12,6 +12,13 @@ const dock = document.querySelector("#dock");
 const dockFan = document.querySelector("#dock-fan");
 const toast = document.querySelector("#toast");
 const root = document.querySelector("#leopard");
+let managedWindowRuntime;
+
+async function openManagedApp(app) {
+  managedWindowRuntime ??= import("./generated/window-runtime.js");
+  const runtimeModule = await managedWindowRuntime;
+  runtimeModule.openManagedApp(app);
+}
 
 /* ---------- 时钟 ---------- */
 
@@ -351,6 +358,7 @@ tiles.forEach((tile) => {
     const app = tile.dataset.app;
     if (app === "workspace" || app === "about") openWindow(app);
     else if (app === "artifacts") setFanOpen(dockFan?.dataset.open !== "true");
+    else if (["chat", "research", "literature", "data", "settings"].includes(app)) void openManagedApp(app);
     else if (app !== "trash") showToast(`「${tile.getAttribute("aria-label")}」即将推出`);
   });
   tile.addEventListener("animationend", () => { tile.dataset.bounce = "false"; });

@@ -322,6 +322,15 @@ button { font: inherit; color: inherit; }
   transform: none !important;
 }
 
+#managed-window-root { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+.managed-window { position: absolute; min-width: 420px; min-height: 280px; overflow: hidden; border: 1px solid rgba(94, 120, 148, 0.76); border-radius: 10px; background: rgba(246, 250, 252, 0.96); box-shadow: 0 22px 54px rgba(0, 12, 32, 0.28); pointer-events: auto; }
+.managed-window-titlebar { display: grid; grid-template-columns: 92px 1fr 92px; align-items: center; height: 34px; padding: 0 10px; border-bottom: 1px solid rgba(74, 98, 126, 0.38); background: linear-gradient(#eef3f8, #bdc9d7); color: #25374d; touch-action: none; user-select: none; }
+.managed-window-titlebar strong { overflow: hidden; font-size: 13px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.managed-window-content { height: calc(100% - 34px); padding: 32px; overflow: auto; color: #26384d; }
+.managed-window-content h2 { margin: 0 0 12px; font: 500 32px/1.1 "Iowan Old Style", "Songti SC", serif; }
+.managed-window-content > p:not(.eyebrow) { max-width: 560px; color: #617487; line-height: 1.7; }
+.managed-window-ready { margin-top: 30px; padding-top: 14px; border-top: 1px solid rgba(90, 114, 138, 0.24); color: #188096; font-size: 12px; }
+
 .content-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr); gap: 18px; }
 
 .panel { border: 1px solid #c8d8db; border-radius: 18px; background: rgba(249, 252, 252, 0.92); overflow: hidden; }
@@ -536,7 +545,7 @@ button { font: inherit; color: inherit; }
 
 .leopard-toast {
   position: absolute;
-  bottom: 118px;
+  bottom: 132px;
   left: 50%;
   transform: translateX(-50%);
   padding: 6px 16px;
@@ -560,9 +569,9 @@ button { font: inherit; color: inherit; }
   .dock-items { height: 46px; }
   .dock-icon { height: 42px; }
   .dock-art { width: 40px; height: 40px; }
-  .dock-reflection { top: 42px; height: 42px; }
+  .dock-reflection { top: 42px; height: 42px; transform: translateY(-42px) scaleY(-0.5); }
   .dock-figure { transform-origin: 50% 42px; }
-  .dock-shelf { top: 40px; }
+  .dock-shelf { top: 16px; height: 80px; }
   .leopard-dock { height: 96px; }
   .leopard-window-workspace { width: calc(100vw - 60px); }
   .content-grid { grid-template-columns: 1fr; }
