@@ -26,6 +26,7 @@ h1 { margin: 0 0 10px; font-family: "Iowan Old Style", "Songti SC", serif; font-
 .panel-heading h2 { margin: 0; font-size: 21px; font-weight: 650; }
 .panel-heading button, .attention-item button { padding: 7px 10px; border: 0; background: transparent; color: #167f91; }
 .project-row, .attention-item { min-height: 88px; padding: 17px 22px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid #e0e9ea; }
+.empty-state { min-height: 150px; padding: 24px; display: flex; align-items: center; justify-content: center; gap: 16px; text-align: left; color: #74888e; }.empty-state.compact { min-height: 150px; }.empty-state.artifacts-empty { min-height: 135px; }.empty-state h3 { margin: 0 0 6px; color: #476068; font-size: 15px; }.empty-state p { margin: 0; max-width: 540px; font-size: 13px; line-height: 1.6; }
 .project-row:last-child, .attention-item:last-child { border-bottom: 0; }
 .project-symbol { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; font-size: 25px; }
 .project-symbol.ocean { color: #087c92; background: #dff1f3; }.project-symbol.neutral { color: #687f86; background: #edf1f2; }
