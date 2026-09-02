@@ -6,6 +6,7 @@ import {
   ipcMain,
   net,
   protocol,
+  screen,
   utilityProcess,
   type IpcMainInvokeEvent,
   type UtilityProcess,
@@ -102,12 +103,14 @@ function registerIpc(): void {
 }
 
 function createMainWindow(): void {
+  // 初始窗口取工作区可用尺寸（扣除系统菜单栏与程序坞），避免应用内容被系统 Dock 遮挡。
+  const workArea = screen.getPrimaryDisplay().workAreaSize;
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 920,
+    width: Math.max(1040, Math.min(1440, workArea.width)),
+    height: Math.max(700, Math.min(920, workArea.height)),
     minWidth: 1040,
     minHeight: 700,
-    backgroundColor: "#eef6f7",
+    backgroundColor: "#0a1428",
     show: false,
     title: "汐灵科研桌面",
     webPreferences: {

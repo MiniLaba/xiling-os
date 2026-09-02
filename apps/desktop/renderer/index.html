@@ -8,25 +8,227 @@
     <link rel="stylesheet" href="./shell.css" />
   </head>
   <body>
-    <main class="desktop-shell">
-      <header class="system-bar">
-        <div class="brand"><span class="brand-mark">汐</span><span>汐灵科研桌面</span></div>
-        <button class="command-trigger" type="button">搜索项目、论文、数据或命令</button>
-        <div class="system-status"><span id="clock"></span><span id="runtime">核心启动中</span></div>
+    <!-- 原创图标精灵图：每个 Dock 图标都有独立剪影与分层材质（非统一圆角矩形） -->
+    <svg class="dock-sprite" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="g-steel" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f4f8fc"/><stop offset="0.5" stop-color="#b9c6d6"/><stop offset="1" stop-color="#7e8fa5"/>
+        </linearGradient>
+        <linearGradient id="g-steel2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#eef3f9"/><stop offset="0.55" stop-color="#9fb0c4"/><stop offset="1" stop-color="#66788e"/>
+        </linearGradient>
+        <linearGradient id="g-blue" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#a8d4f8"/><stop offset="0.52" stop-color="#3f83dc"/><stop offset="1" stop-color="#1d4f96"/>
+        </linearGradient>
+        <linearGradient id="g-green" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#b4ecc2"/><stop offset="0.52" stop-color="#38a862"/><stop offset="1" stop-color="#14663a"/>
+        </linearGradient>
+        <linearGradient id="g-purple" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#d0b8f4"/><stop offset="0.52" stop-color="#7c58c8"/><stop offset="1" stop-color="#46308a"/>
+        </linearGradient>
+        <linearGradient id="g-amber" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f8cc94"/><stop offset="0.52" stop-color="#e0912f"/><stop offset="1" stop-color="#a45f10"/>
+        </linearGradient>
+        <linearGradient id="g-cyan" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#a6e4f0"/><stop offset="0.52" stop-color="#2f9ab0"/><stop offset="1" stop-color="#135d78"/>
+        </linearGradient>
+        <linearGradient id="g-cyanLight" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#e2f8fb"/><stop offset="1" stop-color="#9ad8e4"/>
+        </linearGradient>
+        <linearGradient id="g-paper" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fdf9ee"/><stop offset="1" stop-color="#eadfc4"/>
+        </linearGradient>
+        <linearGradient id="g-boxTop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f4ce92"/><stop offset="1" stop-color="#e0a95c"/>
+        </linearGradient>
+        <linearGradient id="g-boxLeft" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#c98f4a"/><stop offset="1" stop-color="#9c672c"/>
+        </linearGradient>
+        <linearGradient id="g-boxRight" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#eab87a"/><stop offset="1" stop-color="#bd7f3a"/>
+        </linearGradient>
+        <linearGradient id="g-liquid" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#5cd8c8"/><stop offset="1" stop-color="#1798a8"/>
+        </linearGradient>
+        <linearGradient id="g-glassFlask" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="rgba(214,242,250,0.5)"/><stop offset="1" stop-color="rgba(150,210,232,0.3)"/>
+        </linearGradient>
+        <radialGradient id="g-dial" cx="0.5" cy="0.4" r="0.7">
+          <stop offset="0" stop-color="#28466f"/><stop offset="1" stop-color="#0b1730"/>
+        </radialGradient>
+        <linearGradient id="g-needle" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#93ecff"/><stop offset="1" stop-color="#1e9ad6"/>
+        </linearGradient>
+
+        <!-- 工作台：深色罗盘仪盘（圆形剪影） -->
+        <symbol id="sym-workbench" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r="21" fill="url(#g-steel2)"/>
+          <circle cx="24" cy="24" r="18" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.4"/>
+          <circle cx="24" cy="24" r="16" fill="url(#g-dial)"/>
+          <g stroke="rgba(214,232,255,0.65)" stroke-width="1.6" stroke-linecap="round">
+            <line x1="24" y1="9.5" x2="24" y2="13.5"/><line x1="24" y1="34.5" x2="24" y2="38.5"/>
+            <line x1="9.5" y1="24" x2="13.5" y2="24"/><line x1="34.5" y1="24" x2="38.5" y2="24"/>
+          </g>
+          <polygon points="24,11 27.4,24 24,37 20.6,24" fill="url(#g-needle)"/>
+          <circle cx="24" cy="24" r="2.6" fill="#dff4ff" stroke="#1e9ad6"/>
+          <ellipse cx="18" cy="13.5" rx="11" ry="6" fill="rgba(255,255,255,0.26)"/>
+        </symbol>
+
+        <!-- 对话：语音气泡（气泡剪影） -->
+        <symbol id="sym-chat" viewBox="0 0 48 48">
+          <path d="M6 15c0-4.8 3.9-8.7 8.7-8.7h18.6C38.1 6.3 42 10.2 42 15v9.4c0 4.8-3.9 8.7-8.7 8.7H21.5l-10.2 8.6c-1 0.9-2.6 0.2-2.6-1.2v-9.2C7 29.4 6 26.5 6 23.4z" fill="url(#g-green)" stroke="rgba(255,255,255,0.45)" stroke-width="1.2"/>
+          <ellipse cx="17" cy="14" rx="13" ry="5.5" fill="rgba(255,255,255,0.3)"/>
+          <g fill="rgba(240,255,246,0.85)"><circle cx="17" cy="20" r="2.4"/><circle cx="25" cy="20" r="2.4"/><circle cx="33" cy="20" r="2.4"/></g>
+        </symbol>
+
+        <!-- 研究：锥形瓶与发光试剂（瓶体剪影） -->
+        <symbol id="sym-research" viewBox="0 0 48 48">
+          <path d="M19.2 4.5h9.6v2.6h-1.4v9.3l10.5 18.2c1.9 3.3-0.5 7.4-4.3 7.4H14.4c-3.8 0-6.2-4.1-4.3-7.4l10.5-18.2V7.1h-1.4z" fill="url(#g-glassFlask)" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/>
+          <path d="M15.9 29.5h16.2l3.5 6.1c0.9 1.6-0.2 3.5-2 3.5H14.4c-1.8 0-2.9-1.9-2-3.5z" fill="url(#g-liquid)"/>
+          <circle cx="21" cy="33.5" r="1.5" fill="rgba(255,255,255,0.55)"/>
+          <circle cx="26.5" cy="36.5" r="1.1" fill="rgba(255,255,255,0.45)"/>
+          <path d="M21.6 10v13" stroke="rgba(255,255,255,0.6)" stroke-width="1.4" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- 文献：摊开的书脊与纸页（书本剪影） -->
+        <symbol id="sym-literature" viewBox="0 0 48 48">
+          <path d="M24 13.5C20.6 9.8 15 8.4 9.4 8.4c-1.8 0-3.3 0.2-4.4 0.6v28.6c1.1-0.4 2.6-0.6 4.4-0.6 5.6 0 11.2 1.4 14.6 5.1 3.4-3.7 9-5.1 14.6-5.1 1.8 0 3.3 0.2 4.4 0.6V9c-1.1-0.4-2.6-0.6-4.4-0.6-5.6 0-11.2 1.4-14.6 5.1z" fill="url(#g-amber)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+          <path d="M24 16.2C20.9 13 15.8 11.7 10.6 11.7c-1.5 0-2.8 0.1-3.9 0.4v23.2c1.1-0.3 2.4-0.4 3.9-0.4 5.2 0 10.3 1.3 13.4 4.5 3.1-3.2 8.2-4.5 13.4-4.5 1.5 0 2.8 0.1 3.9 0.4V12.1c-1.1-0.3-2.4-0.4-3.9-0.4-5.2 0-10.3 1.3-13.4 4.5z" fill="url(#g-paper)"/>
+          <g stroke="#c9b98f" stroke-width="1"><line x1="12" y1="18" x2="20" y2="19"/><line x1="12" y1="22" x2="20" y2="23"/><line x1="28" y1="19" x2="36" y2="18"/><line x1="28" y1="23" x2="36" y2="22"/></g>
+          <line x1="24" y1="16.2" x2="24" y2="39" stroke="#a97f3f" stroke-width="1.4"/>
+        </symbol>
+
+        <!-- 数据：数据卷筒（圆柱剪影） -->
+        <symbol id="sym-data" viewBox="0 0 48 48">
+          <path d="M8 10.5v27c0 3.3 7.2 6 16 6s16-2.7 16-6v-27" fill="url(#g-cyan)"/>
+          <path d="M8 20c0 3.3 7.2 6 16 6s16-2.7 16-6" fill="none" stroke="rgba(10,50,70,0.5)" stroke-width="1.4"/>
+          <path d="M8 30c0 3.3 7.2 6 16 6s16-2.7 16-6" fill="none" stroke="rgba(10,50,70,0.5)" stroke-width="1.4"/>
+          <ellipse cx="24" cy="10.5" rx="16" ry="6" fill="url(#g-cyanLight)" stroke="rgba(255,255,255,0.6)"/>
+          <ellipse cx="19" cy="9" rx="7" ry="2.4" fill="rgba(255,255,255,0.55)"/>
+        </symbol>
+
+        <!-- 产物：储物木箱（立方体剪影，同时是 Stacks） -->
+        <symbol id="sym-artifacts" viewBox="0 0 48 48">
+          <polygon points="24,5 41,12.5 24,20 7,12.5" fill="url(#g-boxTop)" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"/>
+          <polygon points="7,12.5 24,20 24,43 7,35.5" fill="url(#g-boxLeft)"/>
+          <polygon points="41,12.5 24,20 24,43 41,35.5" fill="url(#g-boxRight)"/>
+          <rect x="13" y="24.5" width="8" height="6.5" rx="1" fill="rgba(250,242,226,0.9)" transform="skewY(16)"/>
+          <line x1="24" y1="20" x2="24" y2="43" stroke="rgba(90,50,15,0.45)" stroke-width="1.2"/>
+        </symbol>
+
+        <!-- 设置：铸钢齿轮（齿轮剪影） -->
+        <symbol id="sym-settings" viewBox="0 0 48 48">
+          <g fill="url(#g-steel)">
+            <rect x="21.4" y="2.5" width="5.2" height="9" rx="1.6"/>
+            <rect x="21.4" y="2.5" width="5.2" height="9" rx="1.6" transform="rotate(45 24 24)"/>
+            <rect x="21.4" y="2.5" width="5.2" height="9" rx="1.6" transform="rotate(90 24 24)"/>
+            <rect x="21.4" y="2.5" width="5.2" height="9" rx="1.6" transform="rotate(135 24 24)"/>
+            <rect x="21.4" y="2.5" width="5.2" height="9" rx="1.6" transform="rotate(180 24 24)"/>
+            <rect x="21.4" y="2.5" width="5.2" height="9" rx="1.6" transform="rotate(225 24 24)"/>
+            <rect x="21.4" y="2.5" width="5.2" height="9" rx="1.6" transform="rotate(270 24 24)"/>
+            <rect x="21.4" y="2.5" width="5.2" height="9" rx="1.6" transform="rotate(315 24 24)"/>
+            <circle cx="24" cy="24" r="16.5"/>
+          </g>
+          <circle cx="24" cy="24" r="7" fill="#131c2c" stroke="rgba(255,255,255,0.4)"/>
+          <path d="M12 15a15 15 0 0 1 9-5.6" stroke="rgba(255,255,255,0.65)" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        </symbol>
+
+        <!-- 废纸篓：网状废纸篓（锥形剪影） -->
+        <symbol id="sym-trash" viewBox="0 0 48 48">
+          <ellipse cx="24" cy="7.5" rx="14.5" ry="4.2" fill="url(#g-steel2)" stroke="rgba(255,255,255,0.55)"/>
+          <ellipse cx="24" cy="7.5" rx="10.5" ry="2.6" fill="#2a3648"/>
+          <path d="M10.6 10.5l3.2 27.6c0.3 2.6 2.5 4.6 5.1 4.6h10.2c2.6 0 4.8-2 5.1-4.6l3.2-27.6" fill="rgba(196,208,224,0.4)" stroke="rgba(235,242,250,0.75)" stroke-width="1.4"/>
+          <g stroke="rgba(235,242,250,0.5)" stroke-width="1.1" fill="none">
+            <path d="M17.5 14.5l2 31"/><path d="M24 15v31.5"/><path d="M30.5 14.5l-2 31"/>
+            <path d="M11.8 20h24.4"/><path d="M12.6 28h22.8"/><path d="M13.4 36h21.2"/>
+          </g>
+        </symbol>
+
+        <!-- 桌面图标：硬盘 / 文件夹 -->
+        <symbol id="sym-disk" viewBox="0 0 48 48">
+          <rect x="4" y="12" width="40" height="24" rx="4.5" fill="url(#g-steel)" stroke="rgba(255,255,255,0.5)"/>
+          <rect x="4" y="12" width="40" height="10" rx="4.5" fill="rgba(255,255,255,0.35)"/>
+          <circle cx="36.5" cy="30" r="2.2" fill="#7fe3a8"/>
+          <rect x="9" y="27.5" width="16" height="5" rx="2.2" fill="#5c6c80"/>
+          <line x1="9" y1="22" x2="30" y2="22" stroke="#8fa0b4" stroke-width="1.6" stroke-linecap="round"/>
+        </symbol>
+        <symbol id="sym-folder" viewBox="0 0 48 48">
+          <path d="M5 12c0-2 1.6-3.6 3.6-3.6h9.6c1.2 0 2.3 0.6 3 1.6l2 2.8H39.4c2 0 3.6 1.6 3.6 3.6v18c0 2-1.6 3.6-3.6 3.6H8.6C6.6 38 5 36.4 5 34.4z" fill="url(#g-blue)"/>
+          <path d="M5 18.6h38v-2.2c0-2-1.6-3.6-3.6-3.6H23.2l-2-2.8c-0.7-1-1.8-1.6-3-1.6H8.6C6.6 8.4 5 10 5 12z" fill="rgba(255,255,255,0.28)"/>
+        </symbol>
+
+        <!-- Stacks 扇形里的产物缩略 -->
+        <symbol id="sym-doc" viewBox="0 0 40 40">
+          <path d="M9 4h15l8 8v24H9z" fill="url(#g-paper)" stroke="#b9a878"/>
+          <path d="M24 4l8 8h-8z" fill="#d9cba4"/>
+          <g stroke="#9aa7b8" stroke-width="1.4" stroke-linecap="round"><line x1="13" y1="17" x2="28" y2="17"/><line x1="13" y1="22" x2="28" y2="22"/><line x1="13" y1="27" x2="22" y2="27"/></g>
+        </symbol>
+        <symbol id="sym-chart" viewBox="0 0 40 40">
+          <rect x="5" y="5" width="30" height="30" rx="4" fill="#f4f8fc" stroke="#9fb0c4"/>
+          <polyline points="10,28 17,20 22,24 30,12" fill="none" stroke="#2f9ab0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="30" cy="12" r="2.2" fill="#e0912f"/>
+        </symbol>
+        <symbol id="sym-code" viewBox="0 0 40 40">
+          <path d="M9 4h15l8 8v24H9z" fill="#20304a" stroke="#4a607e"/>
+          <path d="M24 4l8 8h-8z" fill="#41597c"/>
+          <g stroke="#7fe3ff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15,18 11,22 15,26"/><polyline points="25,18 29,22 25,26"/><line x1="22" y1="15" x2="18" y2="29"/>
+          </g>
+        </symbol>
+        <symbol id="sym-table" viewBox="0 0 40 40">
+          <rect x="5" y="7" width="30" height="26" rx="3" fill="url(#g-paper)" stroke="#b9a878"/>
+          <g stroke="#9aa7b8" stroke-width="1.3"><line x1="5" y1="15" x2="35" y2="15"/><line x1="5" y1="23" x2="35" y2="23"/><line x1="15" y1="7" x2="15" y2="33"/><line x1="25" y1="7" x2="25" y2="33"/></g>
+        </symbol>
+        <symbol id="sym-image" viewBox="0 0 40 40">
+          <rect x="5" y="6" width="30" height="28" rx="3.5" fill="#f4f8fc" stroke="#9fb0c4"/>
+          <circle cx="14" cy="14.5" r="3" fill="#f6c890"/>
+          <path d="M8 30l8.5-9.5 6 6.5 5-5.5 4.5 8.5z" fill="url(#g-green)"/>
+        </symbol>
+      </defs>
+    </svg>
+
+    <main class="leopard" id="leopard">
+      <canvas id="tide-canvas" aria-hidden="true"></canvas>
+
+      <header class="leopard-menubar">
+        <button class="leopard-menubar-brand" type="button" data-open-window="about" title="关于这台工作站">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 13h2l2-8 3 16 3-12 2 6 2-2h6"/></svg>
+        </button>
+        <button class="leopard-menu-appname" type="button" data-open-window="about">汐灵科研桌面</button>
+        <button type="button">文件</button>
+        <button type="button">编辑</button>
+        <button type="button">显示</button>
+        <button type="button">前往</button>
+        <button type="button">窗口</button>
+        <button type="button">帮助</button>
+        <div class="leopard-menubar-status">
+          <span class="core-status" id="runtime">核心启动中</span>
+          <span class="leopard-clock" id="clock"></span>
+        </div>
       </header>
 
-      <section class="workspace">
-        <nav class="dock" aria-label="主要功能">
-          <button class="active" type="button"><span>◌</span>桌面</button>
-          <button type="button"><span>◇</span>对话</button>
-          <button type="button"><span>⌁</span>研究</button>
-          <button type="button"><span>▱</span>文献</button>
-          <button type="button"><span>▦</span>数据</button>
-          <button type="button"><span>□</span>产物</button>
-          <button class="dock-bottom" type="button"><span>⚙</span>设置</button>
-        </nav>
+      <div class="leopard-desktop-icons">
+        <button class="leopard-desktop-icon" type="button" data-target="about" aria-label="打开关于窗口">
+          <span class="leopard-icon-tile"><svg aria-hidden="true"><use href="#sym-disk"/></svg></span>
+          <span class="leopard-icon-label">灵境 HD</span>
+        </button>
+        <button class="leopard-desktop-icon" type="button" data-target="workspace" aria-label="打开科研工作台">
+          <span class="leopard-icon-tile"><svg aria-hidden="true"><use href="#sym-folder"/></svg></span>
+          <span class="leopard-icon-label">科研项目</span>
+        </button>
+      </div>
 
-        <section class="desktop-content">
+      <section class="leopard-window leopard-window-workspace" id="window-workspace" data-open="true">
+        <div class="leopard-window-titlebar" data-drag>
+          <div class="leopard-traffic">
+            <button class="traffic-close" type="button" data-window="workspace" data-window-action="close" aria-label="关闭工作台窗口"></button>
+            <button class="traffic-min" type="button" data-window-action="minimize" aria-label="最小化应用" title="最小化应用窗口"></button>
+            <button class="traffic-zoom" type="button" data-window-action="zoom" aria-label="最大化应用" title="最大化应用窗口"></button>
+          </div>
+          <div class="leopard-window-title">科研工作台</div>
+          <div class="leopard-titlebar-spacer" aria-hidden="true"></div>
+        </div>
+        <div class="leopard-window-body leopard-window-scroll">
           <div class="welcome-row">
             <div><p class="eyebrow">科研工作空间</p><h1>继续你的研究</h1><p>从问题出发，让证据、计算和产物留在同一个可追溯空间。</p></div>
             <button class="primary-action" type="button">＋ 新建研究</button>
@@ -48,9 +250,147 @@
               <div class="empty-state artifacts-empty"><span class="project-symbol neutral">□</span><div><h3>尚未产生科研产物</h3><p>经过保存的图表、数据、代码和报告会出现在这里，并保留来源与计算溯源。</p></div></div>
             </section>
           </div>
-        </section>
+        </div>
       </section>
+
+      <section class="leopard-window leopard-window-about" id="window-about" data-open="true">
+        <div class="leopard-window-titlebar" data-drag>
+          <div class="leopard-traffic">
+            <button class="traffic-close" type="button" data-window="about" data-window-action="close" aria-label="关闭关于窗口"></button>
+            <i class="traffic-min" aria-hidden="true"></i>
+            <i class="traffic-zoom" aria-hidden="true"></i>
+          </div>
+          <div class="leopard-window-title">关于 汐灵科研桌面</div>
+          <div class="leopard-titlebar-spacer" aria-hidden="true"></div>
+        </div>
+        <div class="leopard-window-body">
+          <span class="about-mark" aria-hidden="true">汐</span>
+          <h1>汐灵科研桌面<small>XI LING · SCIENCE OS · V2</small></h1>
+          <p>本桌面致敬 Mac OS X 10.5 Leopard 的经典观感：半透明菜单栏、Aqua 光泽窗口与立在玻璃台面上的程序坞。潮汐背景迁移自旧版 Web 启动页的着色器，全部图标为原创绘制，科研核心以独立进程运行。</p>
+          <div class="leopard-window-meta">
+            <span>字体栈：Lucida Grande → 苹方</span>
+            <span id="about-clock" aria-hidden="true"></span>
+          </div>
+        </div>
+      </section>
+
+      <nav class="leopard-dock" id="dock" aria-label="程序坞">
+        <svg class="dock-shelf" viewBox="0 0 1000 64" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="g-shelfTop" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f2f7fd" stop-opacity="0.85"/>
+              <stop offset="0.45" stop-color="#c6d6e8" stop-opacity="0.68"/>
+              <stop offset="1" stop-color="#7e94b4" stop-opacity="0.55"/>
+            </linearGradient>
+            <linearGradient id="g-shelfFront" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f6fafd" stop-opacity="0.92"/>
+              <stop offset="0.4" stop-color="#c4d4e8" stop-opacity="0.6"/>
+              <stop offset="1" stop-color="#46608a" stop-opacity="0.55"/>
+            </linearGradient>
+            <linearGradient id="g-shelfSide" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fcfeff" stop-opacity="0.95"/>
+              <stop offset="1" stop-color="#8ca2c0" stop-opacity="0.5"/>
+            </linearGradient>
+          </defs>
+          <!-- 台面顶面：前宽后窄的梯形，向后收进营造透视 -->
+          <polygon points="52,3 948,3 996,44 4,44" fill="url(#g-shelfTop)"/>
+          <!-- 顶面中央的宽幅镜面反射带 -->
+          <polygon points="140,8 860,8 900,42 100,42" fill="rgba(255,255,255,0.14)"/>
+          <!-- 立起的后沿亮线：图标就站在这条线上 -->
+          <polygon points="52,0 948,0 948,4.5 52,4.5" fill="rgba(255,255,255,0.95)"/>
+          <polygon points="52,4.5 948,4.5 948,7 52,7" fill="rgba(255,255,255,0.32)"/>
+          <!-- 顶面上的纵向光带（玻璃折射） -->
+          <polygon points="60,7 96,7 76,42 42,42" fill="rgba(255,255,255,0.22)"/>
+          <polygon points="940,7 904,7 924,42 958,42" fill="rgba(255,255,255,0.22)"/>
+          <!-- 前立面（玻璃厚度）与前沿高光 -->
+          <polygon points="4,44 996,44 992,56 8,56" fill="url(#g-shelfFront)"/>
+          <polygon points="8,56 992,56 988,63 12,63" fill="rgba(20,34,56,0.5)"/>
+          <polygon points="4,44 996,44 995,46.5 5,46.5" fill="rgba(255,255,255,0.75)"/>
+          <!-- 两端收头 -->
+          <polygon points="4,44 52,3 60,3 14,44" fill="url(#g-shelfSide)"/>
+          <polygon points="996,44 948,3 940,3 986,44" fill="url(#g-shelfSide)"/>
+        </svg>
+
+        <div class="dock-items">
+          <button class="leopard-dock-tile" type="button" data-app="workspace" aria-label="工作台">
+            <span class="leopard-dock-label">工作台</span>
+            <span class="dock-figure">
+              <span class="dock-contact" aria-hidden="true"></span>
+              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-workbench"/></svg></span>
+              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-workbench"/></svg></span>
+            </span>
+            <i class="leopard-dock-dot" aria-hidden="true"></i>
+          </button>
+          <button class="leopard-dock-tile" type="button" data-app="chat" aria-label="对话">
+            <span class="leopard-dock-label">对话</span>
+            <span class="dock-figure">
+              <span class="dock-contact" aria-hidden="true"></span>
+              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-chat"/></svg></span>
+              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-chat"/></svg></span>
+            </span>
+          </button>
+          <button class="leopard-dock-tile" type="button" data-app="research" aria-label="研究">
+            <span class="leopard-dock-label">研究</span>
+            <span class="dock-figure">
+              <span class="dock-contact" aria-hidden="true"></span>
+              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-research"/></svg></span>
+              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-research"/></svg></span>
+            </span>
+          </button>
+          <button class="leopard-dock-tile" type="button" data-app="literature" aria-label="文献">
+            <span class="leopard-dock-label">文献</span>
+            <span class="dock-figure">
+              <span class="dock-contact" aria-hidden="true"></span>
+              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-literature"/></svg></span>
+              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-literature"/></svg></span>
+            </span>
+          </button>
+          <button class="leopard-dock-tile" type="button" data-app="data" aria-label="数据">
+            <span class="leopard-dock-label">数据</span>
+            <span class="dock-figure">
+              <span class="dock-contact" aria-hidden="true"></span>
+              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-data"/></svg></span>
+              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-data"/></svg></span>
+            </span>
+          </button>
+          <button class="leopard-dock-tile" type="button" data-app="artifacts" aria-label="产物" data-stack>
+            <span class="leopard-dock-label">产物</span>
+            <span class="dock-figure">
+              <span class="dock-contact" aria-hidden="true"></span>
+              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-artifacts"/></svg></span>
+              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-artifacts"/></svg></span>
+            </span>
+            <span class="dock-fan" id="dock-fan" aria-hidden="true">
+              <button class="fan-item" type="button" tabindex="-1" data-label="图表"><svg class="fan-art"><use href="#sym-chart"/></svg></button>
+              <button class="fan-item" type="button" tabindex="-1" data-label="报告"><svg class="fan-art"><use href="#sym-doc"/></svg></button>
+              <button class="fan-item" type="button" tabindex="-1" data-label="代码"><svg class="fan-art"><use href="#sym-code"/></svg></button>
+              <button class="fan-item" type="button" tabindex="-1" data-label="数据表"><svg class="fan-art"><use href="#sym-table"/></svg></button>
+              <button class="fan-item" type="button" tabindex="-1" data-label="图版"><svg class="fan-art"><use href="#sym-image"/></svg></button>
+            </span>
+          </button>
+          <button class="leopard-dock-tile" type="button" data-app="settings" aria-label="设置">
+            <span class="leopard-dock-label">设置</span>
+            <span class="dock-figure">
+              <span class="dock-contact" aria-hidden="true"></span>
+              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-settings"/></svg></span>
+              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-settings"/></svg></span>
+            </span>
+          </button>
+          <span class="dock-gap" aria-hidden="true"></span>
+          <button class="leopard-dock-tile" type="button" data-app="trash" aria-label="废纸篓">
+            <span class="leopard-dock-label">废纸篓</span>
+            <span class="dock-figure">
+              <span class="dock-contact" aria-hidden="true"></span>
+              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-trash"/></svg></span>
+              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-trash"/></svg></span>
+            </span>
+          </button>
+        </div>
+      </nav>
+
+      <div class="leopard-toast" id="toast" role="status" hidden></div>
     </main>
+    <script type="module" src="./assets/tide.js"></script>
     <script src="./shell.js"></script>
   </body>
 </html>
