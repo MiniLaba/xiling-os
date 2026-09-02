@@ -30,7 +30,7 @@
 | 模型 | [0015 多模态模型连接器](0015-extensible-multimodal-model-connectors.md)、[0037 真实模型路由与角色覆盖](0037-real-model-routing-and-role-overrides.md) |
 | 平台 | [0039 原生 Windows 与 Docker 沙箱](0039-native-windows-control-plane-and-docker-sandbox.md) |
 | 前端壳层 | [0041 两栏应用壳与 Chat 上下文产物面板](0041-two-column-shell-and-contextual-artifact-panel.md)、[0042 三个工作区锁定 27ebdf7](0042-restore-three-workspaces-to-27ebdf7.md) |
-| Desktop V2 | [0043 Electron 全新科研桌面](0043-greenfield-electron-desktop-v2.md) |
+| Desktop V2 | [0043 Electron 全新科研桌面](0043-greenfield-electron-desktop-v2.md)、[0045 统一存储与按需应用运行时](0045-unified-desktop-system-store-and-app-runtime.md) |
 | 原生执行 | [0044 Desktop V2 无容器依赖](0044-container-free-native-execution.md) |
 
 ## 已替代的主要决策
