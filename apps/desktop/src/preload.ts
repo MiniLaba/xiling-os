@@ -25,7 +25,11 @@ const desktopApi = Object.freeze({
       const channel = "desktop:workspace.changed";
       const handler = (_event: Electron.IpcRendererEvent, payload: { rootId: string }) => listener(payload);
       ipcRenderer.on(channel, handler);
-      return () => ipcRenderer.removeListener(channel, handler);
+      void ipcRenderer.invoke("desktop:workspace-watch", true).catch(() => undefined);
+      return () => {
+        ipcRenderer.removeListener(channel, handler);
+        void ipcRenderer.invoke("desktop:workspace-watch", false).catch(() => undefined);
+      };
     },
   }),
   windowState: Object.freeze({

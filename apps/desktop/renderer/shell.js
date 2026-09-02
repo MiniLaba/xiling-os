@@ -78,12 +78,14 @@ async function openWindow(id) {
   element.dataset.minimized = "false";
   bringToFront(element);
   scheduleWindowSave(element);
+  if (id === "workspace") void refreshWorkspaceFiles();
 }
 
 function closeWindow(id) {
   const element = windowEl(id);
   if (element) {
     element.dataset.open = "false";
+    if (id === "workspace") disconnectWorkspaceWatcher();
     scheduleWindowSave(element);
   }
 }
@@ -215,6 +217,16 @@ const workspaceTitle = document.querySelector("#workspace-title");
 const workspaceList = document.querySelector("#workspace-file-list");
 const workspaceEmpty = document.querySelector("#workspace-empty");
 const workspaceDropzone = document.querySelector("#workspace-dropzone");
+let disconnectWorkspaceChanges;
+
+function connectWorkspaceWatcher() {
+  disconnectWorkspaceChanges ??= window.xilingDesktop?.workspace.onChanged(() => void refreshWorkspaceFiles());
+}
+
+function disconnectWorkspaceWatcher() {
+  disconnectWorkspaceChanges?.();
+  disconnectWorkspaceChanges = undefined;
+}
 
 function formatBytes(bytes) {
   if (bytes == null) return "文件夹";
@@ -253,6 +265,7 @@ async function refreshWorkspaceFiles() {
     }
     if (workspaceTitle) workspaceTitle.textContent = rootInfo.label;
     renderWorkspaceEntries(await window.xilingDesktop.workspace.list(""));
+    connectWorkspaceWatcher();
   } catch (error) {
     showToast(error instanceof Error ? error.message : "无法读取桌面文件夹");
   }
@@ -285,7 +298,7 @@ workspaceDropzone?.addEventListener("drop", async (event) => {
   }
 });
 
-window.xilingDesktop?.workspace.onChanged(() => void refreshWorkspaceFiles());
+window.addEventListener("beforeunload", disconnectWorkspaceWatcher);
 
 /* ---------- 桌面图标 ---------- */
 

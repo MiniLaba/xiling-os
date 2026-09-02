@@ -48,6 +48,8 @@ const pendingCoreRequests = new Map<
   string,
   { resolve: (value: unknown) => void; reject: (error: Error) => void; release: () => void }
 >();
+let workspaceWatchLease: { release: () => void } | undefined;
+let workspaceWatchClients = 0;
 
 function completeLaunchSmokeIfReady(): void {
   if (!launchSmoke || !coreReady || !rendererReady || !managedWindowReady || launchSmokeFinishing) return;
@@ -224,6 +226,24 @@ function registerIpc(): void {
     return requestCore("workspace.import", { appId: "system.files", sourcePaths });
   });
 
+  ipcMain.handle("desktop:workspace-watch", async (event, enabled: unknown) => {
+    assertTrustedSender(event);
+    if (typeof enabled !== "boolean") throw new Error("Invalid watcher state");
+    if (enabled) {
+      workspaceWatchClients += 1;
+      if (!workspaceWatchLease) {
+        const lease = await coreResource.acquire();
+        workspaceWatchLease = { release: lease.release };
+      }
+      return;
+    }
+    workspaceWatchClients = Math.max(0, workspaceWatchClients - 1);
+    if (workspaceWatchClients === 0 && workspaceWatchLease) {
+      workspaceWatchLease.release();
+      workspaceWatchLease = undefined;
+    }
+  });
+
   ipcMain.handle("desktop:windows-list", async (event) => {
     assertTrustedSender(event);
     return requestCore("windows.list", {});
@@ -335,5 +355,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  workspaceWatchLease?.release();
+  workspaceWatchLease = undefined;
   void coreResource.stopNow();
 });

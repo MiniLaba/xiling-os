@@ -1,4 +1,5 @@
-import { cp, lstat, mkdir, readdir, rename, stat, watch } from "node:fs/promises";
+import { watch as watchNative } from "node:fs";
+import { cp, lstat, mkdir, readdir, rename, stat } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -91,25 +92,22 @@ export class WorkspaceFileService {
 
   async watch(onChange: () => void): Promise<() => void> {
     await this.ensureRoot();
-    const watcher = watch(this.rootPath, { recursive: process.platform !== "linux" });
     let closed = false;
     let timer: NodeJS.Timeout | undefined;
-    void (async () => {
-      try {
-        for await (const _event of watcher) {
-          if (closed) break;
-          if (timer) clearTimeout(timer);
-          timer = setTimeout(onChange, 120);
-          timer.unref();
-        }
-      } catch {
-        // A watcher can terminate while the app is shutting down.
-      }
-    })();
+    const watcher = watchNative(
+      this.rootPath,
+      { recursive: process.platform !== "linux" },
+      () => {
+        if (closed) return;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(onChange, 120);
+        timer.unref();
+      },
+    );
     return () => {
       closed = true;
       if (timer) clearTimeout(timer);
-      void watcher.return?.();
+      watcher.close();
     };
   }
 
