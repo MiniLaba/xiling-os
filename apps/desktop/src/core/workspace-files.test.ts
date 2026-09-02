@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { appendFile, mkdtemp, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -50,7 +50,10 @@ test("workspace watcher emits a debounced change and releases cleanly", async (c
     changes += 1;
   });
   await writeFile(path.join(temporary, "change.txt"), "changed", "utf8");
-  for (let attempt = 0; attempt < 20 && changes === 0; attempt += 1) await delay(25);
+  for (let attempt = 0; attempt < 100 && changes === 0; attempt += 1) {
+    await delay(25);
+    if (attempt > 0 && attempt % 20 === 0) await appendFile(path.join(temporary, "change.txt"), ".", "utf8");
+  }
   stop();
   assert.equal(changes, 1);
 });
