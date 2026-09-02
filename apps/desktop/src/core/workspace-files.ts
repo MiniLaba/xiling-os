@@ -116,6 +116,19 @@ export class WorkspaceFileService {
     return `workspace://${this.rootId}/${encodeRelativePath(normalized)}`;
   }
 
+  async nativePathForUri(uri: string): Promise<string> {
+    const parsed = new URL(uri);
+    if (parsed.protocol !== "workspace:" || parsed.hostname !== this.rootId) {
+      throw new Error("Resource does not belong to this workspace");
+    }
+    const relativePath = parsed.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((part) => decodeURIComponent(part))
+      .join(path.sep);
+    return this.#resolveExisting(relativePath, false);
+  }
+
   async #resolveExisting(relativePath: string, requireDirectory: boolean): Promise<string> {
     const normalized = this.#resolveRelative(relativePath);
     let cursor = this.rootPath;

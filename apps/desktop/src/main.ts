@@ -9,6 +9,7 @@ import {
   net,
   protocol,
   screen,
+  shell,
   utilityProcess,
   type IpcMainInvokeEvent,
   type UtilityProcess,
@@ -224,6 +225,14 @@ function registerIpc(): void {
       throw new Error("Invalid import paths");
     }
     return requestCore("workspace.import", { appId: "system.files", sourcePaths });
+  });
+
+  ipcMain.handle("desktop:workspace-open", async (event, uri: unknown) => {
+    assertTrustedSender(event);
+    if (typeof uri !== "string" || !uri.startsWith("workspace://")) throw new Error("Invalid resource URI");
+    const target = await requestCore("workspace.resolve", { appId: "system.files", uri });
+    const failure = await shell.openPath(target.nativePath);
+    if (failure) throw new Error(failure);
   });
 
   ipcMain.handle("desktop:workspace-watch", async (event, enabled: unknown) => {

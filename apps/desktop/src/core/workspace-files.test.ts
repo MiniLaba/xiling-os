@@ -24,6 +24,11 @@ test("workspace service lists real files, hides symlinks and imports without ove
   const listed = await service.list();
   assert.deepEqual(listed.map((entry) => entry.name), ["论文.md"]);
   assert.equal(listed[0]?.uri, "workspace://primary/%E8%AE%BA%E6%96%87.md");
+  assert.equal(await service.nativePathForUri(listed[0]!.uri), path.join(workspace, "论文.md"));
+  await assert.rejects(
+    () => service.nativePathForUri("workspace://other/%E8%AE%BA%E6%96%87.md"),
+    /does not belong/,
+  );
 
   const firstImport = await service.importPaths([external]);
   const secondImport = await service.importPaths([external]);

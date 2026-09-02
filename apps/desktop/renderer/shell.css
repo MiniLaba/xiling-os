@@ -153,6 +153,9 @@ button { font: inherit; color: inherit; }
   text-shadow: none;
 }
 
+.workspace-desktop-files { display: contents; }
+.workspace-desktop-more { width: 84px; color: rgba(255,255,255,0.82); font-size: 11px; text-align: center; text-shadow: 0 1px 2px rgba(4,12,28,0.9); }
+
 /* ---------- Aqua 窗口 ---------- */
 
 .leopard-window {
@@ -490,7 +493,7 @@ button { font: inherit; color: inherit; }
 
 .dock-fan {
   position: absolute;
-  bottom: 40px;
+  bottom: 6px;
   left: 50%;
   width: 0;
   height: 0;
@@ -516,17 +519,17 @@ button { font: inherit; color: inherit; }
   filter: drop-shadow(0 5px 8px rgba(2, 8, 20, 0.5));
 }
 
-.fan-item:nth-child(1) { --fan-angle: -62deg; }
-.fan-item:nth-child(2) { --fan-angle: -31deg; }
+.fan-item:nth-child(1) { --fan-angle: -46deg; }
+.fan-item:nth-child(2) { --fan-angle: -23deg; }
 .fan-item:nth-child(3) { --fan-angle: 0deg; }
-.fan-item:nth-child(4) { --fan-angle: 31deg; }
-.fan-item:nth-child(5) { --fan-angle: 62deg; }
+.fan-item:nth-child(4) { --fan-angle: 23deg; }
+.fan-item:nth-child(5) { --fan-angle: 46deg; }
 
 .dock-fan[data-open="true"] { pointer-events: auto; }
 
 .dock-fan[data-open="true"] .fan-item {
   opacity: 1;
-  transform: rotate(var(--fan-angle)) translateY(-92px) scale(1);
+  transform: rotate(var(--fan-angle)) translateY(-84px) scale(1);
   pointer-events: auto;
   transition: transform 260ms cubic-bezier(0.22, 0.68, 0.31, 0.99), opacity 140ms ease-out;
 }

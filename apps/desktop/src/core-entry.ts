@@ -93,6 +93,10 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
     }
     return workspaceService().importPaths(sourcePaths as string[]);
   }
+  if (method === "workspace.resolve") {
+    caller(params, "workspace.read");
+    return { nativePath: await workspaceService().nativePathForUri(stringField(params, "uri")) };
+  }
   if (method === "windows.list") return store.listWindows();
   if (method === "windows.save") {
     store.saveWindow(params.state as unknown as DesktopWindowState);

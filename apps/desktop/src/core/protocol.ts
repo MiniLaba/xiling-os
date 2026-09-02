@@ -28,6 +28,7 @@ export type CoreMethod =
   | "workspace.set"
   | "workspace.list"
   | "workspace.import"
+  | "workspace.resolve"
   | "windows.list"
   | "windows.save";
 
@@ -43,6 +44,7 @@ export interface CoreResultMap {
   "workspace.set": SafeWorkspaceRoot;
   "workspace.list": WorkspaceEntry[];
   "workspace.import": WorkspaceEntry[];
+  "workspace.resolve": { nativePath: string };
   "windows.list": DesktopWindowState[];
   "windows.save": { saved: true };
 }

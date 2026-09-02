@@ -217,6 +217,7 @@ const workspaceTitle = document.querySelector("#workspace-title");
 const workspaceList = document.querySelector("#workspace-file-list");
 const workspaceEmpty = document.querySelector("#workspace-empty");
 const workspaceDropzone = document.querySelector("#workspace-dropzone");
+const workspaceDesktopFiles = document.querySelector("#workspace-desktop-files");
 let disconnectWorkspaceChanges;
 
 function connectWorkspaceWatcher() {
@@ -251,7 +252,42 @@ function renderWorkspaceEntries(entries) {
     meta.className = "workspace-file-meta";
     meta.textContent = formatBytes(entry.size);
     row.append(icon, name, meta);
+    row.addEventListener("dblclick", () => void window.xilingDesktop?.workspace.open(entry.uri));
     workspaceList.append(row);
+  }
+  renderDesktopFiles(entries);
+}
+
+function renderDesktopFiles(entries) {
+  if (!workspaceDesktopFiles) return;
+  workspaceDesktopFiles.replaceChildren();
+  const visible = entries.slice(0, 8);
+  for (const entry of visible) {
+    const button = document.createElement("button");
+    button.className = "leopard-desktop-icon";
+    button.type = "button";
+    button.dataset.resourceUri = entry.uri;
+    const tile = document.createElement("span");
+    tile.className = "leopard-icon-tile";
+    const symbol = document.createElement("span");
+    symbol.className = "project-symbol neutral";
+    symbol.textContent = entry.kind === "directory" ? "▰" : "▤";
+    tile.append(symbol);
+    const label = document.createElement("span");
+    label.className = "leopard-icon-label";
+    label.textContent = entry.name;
+    button.append(tile, label);
+    button.addEventListener("click", () => {
+      for (const other of document.querySelectorAll(".leopard-desktop-icon")) other.dataset.selected = other === button ? "true" : "false";
+    });
+    button.addEventListener("dblclick", () => void window.xilingDesktop?.workspace.open(entry.uri));
+    workspaceDesktopFiles.append(button);
+  }
+  if (entries.length > visible.length) {
+    const more = document.createElement("span");
+    more.className = "workspace-desktop-more";
+    more.textContent = `另有 ${entries.length - visible.length} 项`;
+    workspaceDesktopFiles.append(more);
   }
 }
 
@@ -295,6 +331,26 @@ workspaceDropzone?.addEventListener("drop", async (event) => {
     showToast(`已导入 ${files.length} 个项目`);
   } catch (error) {
     showToast(error instanceof Error ? error.message : "导入失败");
+  }
+});
+
+for (const eventName of ["dragenter", "dragover"]) {
+  root?.addEventListener(eventName, (event) => {
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault();
+  });
+}
+root?.addEventListener("drop", async (event) => {
+  if (event.target.closest(".leopard-window, .leopard-dock")) return;
+  event.preventDefault();
+  const files = [...(event.dataTransfer?.files ?? [])];
+  if (!files.length) return;
+  try {
+    await window.xilingDesktop?.workspace.importDroppedFiles(files);
+    await refreshWorkspaceFiles();
+    showToast(`已放入桌面 ${files.length} 个项目`);
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : "无法放入桌面");
   }
 });
 
