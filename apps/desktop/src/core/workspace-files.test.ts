@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 
 import { WorkspaceFileService } from "./workspace-files.js";
 
@@ -30,4 +31,21 @@ test("workspace service lists real files, hides symlinks and imports without ove
   assert.equal(secondImport[0]?.name, "外部 数据 (1).csv");
   assert.equal(await readFile(path.join(workspace, "外部 数据.csv"), "utf8"), "a,b\n1,2\n");
   await assert.rejects(() => service.list("../"), /escapes/);
+});
+
+test("workspace watcher emits a debounced change and releases cleanly", async (context) => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), "xiling-watch-"));
+  context.after(async () => {
+    const { rm } = await import("node:fs/promises");
+    await rm(temporary, { recursive: true, force: true });
+  });
+  const service = new WorkspaceFileService("primary", temporary);
+  let changes = 0;
+  const stop = await service.watch(() => {
+    changes += 1;
+  });
+  await writeFile(path.join(temporary, "change.txt"), "changed", "utf8");
+  for (let attempt = 0; attempt < 20 && changes === 0; attempt += 1) await delay(25);
+  stop();
+  assert.equal(changes, 1);
 });

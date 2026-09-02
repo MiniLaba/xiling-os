@@ -285,6 +285,8 @@ workspaceDropzone?.addEventListener("drop", async (event) => {
   }
 });
 
+window.xilingDesktop?.workspace.onChanged(() => void refreshWorkspaceFiles());
+
 /* ---------- 桌面图标 ---------- */
 
 for (const icon of document.querySelectorAll(".leopard-desktop-icon")) {

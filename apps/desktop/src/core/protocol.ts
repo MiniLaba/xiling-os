@@ -15,6 +15,12 @@ export interface CoreResponse {
   error?: string;
 }
 
+export interface CoreEvent {
+  type: "core-event";
+  topic: "workspace.changed";
+  payload: { rootId: string };
+}
+
 export type CoreMethod =
   | "system.ping"
   | "apps.list"

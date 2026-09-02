@@ -14,7 +14,7 @@ import {
   type UtilityProcess,
 } from "electron";
 
-import type { CoreMethod, CoreRequest, CoreResponse, CoreResultMap } from "./core/protocol.js";
+import type { CoreEvent, CoreMethod, CoreRequest, CoreResponse, CoreResultMap } from "./core/protocol.js";
 import { LazyResource } from "./core/resource-lifecycle.js";
 import type { DesktopWindowState } from "./core/types.js";
 
@@ -111,6 +111,10 @@ const coreResource = new LazyResource<UtilityProcess>(
             pending.release();
             if (response.ok) pending.resolve(response.result);
             else pending.reject(new Error(response.error ?? "XiLing Core request failed"));
+          }
+          if (coreEvent.type === "core-event") {
+            const notification = coreEvent as CoreEvent;
+            mainWindow?.webContents.send(`desktop:${notification.topic}`, notification.payload);
           }
           if (coreEvent.type === "core-stopped") coreReady = false;
         });

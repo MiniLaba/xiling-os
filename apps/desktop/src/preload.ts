@@ -21,6 +21,12 @@ const desktopApi = Object.freeze({
       const sourcePaths = files.map((file) => webUtils.getPathForFile(file)).filter(Boolean);
       return ipcRenderer.invoke("desktop:workspace-import", sourcePaths) as Promise<WorkspaceEntry[]>;
     },
+    onChanged: (listener: (event: { rootId: string }) => void) => {
+      const channel = "desktop:workspace.changed";
+      const handler = (_event: Electron.IpcRendererEvent, payload: { rootId: string }) => listener(payload);
+      ipcRenderer.on(channel, handler);
+      return () => ipcRenderer.removeListener(channel, handler);
+    },
   }),
   windowState: Object.freeze({
     list: () => ipcRenderer.invoke("desktop:windows-list") as Promise<DesktopWindowState[]>,

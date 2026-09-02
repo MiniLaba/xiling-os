@@ -2,7 +2,7 @@ import process from "node:process";
 
 import { BUILT_IN_APPS } from "./core/app-registry.js";
 import { CapabilityGateway } from "./core/capability-gateway.js";
-import type { CoreMethod, CoreRequest, CoreResponse } from "./core/protocol.js";
+import type { CoreEvent, CoreMethod, CoreRequest, CoreResponse } from "./core/protocol.js";
 import { SystemStore } from "./core/system-store.js";
 import type { AppCapability, AppManifest, DesktopWindowState } from "./core/types.js";
 import { WorkspaceFileService } from "./core/workspace-files.js";
@@ -19,6 +19,8 @@ if (!databasePath) throw new Error("XILING_SYSTEM_DB_PATH is required");
 const store = new SystemStore(databasePath);
 for (const manifest of BUILT_IN_APPS) store.upsertApp(manifest);
 const capabilityGateway = new CapabilityGateway(store);
+let stopWorkspaceWatcher: (() => void) | undefined;
+let watchedWorkspacePath: string | undefined;
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid request parameters");
@@ -42,6 +44,21 @@ function workspaceService(): WorkspaceFileService {
   return new WorkspaceFileService(root.id, root.nativePath);
 }
 
+async function ensureWorkspaceWatcher(): Promise<void> {
+  const root = store.getWorkspaceRoot("primary");
+  if (!root || watchedWorkspacePath === root.nativePath) return;
+  stopWorkspaceWatcher?.();
+  const service = new WorkspaceFileService(root.id, root.nativePath);
+  stopWorkspaceWatcher = await service.watch(() => {
+    parentPort.postMessage({
+      type: "core-event",
+      topic: "workspace.changed",
+      payload: { rootId: root.id },
+    } satisfies CoreEvent);
+  });
+  watchedWorkspacePath = root.nativePath;
+}
+
 async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown> {
   const params = record(rawParams ?? {});
   if (method === "system.ping") return { schemaVersion: store.getSchemaVersion() };
@@ -58,10 +75,13 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
       nativePath,
     });
     await new WorkspaceFileService(root.id, root.nativePath).ensureRoot();
+    watchedWorkspacePath = undefined;
+    await ensureWorkspaceWatcher();
     return { id: root.id, label: root.label };
   }
   if (method === "workspace.list") {
     caller(params, "workspace.read");
+    await ensureWorkspaceWatcher();
     const relativeDirectory = typeof params.relativeDirectory === "string" ? params.relativeDirectory : "";
     return workspaceService().list(relativeDirectory);
   }
@@ -91,6 +111,7 @@ parentPort.postMessage({
 parentPort.on("message", (event) => {
   const message = event.data as CoreRequest | { type?: string } | undefined;
   if (message?.type === "shutdown") {
+    stopWorkspaceWatcher?.();
     store.close();
     parentPort.postMessage({ type: "core-stopped" });
     process.exit(0);
