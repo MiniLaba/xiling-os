@@ -43,16 +43,26 @@ let coreReady = false;
 let rendererReady = false;
 const launchSmoke = process.env.XILING_DESKTOP_LAUNCH_SMOKE === "1";
 let managedWindowReady = !launchSmoke;
+let launchSmokeFinishing = false;
 const pendingCoreRequests = new Map<
   string,
   { resolve: (value: unknown) => void; reject: (error: Error) => void; release: () => void }
 >();
 
 function completeLaunchSmokeIfReady(): void {
-  if (launchSmoke && coreReady && rendererReady && managedWindowReady) {
-    console.log("Desktop launch smoke passed");
-    app.exit(0);
+  if (!launchSmoke || !coreReady || !rendererReady || !managedWindowReady || launchSmokeFinishing) return;
+  launchSmokeFinishing = true;
+  const workingSetMb = app
+    .getAppMetrics()
+    .reduce((total, metric) => total + metric.memory.workingSetSize, 0) / 1024;
+  const limitMb = Number(process.env.XILING_DESKTOP_SMOKE_MEMORY_MB ?? 450);
+  if (!Number.isFinite(workingSetMb) || workingSetMb > limitMb) {
+    console.error(`Desktop launch exceeded memory regression limit: ${workingSetMb.toFixed(1)} MB > ${limitMb} MB`);
+    app.exit(1);
+    return;
   }
+  console.log(`Desktop launch smoke passed (${workingSetMb.toFixed(1)} MB active working set)`);
+  app.exit(0);
 }
 
 function assertTrustedSender(event: IpcMainInvokeEvent): void {
