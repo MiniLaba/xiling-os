@@ -37,9 +37,8 @@ setInterval(updateClock, 15_000);
 async function updateRuntime() {
   try {
     const info = await window.xilingDesktop?.getRuntimeInfo();
-    if (runtime) runtime.textContent = info?.coreReady ? "科研核心已就绪" : "科研核心连接中";
+    if (runtime) runtime.textContent = info?.coreReady ? "科研核心已就绪" : "科研核心按需待命";
     if (runtime) runtime.dataset.ready = info?.coreReady ? "true" : "false";
-    if (!info?.coreReady) setTimeout(updateRuntime, 500);
   } catch {
     if (runtime) runtime.textContent = "科研核心不可用";
     if (runtime) runtime.dataset.ready = "error";
@@ -62,16 +61,72 @@ function bringToFront(element) {
   element.style.zIndex = String(zCounter);
 }
 
-function openWindow(id) {
+let windowStateRestored = false;
+
+async function openWindow(id) {
+  await restoreWindowStates();
   const element = windowEl(id);
   if (!element) return;
   element.dataset.open = "true";
+  element.dataset.minimized = "false";
   bringToFront(element);
+  scheduleWindowSave(element);
 }
 
 function closeWindow(id) {
   const element = windowEl(id);
-  if (element) element.dataset.open = "false";
+  if (element) {
+    element.dataset.open = "false";
+    scheduleWindowSave(element);
+  }
+}
+
+const appIdForWindow = { workspace: "system.research", about: "system.settings" };
+let windowSaveTimer = 0;
+
+function windowState(element) {
+  const rect = element.getBoundingClientRect();
+  const id = element.id.replace("window-", "");
+  return {
+    id,
+    appId: appIdForWindow[id] ?? "system.settings",
+    x: Math.round(rect.left),
+    y: Math.round(rect.top),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+    zIndex: Number(element.style.zIndex || 10),
+    state: element.dataset.open !== "true" ? "minimized" : element.dataset.maximized === "true" ? "maximized" : "open",
+    payload: {},
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function scheduleWindowSave(element) {
+  window.clearTimeout(windowSaveTimer);
+  windowSaveTimer = window.setTimeout(() => void window.xilingDesktop?.windowState.save(windowState(element)), 180);
+}
+
+async function restoreWindowStates() {
+  if (windowStateRestored) return;
+  windowStateRestored = true;
+  try {
+    const states = await window.xilingDesktop?.windowState.list();
+    for (const state of states ?? []) {
+      const element = windowEl(state.id);
+      if (!element) continue;
+      element.style.left = `${state.x}px`;
+      element.style.top = `${state.y}px`;
+      element.style.width = `${state.width}px`;
+      element.style.height = `${state.height}px`;
+      element.style.zIndex = String(state.zIndex);
+      element.style.transform = "none";
+      element.dataset.open = state.state === "minimized" ? "false" : "true";
+      element.dataset.maximized = state.state === "maximized" ? "true" : "false";
+      zCounter = Math.max(zCounter, state.zIndex);
+    }
+  } catch {
+    // First launch has no persisted window state.
+  }
 }
 
 function topOpenWindow() {
@@ -87,8 +142,15 @@ for (const button of document.querySelectorAll("[data-window-action]")) {
   button.addEventListener("click", () => {
     const action = button.dataset.windowAction;
     if (action === "close" && button.dataset.window) closeWindow(button.dataset.window);
-    if (action === "minimize") void window.xilingDesktop?.minimize();
-    if (action === "zoom") void window.xilingDesktop?.toggleMaximize();
+    if (action === "minimize" && button.dataset.window) closeWindow(button.dataset.window);
+    if (action === "zoom" && button.dataset.window) {
+      const element = windowEl(button.dataset.window);
+      if (element) {
+        element.dataset.maximized = element.dataset.maximized === "true" ? "false" : "true";
+        bringToFront(element);
+        scheduleWindowSave(element);
+      }
+    }
   });
 }
 
@@ -133,9 +195,88 @@ for (const titlebar of document.querySelectorAll("[data-drag]")) {
     dragState.window.style.top = `${event.clientY - dragState.dy}px`;
   });
   titlebar.addEventListener("pointerup", () => {
+    if (dragState.window) scheduleWindowSave(dragState.window);
     dragState.window = null;
   });
 }
+
+/* ---------- 真实桌面文件夹 ---------- */
+
+const chooseWorkspace = document.querySelector("#choose-workspace");
+const refreshWorkspace = document.querySelector("#refresh-workspace");
+const workspaceTitle = document.querySelector("#workspace-title");
+const workspaceList = document.querySelector("#workspace-file-list");
+const workspaceEmpty = document.querySelector("#workspace-empty");
+const workspaceDropzone = document.querySelector("#workspace-dropzone");
+
+function formatBytes(bytes) {
+  if (bytes == null) return "文件夹";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function renderWorkspaceEntries(entries) {
+  if (!workspaceList || !workspaceEmpty) return;
+  workspaceList.replaceChildren();
+  workspaceEmpty.hidden = entries.length > 0;
+  for (const entry of entries) {
+    const row = document.createElement("li");
+    row.className = "workspace-file-row";
+    const icon = document.createElement("span");
+    icon.textContent = entry.kind === "directory" ? "▸" : "·";
+    const name = document.createElement("span");
+    name.className = "workspace-file-name";
+    name.textContent = entry.name;
+    const meta = document.createElement("span");
+    meta.className = "workspace-file-meta";
+    meta.textContent = formatBytes(entry.size);
+    row.append(icon, name, meta);
+    workspaceList.append(row);
+  }
+}
+
+async function refreshWorkspaceFiles() {
+  try {
+    const rootInfo = await window.xilingDesktop?.workspace.get();
+    if (!rootInfo) {
+      if (workspaceTitle) workspaceTitle.textContent = "尚未选择桌面目录";
+      renderWorkspaceEntries([]);
+      return;
+    }
+    if (workspaceTitle) workspaceTitle.textContent = rootInfo.label;
+    renderWorkspaceEntries(await window.xilingDesktop.workspace.list(""));
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : "无法读取桌面文件夹");
+  }
+}
+
+chooseWorkspace?.addEventListener("click", async () => {
+  const selected = await window.xilingDesktop?.workspace.select();
+  if (selected) await refreshWorkspaceFiles();
+});
+refreshWorkspace?.addEventListener("click", () => void refreshWorkspaceFiles());
+
+for (const eventName of ["dragenter", "dragover"]) {
+  workspaceDropzone?.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    workspaceDropzone.dataset.dragOver = "true";
+  });
+}
+workspaceDropzone?.addEventListener("dragleave", () => { workspaceDropzone.dataset.dragOver = "false"; });
+workspaceDropzone?.addEventListener("drop", async (event) => {
+  event.preventDefault();
+  workspaceDropzone.dataset.dragOver = "false";
+  const files = [...(event.dataTransfer?.files ?? [])];
+  if (!files.length) return;
+  try {
+    await window.xilingDesktop?.workspace.importDroppedFiles(files);
+    await refreshWorkspaceFiles();
+    showToast(`已导入 ${files.length} 个项目`);
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : "导入失败");
+  }
+});
 
 /* ---------- 桌面图标 ---------- */
 

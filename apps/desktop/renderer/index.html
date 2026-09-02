@@ -222,8 +222,8 @@
         <div class="leopard-window-titlebar" data-drag>
           <div class="leopard-traffic">
             <button class="traffic-close" type="button" data-window="workspace" data-window-action="close" aria-label="关闭工作台窗口"></button>
-            <button class="traffic-min" type="button" data-window-action="minimize" aria-label="最小化应用" title="最小化应用窗口"></button>
-            <button class="traffic-zoom" type="button" data-window-action="zoom" aria-label="最大化应用" title="最大化应用窗口"></button>
+            <button class="traffic-min" type="button" data-window="workspace" data-window-action="minimize" aria-label="最小化工作台" title="最小化内部窗口"></button>
+            <button class="traffic-zoom" type="button" data-window="workspace" data-window-action="zoom" aria-label="最大化工作台" title="最大化内部窗口"></button>
           </div>
           <div class="leopard-window-title">科研工作台</div>
           <div class="leopard-titlebar-spacer" aria-hidden="true"></div>
@@ -231,13 +231,19 @@
         <div class="leopard-window-body leopard-window-scroll">
           <div class="welcome-row">
             <div><p class="eyebrow">科研工作空间</p><h1>继续你的研究</h1><p>从问题出发，让证据、计算和产物留在同一个可追溯空间。</p></div>
-            <button class="primary-action" type="button">＋ 新建研究</button>
+            <div class="welcome-actions">
+              <button class="secondary-action" id="choose-workspace" type="button">选择桌面文件夹</button>
+              <button class="primary-action" type="button">＋ 新建研究</button>
+            </div>
           </div>
 
           <div class="content-grid">
             <section class="panel projects-panel">
-              <div class="panel-heading"><div><p class="eyebrow">项目空间</p><h2>最近研究</h2></div><button type="button">查看全部</button></div>
-              <div class="empty-state"><span class="project-symbol neutral">⌬</span><div><h3>还没有研究项目</h3><p>新建研究，或打开已有的汐灵项目空间。</p></div></div>
+              <div class="panel-heading"><div><p class="eyebrow">真实文件夹</p><h2 id="workspace-title">尚未选择桌面目录</h2></div><button id="refresh-workspace" type="button">刷新</button></div>
+              <div class="workspace-dropzone" id="workspace-dropzone" tabindex="0">
+                <div class="empty-state" id="workspace-empty"><span class="project-symbol neutral">⌬</span><div><h3>把文件拖到这里</h3><p>也可以先选择电脑上的一个文件夹，汐灵桌面与该目录保持一致。</p></div></div>
+                <ul class="workspace-file-list" id="workspace-file-list" aria-live="polite"></ul>
+              </div>
             </section>
 
             <section class="panel attention-panel">
@@ -275,40 +281,47 @@
       </section>
 
       <nav class="leopard-dock" id="dock" aria-label="程序坞">
-        <svg class="dock-shelf" viewBox="0 0 1000 64" preserveAspectRatio="none" aria-hidden="true">
+        <svg class="dock-shelf" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="g-shelfTop" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#f2f7fd" stop-opacity="0.85"/>
-              <stop offset="0.45" stop-color="#c6d6e8" stop-opacity="0.68"/>
-              <stop offset="1" stop-color="#7e94b4" stop-opacity="0.55"/>
+              <stop offset="0" stop-color="#f2f7fd" stop-opacity="0.88"/>
+              <stop offset="0.45" stop-color="#c6d6e8" stop-opacity="0.7"/>
+              <stop offset="1" stop-color="#8ba0be" stop-opacity="0.58"/>
             </linearGradient>
             <linearGradient id="g-shelfFront" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#f6fafd" stop-opacity="0.92"/>
-              <stop offset="0.4" stop-color="#c4d4e8" stop-opacity="0.6"/>
-              <stop offset="1" stop-color="#46608a" stop-opacity="0.55"/>
+              <stop offset="0" stop-color="#f8fbfe" stop-opacity="0.95"/>
+              <stop offset="0.35" stop-color="#c8d8ea" stop-opacity="0.7"/>
+              <stop offset="1" stop-color="#5c769c" stop-opacity="0.62"/>
             </linearGradient>
             <linearGradient id="g-shelfSide" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stop-color="#fcfeff" stop-opacity="0.95"/>
-              <stop offset="1" stop-color="#8ca2c0" stop-opacity="0.5"/>
+              <stop offset="1" stop-color="#8ca2c0" stop-opacity="0.55"/>
             </linearGradient>
           </defs>
-          <!-- 台面顶面：前宽后窄的梯形，向后收进营造透视 -->
-          <polygon points="52,3 948,3 996,44 4,44" fill="url(#g-shelfTop)"/>
-          <!-- 顶面中央的宽幅镜面反射带 -->
-          <polygon points="140,8 860,8 900,42 100,42" fill="rgba(255,255,255,0.14)"/>
-          <!-- 立起的后沿亮线：图标就站在这条线上 -->
-          <polygon points="52,0 948,0 948,4.5 52,4.5" fill="rgba(255,255,255,0.95)"/>
-          <polygon points="52,4.5 948,4.5 948,7 52,7" fill="rgba(255,255,255,0.32)"/>
-          <!-- 顶面上的纵向光带（玻璃折射） -->
-          <polygon points="60,7 96,7 76,42 42,42" fill="rgba(255,255,255,0.22)"/>
-          <polygon points="940,7 904,7 924,42 958,42" fill="rgba(255,255,255,0.22)"/>
-          <!-- 前立面（玻璃厚度）与前沿高光 -->
-          <polygon points="4,44 996,44 992,56 8,56" fill="url(#g-shelfFront)"/>
-          <polygon points="8,56 992,56 988,63 12,63" fill="rgba(20,34,56,0.5)"/>
-          <polygon points="4,44 996,44 995,46.5 5,46.5" fill="rgba(255,255,255,0.75)"/>
+          <!-- 立起的后沿亮线：从图标身后穿过 -->
+          <polygon points="40,0 960,0 960,4 40,4" fill="rgba(255,255,255,0.95)"/>
+          <polygon points="40,4 960,4 960,7 40,7" fill="rgba(255,255,255,0.32)"/>
+          <!-- 台面顶面 -->
+          <polygon points="40,7 960,7 985,72 15,72" fill="url(#g-shelfTop)"/>
+          <!-- 顶面中央镜面反射带 -->
+          <polygon points="150,14 850,14 880,66 120,66" fill="rgba(255,255,255,0.12)"/>
+          <!-- 顶面纵向光带（玻璃折射） -->
+          <polygon points="50,9 88,9 66,68 30,68" fill="rgba(255,255,255,0.2)"/>
+          <polygon points="950,9 912,9 934,68 970,68" fill="rgba(255,255,255,0.2)"/>
+          <!-- 前沿亮线：顶面与前立面的交线 -->
+          <polygon points="15,72 985,72 984,75.5 16,75.5" fill="rgba(255,255,255,0.85)"/>
+          <!-- 前立面：玻璃厚度主体 -->
+          <polygon points="15,75.5 984,75.5 978,93 21,93" fill="url(#g-shelfFront)"/>
+          <!-- 前立面内部折射暗纹 -->
+          <polygon points="18,80 981,80 980,84 19,84" fill="rgba(255,255,255,0.18)"/>
+          <!-- 底部收边（厚度阴影） -->
+          <polygon points="21,93 978,93 975,97 24,97" fill="rgba(24,40,64,0.5)"/>
+          <polygon points="24,97 975,97 974,100 25,100" fill="rgba(10,20,38,0.6)"/>
           <!-- 两端收头 -->
-          <polygon points="4,44 52,3 60,3 14,44" fill="url(#g-shelfSide)"/>
-          <polygon points="996,44 948,3 940,3 986,44" fill="url(#g-shelfSide)"/>
+          <polygon points="15,72 40,7 48,7 26,72" fill="url(#g-shelfSide)"/>
+          <polygon points="985,72 960,7 952,7 974,72" fill="url(#g-shelfSide)"/>
+          <polygon points="21,93 26,72 16,72 15,75.5" fill="rgba(140,162,192,0.5)"/>
+          <polygon points="978,93 974,72 984,72 985,75.5" fill="rgba(140,162,192,0.5)"/>
         </svg>
 
         <div class="dock-items">
