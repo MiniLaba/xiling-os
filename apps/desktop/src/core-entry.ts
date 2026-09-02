@@ -1,6 +1,7 @@
 import process from "node:process";
 
-import { assertCapability, BUILT_IN_APPS } from "./core/app-registry.js";
+import { BUILT_IN_APPS } from "./core/app-registry.js";
+import { CapabilityGateway } from "./core/capability-gateway.js";
 import type { CoreMethod, CoreRequest, CoreResponse } from "./core/protocol.js";
 import { SystemStore } from "./core/system-store.js";
 import type { AppCapability, AppManifest, DesktopWindowState } from "./core/types.js";
@@ -17,6 +18,7 @@ if (!databasePath) throw new Error("XILING_SYSTEM_DB_PATH is required");
 
 const store = new SystemStore(databasePath);
 for (const manifest of BUILT_IN_APPS) store.upsertApp(manifest);
+const capabilityGateway = new CapabilityGateway(store);
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid request parameters");
@@ -31,10 +33,7 @@ function stringField(params: Record<string, unknown>, key: string): string {
 
 function caller(params: Record<string, unknown>, capability: AppCapability): AppManifest {
   const appId = stringField(params, "appId");
-  const manifest = store.listApps().find((item) => item.id === appId);
-  if (!manifest) throw new Error("Unknown application");
-  assertCapability(manifest, capability);
-  return manifest;
+  return capabilityGateway.authorize(appId, capability);
 }
 
 function workspaceService(): WorkspaceFileService {

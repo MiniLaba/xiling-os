@@ -3,6 +3,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import type { AppManifest, DesktopWindowState, WorkspaceRoot } from "./types.js";
+import type { AppCapability } from "./types.js";
 
 const SCHEMA_VERSION = 1;
 
@@ -252,6 +253,25 @@ export class SystemStore {
       capabilities: JSON.parse(row.capabilities_json) as AppManifest["capabilities"],
       builtIn: row.built_in === 1,
     }));
+  }
+
+  setPermission(appId: string, capability: AppCapability, decision: "allow" | "deny"): void {
+    this.database
+      .prepare(`
+        INSERT INTO permissions(app_id, capability, decision, updated_at)
+        VALUES(?, ?, ?, ?)
+        ON CONFLICT(app_id, capability) DO UPDATE SET
+          decision = excluded.decision,
+          updated_at = excluded.updated_at
+      `)
+      .run(appId, capability, decision, new Date().toISOString());
+  }
+
+  getPermission(appId: string, capability: AppCapability): "allow" | "deny" | undefined {
+    const row = this.database
+      .prepare("SELECT decision FROM permissions WHERE app_id = ? AND capability = ?")
+      .get(appId, capability) as { decision: "allow" | "deny" } | undefined;
+    return row?.decision;
   }
 
   saveWindow(state: DesktopWindowState): void {
