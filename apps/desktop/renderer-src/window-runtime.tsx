@@ -33,11 +33,18 @@ interface WorkspaceEntry {
 interface WorkspacePreview {
   uri: string;
   name: string;
-  kind: "text" | "unsupported";
+  kind: "text" | "image" | "unsupported";
   size: number;
   modifiedAt: string;
   text?: string;
+  dataUrl?: string;
   truncated: boolean;
+}
+
+interface WorkspacePage {
+  entries: WorkspaceEntry[];
+  nextOffset: number;
+  hasMore: boolean;
 }
 
 interface DesktopBridge {
@@ -45,6 +52,7 @@ interface DesktopBridge {
     get(): Promise<WorkspaceRoot | null>;
     select(): Promise<WorkspaceRoot | null>;
     list(relativeDirectory?: string): Promise<WorkspaceEntry[]>;
+    page(relativeDirectory?: string, offset?: number): Promise<WorkspacePage>;
     search(query: string): Promise<WorkspaceEntry[]>;
     createDirectory(relativeDirectory: string, name: string): Promise<WorkspaceEntry>;
     rename(uri: string, name: string): Promise<WorkspaceEntry>;
@@ -170,6 +178,8 @@ function WorkspaceApp() {
   const [cutUri, setCutUri] = useState<string>();
   const [preview, setPreview] = useState<WorkspacePreview>();
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [nextOffset, setNextOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -177,8 +187,11 @@ function WorkspaceApp() {
     try {
       const selected = await window.xilingDesktop?.workspace.get() ?? null;
       setRoot(selected);
-      const nextEntries = selected ? await window.xilingDesktop?.workspace.list(workspaceRelativePath(currentDirectoryUri)) ?? [] : [];
+      const page = selected ? await window.xilingDesktop?.workspace.page(workspaceRelativePath(currentDirectoryUri), 0) : undefined;
+      const nextEntries = page?.entries ?? [];
       setEntries(nextEntries);
+      setNextOffset(page?.nextOffset ?? 0);
+      setHasMore(page?.hasMore ?? false);
       setSelectedUri(undefined);
       setPreview(undefined);
       if (!currentDirectoryUri) publishWorkspaceEntries(nextEntries);
@@ -243,6 +256,7 @@ function WorkspaceApp() {
     setError(undefined);
     try {
       setEntries(await window.xilingDesktop?.workspace.search(query) ?? []);
+      setHasMore(false);
       setSelectedUri(undefined);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "搜索失败");
@@ -286,6 +300,23 @@ function WorkspaceApp() {
       await refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "无法移动项目");
+    }
+  };
+
+  const loadMore = async () => {
+    if (!hasMore || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const page = await window.xilingDesktop?.workspace.page(workspaceRelativePath(currentDirectoryUri), nextOffset);
+      if (!page) return;
+      setEntries((current) => [...current, ...page.entries.filter((entry) => !current.some((item) => item.uri === entry.uri))]);
+      setNextOffset(page.nextOffset);
+      setHasMore(page.hasMore);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "无法继续加载目录");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -370,12 +401,14 @@ function WorkspaceApp() {
                 </li>
               ))}
             </ul>
+            {hasMore ? <button className="workspace-load-more" type="button" onClick={() => void loadMore()}>加载更多</button> : null}
           </div>
         </section>
 
         <section className="panel workspace-preview-panel">
           <header className="panel-heading"><div><p className="eyebrow">快速查看</p><h3>{preview?.name ?? "文件预览"}</h3></div></header>
           {previewLoading ? <p className="workspace-status">正在准备预览…</p> : null}
+          {!previewLoading && preview?.kind === "image" && preview.dataUrl ? <div className="workspace-preview-image"><img src={preview.dataUrl} alt={preview.name} /></div> : null}
           {!previewLoading && preview?.kind === "text" ? <div className="workspace-preview-text">{preview.truncated ? <p>仅显示前 256 KB</p> : null}<pre>{preview.text}</pre></div> : null}
           {!previewLoading && preview?.kind === "unsupported" ? <p className="workspace-status">此格式暂不在应用内预览，双击可用系统应用打开。</p> : null}
           {!previewLoading && !preview ? <p className="workspace-status">选择文件后在这里查看内容；文件夹双击进入。</p> : null}

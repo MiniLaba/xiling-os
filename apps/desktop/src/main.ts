@@ -230,6 +230,14 @@ function registerIpc(): void {
     });
   });
 
+  ipcMain.handle("desktop:workspace-page", async (event, relativeDirectory: unknown, offset: unknown) => {
+    assertTrustedSender(event);
+    if (typeof relativeDirectory !== "string" || typeof offset !== "number" || !Number.isFinite(offset)) {
+      throw new Error("Invalid workspace page request");
+    }
+    return requestCore("workspace.page", { appId: "system.workspace", relativeDirectory, offset, limit: 120 });
+  });
+
   ipcMain.handle("desktop:workspace-search", async (event, query: unknown) => {
     assertTrustedSender(event);
     if (typeof query !== "string") throw new Error("Invalid search query");

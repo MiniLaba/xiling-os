@@ -381,9 +381,12 @@ button { font: inherit; color: inherit; }
 .workspace-react-list li[data-cut="true"] { opacity: 0.48; }
 .workspace-react-list li > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-react-list small { color: #758794; font-size: 11px; }
+.workspace-load-more { display: block; min-height: 34px; margin: 10px auto 2px; padding: 0 18px; border: 1px solid rgba(74,106,126,0.2); border-radius: 9px; background: rgba(255,255,255,0.7); color: #315365; cursor: pointer; }
 .workspace-preview-text { max-height: 250px; overflow: auto; }
 .workspace-preview-text > p { margin: 0; padding: 8px 12px; border-bottom: 1px solid rgba(99,127,140,0.14); color: #7b6a45; font-size: 11px; }
 .workspace-preview-text pre { margin: 0; padding: 14px; overflow: auto; color: #304858; font: 11px/1.6 ui-monospace, "SFMono-Regular", Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+.workspace-preview-image { display: grid; place-items: center; min-height: 180px; max-height: 300px; padding: 12px; overflow: auto; background: rgba(225,235,239,0.42); }
+.workspace-preview-image img { display: block; max-width: 100%; max-height: 270px; object-fit: contain; }
 
 @media (max-width: 820px) {
   .workspace-app { padding: 20px; }

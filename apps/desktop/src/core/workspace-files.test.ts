@@ -82,6 +82,10 @@ test("workspace mutations and bounded search preserve the selected root", async 
   assert.equal(longPreview.truncated, true);
   await writeFile(path.join(await service.nativePathForUri(folder.uri), "数组.nc"), Buffer.from([0, 1, 2, 3]));
   assert.equal((await service.preview(service.toUri("观测 数据/数组.nc"))).kind, "unsupported");
+  await writeFile(path.join(await service.nativePathForUri(folder.uri), "缩略图.png"), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  const imagePreview = await service.preview(service.toUri("观测 数据/缩略图.png"));
+  assert.equal(imagePreview.kind, "image");
+  assert.match(imagePreview.dataUrl ?? "", /^data:image\/png;base64,/);
 
   const renamed = await service.rename(matches[0]!.uri, "温盐剖面 2026.txt");
   assert.equal(renamed.name, "温盐剖面 2026.txt");
@@ -99,4 +103,20 @@ test("workspace mutations and bounded search preserve the selected root", async 
   await assert.rejects(() => service.createDirectory("", "CON"), /Reserved/);
   await assert.rejects(() => service.createDirectory("", "观测 数据"), /already exists/);
   await assert.rejects(() => service.rename(imported[0]!.uri, "温盐剖面 2026.txt"), /already exists/);
+});
+
+test("workspace directory pages keep renderer payloads bounded", async (context) => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), "xiling-workspace-pages-"));
+  context.after(async () => {
+    const { rm } = await import("node:fs/promises");
+    await rm(temporary, { recursive: true, force: true });
+  });
+  await Promise.all(Array.from({ length: 47 }, (_, index) => writeFile(path.join(temporary, `样本-${String(index).padStart(2, "0")}.txt`), String(index), "utf8")));
+  const service = new WorkspaceFileService("primary", temporary);
+  const first = await service.page("", 0, 20);
+  const second = await service.page("", first.nextOffset, 20);
+  const third = await service.page("", second.nextOffset, 20);
+  assert.deepEqual([first.entries.length, second.entries.length, third.entries.length], [20, 20, 7]);
+  assert.deepEqual([first.hasMore, second.hasMore, third.hasMore], [true, true, false]);
+  assert.equal(new Set([...first.entries, ...second.entries, ...third.entries].map((entry) => entry.uri)).size, 47);
 });

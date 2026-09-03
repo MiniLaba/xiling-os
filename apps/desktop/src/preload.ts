@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 
-import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceEntry, WorkspacePreview } from "./core/types.js";
+import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceEntry, WorkspacePage, WorkspacePreview } from "./core/types.js";
 import type { SafeWorkspaceRoot } from "./core/protocol.js";
 
 const desktopApi = Object.freeze({
@@ -17,6 +17,8 @@ const desktopApi = Object.freeze({
     select: () => ipcRenderer.invoke("desktop:workspace-select") as Promise<SafeWorkspaceRoot | null>,
     list: (relativeDirectory = "") =>
       ipcRenderer.invoke("desktop:workspace-list", relativeDirectory) as Promise<WorkspaceEntry[]>,
+    page: (relativeDirectory = "", offset = 0) =>
+      ipcRenderer.invoke("desktop:workspace-page", relativeDirectory, offset) as Promise<WorkspacePage>,
     search: (query: string) =>
       ipcRenderer.invoke("desktop:workspace-search", query) as Promise<WorkspaceEntry[]>,
     createDirectory: (relativeDirectory: string, name: string) =>

@@ -1,11 +1,12 @@
 import { watch as watchNative } from "node:fs";
-import { cp, lstat, mkdir, open, readdir, rename as renameNative, stat } from "node:fs/promises";
+import { cp, lstat, mkdir, open, opendir, readdir, rename as renameNative, stat } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
-import type { ResourceUri, WorkspaceEntry, WorkspacePreview } from "./types.js";
+import type { ResourceUri, WorkspaceEntry, WorkspacePage, WorkspacePreview } from "./types.js";
 
 const TEXT_EXTENSIONS = new Set([".csv", ".css", ".html", ".ipynb", ".js", ".json", ".log", ".md", ".py", ".r", ".rst", ".toml", ".ts", ".tsx", ".txt", ".xml", ".yaml", ".yml"]);
+const IMAGE_MIME = new Map([[".gif", "image/gif"], [".jpeg", "image/jpeg"], [".jpg", "image/jpeg"], [".png", "image/png"], [".webp", "image/webp"]]);
 
 function encodeRelativePath(relativePath: string): string {
   return relativePath
@@ -54,6 +55,35 @@ export class WorkspaceFileService {
     return result
       .filter((entry): entry is WorkspaceEntry => Boolean(entry))
       .sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "directory" ? -1 : 1));
+  }
+
+  async page(relativeDirectory = "", requestedOffset = 0, requestedLimit = 120): Promise<WorkspacePage> {
+    const directory = await this.#resolveExisting(relativeDirectory, true);
+    const offset = Number.isFinite(requestedOffset) ? Math.max(0, Math.floor(requestedOffset)) : 0;
+    const limit = Number.isFinite(requestedLimit) ? Math.max(20, Math.min(200, Math.floor(requestedLimit))) : 120;
+    const handle = await opendir(directory);
+    const entries: WorkspaceEntry[] = [];
+    let visited = 0;
+    let nextOffset = offset;
+    let hasMore = false;
+    try {
+      for await (const entry of handle) {
+        const index = visited;
+        visited += 1;
+        if (index < offset || entry.isSymbolicLink()) continue;
+        if (entries.length >= limit) {
+          nextOffset = index;
+          hasMore = true;
+          break;
+        }
+        entries.push(await this.#entry(path.join(relativeDirectory, entry.name)));
+        nextOffset = visited;
+      }
+    } finally {
+      await handle.close().catch(() => undefined);
+    }
+    entries.sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "directory" ? -1 : 1));
+    return { entries, nextOffset, hasMore };
   }
 
   async importPaths(sourcePaths: readonly string[], targetDirectoryUri?: string): Promise<WorkspaceEntry[]> {
@@ -126,8 +156,8 @@ export class WorkspaceFileService {
     while (pending.length && matches.length < limit && scanned < 20_000) {
       const relativeDirectory = pending.shift()!;
       const directory = await this.#resolveExisting(relativeDirectory, true);
-      const entries = await readdir(directory, { withFileTypes: true });
-      for (const entry of entries) {
+      const handle = await opendir(directory);
+      for await (const entry of handle) {
         scanned += 1;
         if (entry.isSymbolicLink()) continue;
         const relativePath = path.join(relativeDirectory, entry.name);
@@ -135,6 +165,7 @@ export class WorkspaceFileService {
         if (!entry.name.toLocaleLowerCase().includes(needle)) continue;
         matches.push(await this.#entry(relativePath));
         if (matches.length >= limit) break;
+        if (scanned >= 20_000) break;
       }
     }
     return matches;
@@ -193,9 +224,25 @@ export class WorkspaceFileService {
     const nativePath = await this.nativePathForUri(uri);
     const details = await stat(nativePath);
     if (!details.isFile()) throw new Error("Only files can be previewed");
+    const extension = path.extname(nativePath).toLocaleLowerCase();
+    const imageMime = IMAGE_MIME.get(extension);
+    const resourceUri = this.toUri(path.relative(this.rootPath, nativePath));
+    if (imageMime) {
+      const maxImageBytes = 2 * 1024 * 1024;
+      if (details.size > maxImageBytes) {
+        return { uri: resourceUri, name: path.basename(nativePath), kind: "unsupported", size: details.size, modifiedAt: details.mtime.toISOString(), truncated: false };
+      }
+      const image = await open(nativePath, "r");
+      try {
+        const buffer = Buffer.alloc(details.size);
+        const { bytesRead } = await image.read(buffer, 0, buffer.length, 0);
+        return { uri: resourceUri, name: path.basename(nativePath), kind: "image", size: details.size, modifiedAt: details.mtime.toISOString(), dataUrl: `data:${imageMime};base64,${buffer.subarray(0, bytesRead).toString("base64")}`, truncated: false };
+      } finally {
+        await image.close();
+      }
+    }
     const maxBytes = Math.max(1_024, Math.min(512 * 1024, Math.floor(requestedBytes)));
-    const supported = TEXT_EXTENSIONS.has(path.extname(nativePath).toLocaleLowerCase());
-    if (!supported) {
+    if (!TEXT_EXTENSIONS.has(extension)) {
       return { uri: this.toUri(path.relative(this.rootPath, nativePath)), name: path.basename(nativePath), kind: "unsupported", size: details.size, modifiedAt: details.mtime.toISOString(), truncated: false };
     }
     const handle = await open(nativePath, "r");
@@ -204,10 +251,10 @@ export class WorkspaceFileService {
       const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
       const bytes = buffer.subarray(0, Math.min(bytesRead, maxBytes));
       if (bytes.includes(0)) {
-        return { uri: this.toUri(path.relative(this.rootPath, nativePath)), name: path.basename(nativePath), kind: "unsupported", size: details.size, modifiedAt: details.mtime.toISOString(), truncated: false };
+        return { uri: resourceUri, name: path.basename(nativePath), kind: "unsupported", size: details.size, modifiedAt: details.mtime.toISOString(), truncated: false };
       }
       return {
-        uri: this.toUri(path.relative(this.rootPath, nativePath)),
+        uri: resourceUri,
         name: path.basename(nativePath),
         kind: "text",
         size: details.size,

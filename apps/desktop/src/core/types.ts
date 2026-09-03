@@ -50,12 +50,19 @@ export interface WorkspaceEntry {
   modifiedAt: string;
 }
 
+export interface WorkspacePage {
+  entries: WorkspaceEntry[];
+  nextOffset: number;
+  hasMore: boolean;
+}
+
 export interface WorkspacePreview {
   uri: ResourceUri;
   name: string;
-  kind: "text" | "unsupported";
+  kind: "text" | "image" | "unsupported";
   size: number;
   modifiedAt: string;
   text?: string;
+  dataUrl?: string;
   truncated: boolean;
 }

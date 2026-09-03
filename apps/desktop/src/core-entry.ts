@@ -85,6 +85,14 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
     const relativeDirectory = typeof params.relativeDirectory === "string" ? params.relativeDirectory : "";
     return workspaceService().list(relativeDirectory);
   }
+  if (method === "workspace.page") {
+    caller(params, "workspace.read");
+    await ensureWorkspaceWatcher();
+    const relativeDirectory = typeof params.relativeDirectory === "string" ? params.relativeDirectory : "";
+    const offset = typeof params.offset === "number" ? params.offset : 0;
+    const limit = typeof params.limit === "number" ? params.limit : 120;
+    return workspaceService().page(relativeDirectory, offset, limit);
+  }
   if (method === "workspace.search") {
     caller(params, "workspace.read");
     const limit = typeof params.limit === "number" ? params.limit : 100;

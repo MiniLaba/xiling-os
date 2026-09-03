@@ -266,7 +266,7 @@ async function refreshDesktopFiles() {
       renderDesktopFiles([]);
       return;
     }
-    renderDesktopFiles(await window.xilingDesktop.workspace.list(""));
+    renderDesktopFiles((await window.xilingDesktop.workspace.page("", 0)).entries);
   } catch (error) {
     showToast(error instanceof Error ? error.message : "无法读取桌面文件夹");
   }

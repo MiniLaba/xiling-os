@@ -1,4 +1,4 @@
-import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceEntry, WorkspacePreview } from "./types.js";
+import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceEntry, WorkspacePage, WorkspacePreview } from "./types.js";
 
 export interface CoreRequest {
   type: "core-request";
@@ -27,6 +27,7 @@ export type CoreMethod =
   | "workspace.get"
   | "workspace.set"
   | "workspace.list"
+  | "workspace.page"
   | "workspace.search"
   | "workspace.mkdir"
   | "workspace.rename"
@@ -51,6 +52,7 @@ export interface CoreResultMap {
   "workspace.get": SafeWorkspaceRoot | null;
   "workspace.set": SafeWorkspaceRoot;
   "workspace.list": WorkspaceEntry[];
+  "workspace.page": WorkspacePage;
   "workspace.search": WorkspaceEntry[];
   "workspace.mkdir": WorkspaceEntry;
   "workspace.rename": WorkspaceEntry;
