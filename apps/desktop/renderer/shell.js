@@ -6,6 +6,7 @@ const MAG_RANGE = 78; // 高斯衰减半径（px）
 const MAG_MAX = 0.8;  // 最大额外放大倍数
 const MIN_DOCK_SCALE = 0.75;
 const MAX_DOCK_SCALE = 1.25;
+const DOCK_SCALE_STORAGE_KEY = "xiling:dock-scale";
 
 const clock = document.querySelector("#clock");
 const aboutClock = document.querySelector("#about-clock");
@@ -20,8 +21,11 @@ function applyDockScale(value) {
   const numeric = Number(value);
   const scale = Number.isFinite(numeric) ? Math.min(MAX_DOCK_SCALE, Math.max(MIN_DOCK_SCALE, numeric)) : 1;
   dock?.style.setProperty("--dock-scale", String(scale));
+  try { localStorage.setItem(DOCK_SCALE_STORAGE_KEY, String(scale)); } catch { /* file preview may deny storage */ }
 }
 
+try { applyDockScale(localStorage.getItem(DOCK_SCALE_STORAGE_KEY) ?? 1); } catch { applyDockScale(1); }
+window.addEventListener("xiling:dock-scale-change", (event) => applyDockScale(event.detail));
 void window.xilingDesktop?.appearance.get().then((preferences) => applyDockScale(preferences.dockScale));
 window.xilingDesktop?.appearance.onDockScaleChanged(applyDockScale);
 

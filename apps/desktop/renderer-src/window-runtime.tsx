@@ -42,6 +42,8 @@ const APP_DEFINITIONS = {
   settings: { appId: "system.settings", title: "设置", eyebrow: "系统", body: "管理模型、Skill、MCP、权限、更新与资源预算。" },
 } as const;
 
+const DOCK_SCALE_STORAGE_KEY = "xiling:dock-scale";
+
 type AppKey = keyof typeof APP_DEFINITIONS;
 
 interface ManagedWindow extends PersistedWindowState {
@@ -73,7 +75,14 @@ async function saveWindow(state: ManagedWindow): Promise<void> {
 }
 
 function DockScaleSettings() {
-  const [dockScale, setDockScale] = useState(1);
+  const [dockScale, setDockScale] = useState(() => {
+    try {
+      const stored = Number(localStorage.getItem(DOCK_SCALE_STORAGE_KEY));
+      return Number.isFinite(stored) && stored >= 0.75 && stored <= 1.25 ? stored : 1;
+    } catch {
+      return 1;
+    }
+  });
 
   useEffect(() => {
     let active = true;
@@ -89,7 +98,9 @@ function DockScaleSettings() {
 
   const update = (value: number) => {
     setDockScale(value);
-    void window.xilingDesktop?.appearance.setDockScale(value);
+    window.dispatchEvent(new CustomEvent("xiling:dock-scale-change", { detail: value }));
+    try { localStorage.setItem(DOCK_SCALE_STORAGE_KEY, String(value)); } catch { /* storage is optional */ }
+    void window.xilingDesktop?.appearance.setDockScale(value).catch(() => undefined);
   };
 
   return (
