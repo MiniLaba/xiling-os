@@ -348,10 +348,9 @@ button { font: inherit; color: inherit; }
 .count { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: white; background: #dd7c5f; font-size: 13px; }
 .artifacts-panel { grid-column: 1 / -1; }
 
-/* ---------- 程序坞：玻璃台面上的实物 ---------- */
-/* 结构：.leopard-dock（容器，含 SVG 台面）> .dock-items（图标行）。
-   图标底部、玻璃后沿与倒影起点共用 60px 基线；接触阴影把每枚图标
-   「压」在玻璃上，镜像再沿台面向前渐隐。 */
+/* ---------- Snow Leopard 玻璃程序坞 ---------- */
+/* 图标脚、台面后沿和 WebKit 镜像共用 60px 基线。托盘保持低视角、
+   宽顶面和薄前立面，不做现代 macOS 的胶囊形底座。 */
 
 .leopard-dock {
   --dock-baseline: 60px;
@@ -359,8 +358,8 @@ button { font: inherit; color: inherit; }
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  height: 130px;
-  padding: 0 30px;
+  height: 124px;
+  padding: 0 34px;
   z-index: 30;
 }
 
@@ -368,11 +367,11 @@ button { font: inherit; color: inherit; }
   position: absolute;
   left: 0;
   right: 0;
-  top: 54px;
+  top: 58px;
   width: 100%;
-  height: 76px;
+  height: 66px;
   z-index: 1;
-  filter: drop-shadow(0 9px 14px rgba(1, 6, 16, 0.62));
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.72));
 }
 
 .dock-items {
@@ -380,13 +379,13 @@ button { font: inherit; color: inherit; }
   z-index: 2;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   height: 64px;
 }
 
 .leopard-dock-tile {
   position: relative;
-  width: 64px;
+  width: 62px;
   height: 64px;
   border: 0;
   padding: 0;
@@ -397,22 +396,22 @@ button { font: inherit; color: inherit; }
 
 .dock-gap {
   position: relative;
-  width: 28px;
-  height: 108px;
+  width: 24px;
+  height: 104px;
 }
 
 .dock-gap::before,
 .dock-gap::after {
   content: "";
   position: absolute;
-  top: 61px;
+  top: 63px;
   left: 50%;
   width: 2px;
-  height: 43px;
+  height: 39px;
   border-radius: 2px;
-  transform: skewX(-11deg);
-  background: rgba(255, 255, 255, 0.48);
-  box-shadow: 1px 0 0 rgba(31, 37, 52, 0.34);
+  transform: skewX(-8deg);
+  background: rgba(245, 245, 249, 0.5);
+  box-shadow: 1px 0 0 rgba(27, 28, 34, 0.48);
 }
 
 .dock-gap::after { left: calc(50% + 5px); opacity: 0.42; }
@@ -436,52 +435,35 @@ button { font: inherit; color: inherit; }
   align-items: flex-end;
   justify-content: center;
   z-index: 3;
-  filter: drop-shadow(0 5px 7px rgba(2, 8, 20, 0.66));
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.68));
+  -webkit-box-reflect: below -7px linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.5) 0,
+    rgba(0, 0, 0, 0.2) 38%,
+    transparent 72%
+  );
 }
 
 .dock-art { width: 58px; height: 58px; }
 
-/* 倒影容器位于基线下方；只翻转内部图稿，避免镜像被变换回图标区域。 */
-.dock-reflection {
-  position: absolute;
-  left: 3px;
-  right: 3px;
-  top: var(--dock-baseline);
-  height: 38px;
-  z-index: 1;
-  overflow: hidden;
-  opacity: 0.46;
-  filter: blur(0.25px) saturate(0.72);
-  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.28) 56%, transparent 96%);
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.28) 56%, transparent 96%);
-  pointer-events: none;
-}
-
-.dock-reflection .dock-art {
-  display: block;
-  margin: -10px auto 0;
-  transform: scaleY(-0.72) perspective(90px) rotateX(18deg);
-  transform-origin: 50% 50%;
-}
-
 /* 图标与玻璃的接触阴影 */
 .dock-contact {
   position: absolute;
-  top: 54px;
+  top: 55px;
   left: 50%;
-  width: 54px;
-  height: 11px;
-  margin-left: -27px;
-  z-index: 2;
+  width: 50px;
+  height: 9px;
+  margin-left: -25px;
+  z-index: 4;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(3, 7, 17, 0.62), rgba(3, 7, 17, 0.18) 52%, rgba(3, 7, 17, 0) 82%);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.2) 50%, transparent 82%);
   pointer-events: none;
 }
 
 /* 运行指示灯：嵌在玻璃上的光珠 */
 .leopard-dock-dot {
   position: absolute;
-  top: 108px;
+  top: 109px;
   left: 50%;
   margin-left: -3.5px;
   width: 7px;
@@ -603,8 +585,6 @@ button { font: inherit; color: inherit; }
   .dock-items { height: 46px; }
   .dock-icon { height: 42px; }
   .dock-art { width: 40px; height: 40px; }
-  .dock-reflection { top: 42px; height: 28px; }
-  .dock-reflection .dock-art { margin-top: -7px; }
   .dock-figure { transform-origin: 50% 42px; }
   .dock-shelf { top: 38px; height: 58px; }
   .leopard-dock { height: 96px; }

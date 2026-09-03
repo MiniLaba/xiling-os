@@ -285,32 +285,32 @@
         <svg class="dock-shelf" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="g-shelfTop" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#f8f8ff" stop-opacity="0.82"/>
-              <stop offset="0.38" stop-color="#c7c8d5" stop-opacity="0.68"/>
-              <stop offset="1" stop-color="#777b8e" stop-opacity="0.74"/>
+              <stop offset="0" stop-color="#e8e8ee" stop-opacity="0.78"/>
+              <stop offset="0.46" stop-color="#aaaab3" stop-opacity="0.66"/>
+              <stop offset="1" stop-color="#696a74" stop-opacity="0.8"/>
             </linearGradient>
             <linearGradient id="g-shelfFront" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#f7f7fc" stop-opacity="0.88"/>
-              <stop offset="0.32" stop-color="#b8bbc8" stop-opacity="0.76"/>
-              <stop offset="1" stop-color="#555b6c" stop-opacity="0.86"/>
+              <stop offset="0" stop-color="#c8c8cf" stop-opacity="0.92"/>
+              <stop offset="0.25" stop-color="#85868f" stop-opacity="0.88"/>
+              <stop offset="1" stop-color="#3d3f48" stop-opacity="0.96"/>
             </linearGradient>
             <linearGradient id="g-shelfSide" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#ffffff" stop-opacity="0.92"/>
-              <stop offset="1" stop-color="#767b8e" stop-opacity="0.72"/>
+              <stop offset="0" stop-color="#f6f6fb" stop-opacity="0.86"/>
+              <stop offset="1" stop-color="#5f606a" stop-opacity="0.9"/>
             </linearGradient>
           </defs>
           <!-- 立起的后沿亮线：从图标身后穿过 -->
-          <polygon points="40,0 960,0 960,3 40,3" fill="rgba(255,255,255,0.98)"/>
-          <polygon points="40,3 960,3 960,7 40,7" fill="rgba(37,43,59,0.28)"/>
+          <polygon points="40,0 960,0 960,2.5 40,2.5" fill="rgba(255,255,255,0.98)"/>
+          <polygon points="40,2.5 960,2.5 960,6 40,6" fill="rgba(22,23,29,0.4)"/>
           <!-- 台面顶面 -->
           <polygon points="40,7 960,7 985,72 15,72" fill="url(#g-shelfTop)"/>
           <!-- 顶面中央镜面反射带 -->
-          <polygon points="150,14 850,14 880,66 120,66" fill="rgba(255,255,255,0.12)"/>
+          <polygon points="145,12 855,12 885,67 115,67" fill="rgba(255,255,255,0.1)"/>
           <!-- 顶面纵向光带（玻璃折射） -->
           <polygon points="50,9 88,9 66,68 30,68" fill="rgba(255,255,255,0.2)"/>
           <polygon points="950,9 912,9 934,68 970,68" fill="rgba(255,255,255,0.2)"/>
           <!-- 前沿亮线：顶面与前立面的交线 -->
-          <polygon points="15,72 985,72 984,76 16,76" fill="rgba(255,255,255,0.94)"/>
+          <polygon points="15,72 985,72 984,75 16,75" fill="rgba(255,255,255,0.82)"/>
           <!-- 前立面：玻璃厚度主体 -->
           <polygon points="15,75.5 984,75.5 978,93 21,93" fill="url(#g-shelfFront)"/>
           <!-- 前立面内部折射暗纹 -->
@@ -331,7 +331,6 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-workbench"/></svg></span>
-              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-workbench"/></svg></span>
             </span>
             <i class="leopard-dock-dot" aria-hidden="true"></i>
           </button>
@@ -340,7 +339,6 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-chat"/></svg></span>
-              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-chat"/></svg></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="research" aria-label="研究">
@@ -348,7 +346,6 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-research"/></svg></span>
-              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-research"/></svg></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="literature" aria-label="文献">
@@ -356,7 +353,6 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-literature"/></svg></span>
-              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-literature"/></svg></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="data" aria-label="数据">
@@ -364,7 +360,6 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-data"/></svg></span>
-              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-data"/></svg></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="artifacts" aria-label="产物" data-stack>
@@ -372,7 +367,6 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-artifacts"/></svg></span>
-              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-artifacts"/></svg></span>
             </span>
             <span class="dock-fan" id="dock-fan">
               <span class="fan-item" role="button" tabindex="-1" data-label="图表"><svg class="fan-art"><use href="#sym-chart"/></svg></span>
@@ -387,7 +381,6 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-settings"/></svg></span>
-              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-settings"/></svg></span>
             </span>
           </button>
           <span class="dock-gap" aria-hidden="true"></span>
@@ -396,7 +389,6 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-trash"/></svg></span>
-              <span class="dock-reflection" aria-hidden="true"><svg class="dock-art" aria-hidden="true"><use href="#sym-trash"/></svg></span>
             </span>
           </button>
         </div>
