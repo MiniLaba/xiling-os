@@ -350,16 +350,17 @@ button { font: inherit; color: inherit; }
 
 /* ---------- 程序坞：玻璃台面上的实物 ---------- */
 /* 结构：.leopard-dock（容器，含 SVG 台面）> .dock-items（图标行）。
-   图标底部（52px 基线）站在台面后沿亮线上；倒影以 scaleY(-0.5) 前倾投在
-   台面顶面上；接触阴影把每枚图标「压」在玻璃上。 */
+   图标底部、玻璃后沿与倒影起点共用 60px 基线；接触阴影把每枚图标
+   「压」在玻璃上，镜像再沿台面向前渐隐。 */
 
 .leopard-dock {
+  --dock-baseline: 60px;
   position: absolute;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  height: 120px;
-  padding: 0 26px;
+  height: 130px;
+  padding: 0 30px;
   z-index: 30;
 }
 
@@ -367,11 +368,11 @@ button { font: inherit; color: inherit; }
   position: absolute;
   left: 0;
   right: 0;
-  top: 20px;
+  top: 54px;
   width: 100%;
-  height: 100px;
+  height: 76px;
   z-index: 1;
-  filter: drop-shadow(0 10px 18px rgba(1, 6, 16, 0.55));
+  filter: drop-shadow(0 9px 14px rgba(1, 6, 16, 0.62));
 }
 
 .dock-items {
@@ -379,14 +380,14 @@ button { font: inherit; color: inherit; }
   z-index: 2;
   display: flex;
   align-items: flex-start;
-  gap: 7px;
-  height: 56px;
+  gap: 8px;
+  height: 64px;
 }
 
 .leopard-dock-tile {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border: 0;
   padding: 0;
   background: none;
@@ -394,12 +395,32 @@ button { font: inherit; color: inherit; }
   cursor: pointer;
 }
 
-.dock-gap { width: 26px; }
+.dock-gap {
+  position: relative;
+  width: 28px;
+  height: 108px;
+}
+
+.dock-gap::before,
+.dock-gap::after {
+  content: "";
+  position: absolute;
+  top: 61px;
+  left: 50%;
+  width: 2px;
+  height: 43px;
+  border-radius: 2px;
+  transform: skewX(-11deg);
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow: 1px 0 0 rgba(31, 37, 52, 0.34);
+}
+
+.dock-gap::after { left: calc(50% + 5px); opacity: 0.42; }
 
 .dock-figure {
   position: absolute;
   inset: 0;
-  transform-origin: 50% 52px;
+  transform-origin: 50% var(--dock-baseline);
   transition: transform 110ms ease-out;
 }
 
@@ -410,47 +431,57 @@ button { font: inherit; color: inherit; }
   left: 2px;
   right: 2px;
   top: 0;
-  height: 52px;
+  height: var(--dock-baseline);
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  filter: drop-shadow(0 4px 7px rgba(2, 8, 20, 0.55));
+  z-index: 3;
+  filter: drop-shadow(0 5px 7px rgba(2, 8, 20, 0.66));
 }
 
-.dock-art { width: 50px; height: 50px; }
+.dock-art { width: 58px; height: 58px; }
 
-/* 倒影：绕元素底边翻转再上移一个图标高度，使镜像紧贴基线铺在台面上 */
+/* 倒影容器位于基线下方；只翻转内部图稿，避免镜像被变换回图标区域。 */
 .dock-reflection {
   position: absolute;
-  left: 2px;
-  right: 2px;
-  top: 52px;
-  height: 52px;
-  transform: translateY(-52px) scaleY(-0.5);
-  transform-origin: bottom;
-  opacity: 0.55;
-  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 8%, transparent 85%);
-  mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 8%, transparent 85%);
+  left: 3px;
+  right: 3px;
+  top: var(--dock-baseline);
+  height: 38px;
+  z-index: 1;
+  overflow: hidden;
+  opacity: 0.46;
+  filter: blur(0.25px) saturate(0.72);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.28) 56%, transparent 96%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.28) 56%, transparent 96%);
   pointer-events: none;
+}
+
+.dock-reflection .dock-art {
+  display: block;
+  margin: -10px auto 0;
+  transform: scaleY(-0.72) perspective(90px) rotateX(18deg);
+  transform-origin: 50% 50%;
 }
 
 /* 图标与玻璃的接触阴影 */
 .dock-contact {
   position: absolute;
-  top: 47px;
+  top: 54px;
   left: 50%;
-  width: 46px;
-  height: 8px;
-  margin-left: -23px;
+  width: 54px;
+  height: 11px;
+  margin-left: -27px;
+  z-index: 2;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(6, 14, 28, 0.5), rgba(6, 14, 28, 0) 78%);
+  background: radial-gradient(closest-side, rgba(3, 7, 17, 0.62), rgba(3, 7, 17, 0.18) 52%, rgba(3, 7, 17, 0) 82%);
   pointer-events: none;
 }
 
 /* 运行指示灯：嵌在玻璃上的光珠 */
 .leopard-dock-dot {
   position: absolute;
-  top: 53px;
+  top: 108px;
   left: 50%;
   margin-left: -3.5px;
   width: 7px;
@@ -463,7 +494,7 @@ button { font: inherit; color: inherit; }
 .leopard-dock-label {
   display: none;
   position: absolute;
-  bottom: calc(100% + 52px);
+  bottom: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
@@ -572,9 +603,10 @@ button { font: inherit; color: inherit; }
   .dock-items { height: 46px; }
   .dock-icon { height: 42px; }
   .dock-art { width: 40px; height: 40px; }
-  .dock-reflection { top: 42px; height: 42px; transform: translateY(-42px) scaleY(-0.5); }
+  .dock-reflection { top: 42px; height: 28px; }
+  .dock-reflection .dock-art { margin-top: -7px; }
   .dock-figure { transform-origin: 50% 42px; }
-  .dock-shelf { top: 16px; height: 80px; }
+  .dock-shelf { top: 38px; height: 58px; }
   .leopard-dock { height: 96px; }
   .leopard-window-workspace { width: calc(100vw - 60px); }
   .content-grid { grid-template-columns: 1fr; }
