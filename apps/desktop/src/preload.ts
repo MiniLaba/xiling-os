@@ -17,6 +17,14 @@ const desktopApi = Object.freeze({
     select: () => ipcRenderer.invoke("desktop:workspace-select") as Promise<SafeWorkspaceRoot | null>,
     list: (relativeDirectory = "") =>
       ipcRenderer.invoke("desktop:workspace-list", relativeDirectory) as Promise<WorkspaceEntry[]>,
+    search: (query: string) =>
+      ipcRenderer.invoke("desktop:workspace-search", query) as Promise<WorkspaceEntry[]>,
+    createDirectory: (relativeDirectory: string, name: string) =>
+      ipcRenderer.invoke("desktop:workspace-mkdir", relativeDirectory, name) as Promise<WorkspaceEntry>,
+    rename: (uri: string, name: string) =>
+      ipcRenderer.invoke("desktop:workspace-rename", uri, name) as Promise<WorkspaceEntry>,
+    trash: (uri: string) =>
+      ipcRenderer.invoke("desktop:workspace-trash", uri) as Promise<{ trashed: true }>,
     open: (uri: string) => ipcRenderer.invoke("desktop:workspace-open", uri) as Promise<void>,
     importDroppedFiles: (files: File[]) => {
       const sourcePaths = files.map((file) => webUtils.getPathForFile(file)).filter(Boolean);

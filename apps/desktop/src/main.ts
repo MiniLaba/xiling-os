@@ -225,9 +225,27 @@ function registerIpc(): void {
     assertTrustedSender(event);
     if (typeof relativeDirectory !== "string") throw new Error("Invalid workspace directory");
     return requestCore("workspace.list", {
-      appId: "system.files",
+      appId: "system.workspace",
       relativeDirectory,
     });
+  });
+
+  ipcMain.handle("desktop:workspace-search", async (event, query: unknown) => {
+    assertTrustedSender(event);
+    if (typeof query !== "string") throw new Error("Invalid search query");
+    return requestCore("workspace.search", { appId: "system.workspace", query, limit: 100 });
+  });
+
+  ipcMain.handle("desktop:workspace-mkdir", async (event, relativeDirectory: unknown, name: unknown) => {
+    assertTrustedSender(event);
+    if (typeof relativeDirectory !== "string" || typeof name !== "string") throw new Error("Invalid folder request");
+    return requestCore("workspace.mkdir", { appId: "system.workspace", relativeDirectory, name });
+  });
+
+  ipcMain.handle("desktop:workspace-rename", async (event, uri: unknown, name: unknown) => {
+    assertTrustedSender(event);
+    if (typeof uri !== "string" || typeof name !== "string") throw new Error("Invalid rename request");
+    return requestCore("workspace.rename", { appId: "system.workspace", uri, name });
   });
 
   ipcMain.handle("desktop:workspace-import", async (event, sourcePaths: unknown) => {
@@ -235,15 +253,23 @@ function registerIpc(): void {
     if (!Array.isArray(sourcePaths) || sourcePaths.some((item) => typeof item !== "string")) {
       throw new Error("Invalid import paths");
     }
-    return requestCore("workspace.import", { appId: "system.files", sourcePaths });
+    return requestCore("workspace.import", { appId: "system.workspace", sourcePaths });
   });
 
   ipcMain.handle("desktop:workspace-open", async (event, uri: unknown) => {
     assertTrustedSender(event);
     if (typeof uri !== "string" || !uri.startsWith("workspace://")) throw new Error("Invalid resource URI");
-    const target = await requestCore("workspace.resolve", { appId: "system.files", uri });
+    const target = await requestCore("workspace.resolve", { appId: "system.workspace", uri });
     const failure = await shell.openPath(target.nativePath);
     if (failure) throw new Error(failure);
+  });
+
+  ipcMain.handle("desktop:workspace-trash", async (event, uri: unknown) => {
+    assertTrustedSender(event);
+    if (typeof uri !== "string" || !uri.startsWith("workspace://")) throw new Error("Invalid resource URI");
+    const target = await requestCore("workspace.resolveWrite", { appId: "system.workspace", uri });
+    await shell.trashItem(target.nativePath);
+    return { trashed: true as const };
   });
 
   ipcMain.handle("desktop:workspace-watch", async (event, enabled: unknown) => {
@@ -330,7 +356,7 @@ function createMainWindow(): void {
           new Promise((resolve) => {
             const started = Date.now();
             const check = () => {
-              if (document.querySelector('.managed-window[data-app="workspace"] .workspace-app') && document.querySelector('.managed-window-resizer')) return resolve(true);
+              if (document.querySelector('.managed-window[data-app="workspace"] .workspace-file-toolbar input[type="search"]') && document.querySelector('.managed-window-resizer')) return resolve(true);
               if (Date.now() - started > 5000) return resolve(false);
               setTimeout(check, 25);
             };

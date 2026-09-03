@@ -57,3 +57,27 @@ test("workspace watcher emits a debounced change and releases cleanly", async (c
   stop();
   assert.equal(changes, 1);
 });
+
+test("workspace mutations and bounded search preserve the selected root", async (context) => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), "xiling-workspace-mutations-"));
+  context.after(async () => {
+    const { rm } = await import("node:fs/promises");
+    await rm(temporary, { recursive: true, force: true });
+  });
+  const service = new WorkspaceFileService("primary", temporary);
+  const folder = await service.createDirectory("", "观测 数据");
+  await writeFile(path.join(await service.nativePathForUri(folder.uri), "温盐剖面.txt"), "fixture", "utf8");
+
+  const matches = await service.search("温盐");
+  assert.deepEqual(matches.map((entry) => entry.name), ["温盐剖面.txt"]);
+
+  const renamed = await service.rename(matches[0]!.uri, "温盐剖面 2026.txt");
+  assert.equal(renamed.name, "温盐剖面 2026.txt");
+  assert.equal(await readFile(await service.nativePathForUri(renamed.uri), "utf8"), "fixture");
+  await writeFile(path.join(await service.nativePathForUri(folder.uri), "重复.txt"), "duplicate", "utf8");
+
+  await assert.rejects(() => service.createDirectory("", "../越界"), /Invalid/);
+  await assert.rejects(() => service.createDirectory("", "CON"), /Reserved/);
+  await assert.rejects(() => service.createDirectory("", "观测 数据"), /already exists/);
+  await assert.rejects(() => service.rename(renamed.uri, "重复.txt"), /already exists/);
+});

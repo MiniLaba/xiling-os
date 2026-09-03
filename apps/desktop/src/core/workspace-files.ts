@@ -1,5 +1,5 @@
 import { watch as watchNative } from "node:fs";
-import { cp, lstat, mkdir, readdir, rename, stat } from "node:fs/promises";
+import { cp, lstat, mkdir, readdir, rename as renameNative, stat } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -72,7 +72,7 @@ export class WorkspaceFileService {
           dereference: false,
           preserveTimestamps: true,
         });
-        await rename(temporaryPath, destinationPath);
+        await renameNative(temporaryPath, destinationPath);
       } catch (error) {
         const { rm } = await import("node:fs/promises");
         await rm(temporaryPath, { recursive: true, force: true });
@@ -111,6 +111,59 @@ export class WorkspaceFileService {
     };
   }
 
+  async search(query: string, requestedLimit = 100): Promise<WorkspaceEntry[]> {
+    await this.ensureRoot();
+    const needle = query.trim().toLocaleLowerCase();
+    if (!needle) return this.list();
+    const limit = Math.max(1, Math.min(200, Math.floor(requestedLimit)));
+    const pending = [""];
+    const matches: WorkspaceEntry[] = [];
+    let scanned = 0;
+    while (pending.length && matches.length < limit && scanned < 20_000) {
+      const relativeDirectory = pending.shift()!;
+      const directory = await this.#resolveExisting(relativeDirectory, true);
+      const entries = await readdir(directory, { withFileTypes: true });
+      for (const entry of entries) {
+        scanned += 1;
+        if (entry.isSymbolicLink()) continue;
+        const relativePath = path.join(relativeDirectory, entry.name);
+        if (entry.isDirectory()) pending.push(relativePath);
+        if (!entry.name.toLocaleLowerCase().includes(needle)) continue;
+        matches.push(await this.#entry(relativePath));
+        if (matches.length >= limit) break;
+      }
+    }
+    return matches;
+  }
+
+  async createDirectory(relativeDirectory: string, name: string): Promise<WorkspaceEntry> {
+    const safeName = this.#validateLeafName(name);
+    const parent = await this.#resolveExisting(relativeDirectory, true);
+    const destination = path.join(parent, safeName);
+    try {
+      await mkdir(destination);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new Error("A file or folder with this name already exists");
+      throw error;
+    }
+    return this.#entry(path.join(relativeDirectory, safeName));
+  }
+
+  async rename(uri: string, newName: string): Promise<WorkspaceEntry> {
+    const safeName = this.#validateLeafName(newName);
+    const source = await this.nativePathForUri(uri);
+    if (source === this.rootPath) throw new Error("The workspace root cannot be renamed");
+    const destination = path.join(path.dirname(source), safeName);
+    try {
+      await lstat(destination);
+      throw new Error("A file or folder with this name already exists");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    await renameNative(source, destination);
+    return this.#entry(path.relative(this.rootPath, destination));
+  }
+
   toUri(relativePath: string): ResourceUri {
     const normalized = this.#resolveRelative(relativePath);
     return `workspace://${this.rootId}/${encodeRelativePath(normalized)}`;
@@ -141,6 +194,28 @@ export class WorkspaceFileService {
     }
     if (requireDirectory && !(await stat(cursor)).isDirectory()) throw new Error("Not a directory");
     return cursor;
+  }
+
+  async #entry(relativePath: string): Promise<WorkspaceEntry> {
+    const nativePath = await this.#resolveExisting(relativePath, false);
+    const details = await stat(nativePath);
+    return {
+      uri: this.toUri(relativePath),
+      name: path.basename(nativePath),
+      kind: details.isDirectory() ? "directory" : "file",
+      size: details.isFile() ? details.size : null,
+      modifiedAt: details.mtime.toISOString(),
+    };
+  }
+
+  #validateLeafName(name: string): string {
+    if (!name || name !== name.trim() || name === "." || name === ".." || name.length > 240) {
+      throw new Error("Invalid file or folder name");
+    }
+    if (/[\\/:*?"<>|\0]/u.test(name) || /[. ]$/u.test(name)) throw new Error("Invalid file or folder name");
+    const stem = name.split(".")[0]?.toLocaleUpperCase();
+    if (stem && /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/u.test(stem)) throw new Error("Reserved file or folder name");
+    return name;
   }
 
   #resolveRelative(relativePath: string): string {

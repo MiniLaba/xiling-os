@@ -27,8 +27,12 @@ export type CoreMethod =
   | "workspace.get"
   | "workspace.set"
   | "workspace.list"
+  | "workspace.search"
+  | "workspace.mkdir"
+  | "workspace.rename"
   | "workspace.import"
   | "workspace.resolve"
+  | "workspace.resolveWrite"
   | "windows.list"
   | "windows.save"
   | "preferences.get"
@@ -45,8 +49,12 @@ export interface CoreResultMap {
   "workspace.get": SafeWorkspaceRoot | null;
   "workspace.set": SafeWorkspaceRoot;
   "workspace.list": WorkspaceEntry[];
+  "workspace.search": WorkspaceEntry[];
+  "workspace.mkdir": WorkspaceEntry;
+  "workspace.rename": WorkspaceEntry;
   "workspace.import": WorkspaceEntry[];
   "workspace.resolve": { nativePath: string };
+  "workspace.resolveWrite": { nativePath: string };
   "windows.list": DesktopWindowState[];
   "windows.save": { saved: true };
   "preferences.get": DesktopPreferences;

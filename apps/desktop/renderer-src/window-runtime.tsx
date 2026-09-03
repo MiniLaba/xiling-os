@@ -35,6 +35,10 @@ interface DesktopBridge {
     get(): Promise<WorkspaceRoot | null>;
     select(): Promise<WorkspaceRoot | null>;
     list(relativeDirectory?: string): Promise<WorkspaceEntry[]>;
+    search(query: string): Promise<WorkspaceEntry[]>;
+    createDirectory(relativeDirectory: string, name: string): Promise<WorkspaceEntry>;
+    rename(uri: string, name: string): Promise<WorkspaceEntry>;
+    trash(uri: string): Promise<{ trashed: true }>;
     open(uri: string): Promise<void>;
     importDroppedFiles(files: File[]): Promise<WorkspaceEntry[]>;
     onChanged(listener: (event: { rootId: string }) => void): () => void;
@@ -133,6 +137,9 @@ function WorkspaceApp() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [dragOver, setDragOver] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedUri, setSelectedUri] = useState<string>();
+  const [editor, setEditor] = useState<{ kind: "mkdir" | "rename"; value: string }>();
 
   const refresh = async () => {
     setLoading(true);
@@ -142,6 +149,7 @@ function WorkspaceApp() {
       setRoot(selected);
       const nextEntries = selected ? await window.xilingDesktop?.workspace.list("") ?? [] : [];
       setEntries(nextEntries);
+      setSelectedUri(undefined);
       publishWorkspaceEntries(nextEntries);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "无法读取桌面文件夹");
@@ -177,6 +185,46 @@ function WorkspaceApp() {
     }
   };
 
+  const search = async () => {
+    if (!query.trim()) return refresh();
+    setLoading(true);
+    setError(undefined);
+    try {
+      setEntries(await window.xilingDesktop?.workspace.search(query) ?? []);
+      setSelectedUri(undefined);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "搜索失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyEditor = async () => {
+    if (!editor?.value.trim()) return;
+    setError(undefined);
+    try {
+      if (editor.kind === "mkdir") await window.xilingDesktop?.workspace.createDirectory("", editor.value);
+      else if (selectedUri) await window.xilingDesktop?.workspace.rename(selectedUri, editor.value);
+      setEditor(undefined);
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "文件操作失败");
+    }
+  };
+
+  const trashSelected = async () => {
+    if (!selectedUri) return;
+    const selected = entries.find((entry) => entry.uri === selectedUri);
+    if (!window.confirm(`将“${selected?.name ?? "所选项目"}”移到系统废纸篓？`)) return;
+    setError(undefined);
+    try {
+      await window.xilingDesktop?.workspace.trash(selectedUri);
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "无法移到系统废纸篓");
+    }
+  };
+
   return (
     <div className="workspace-app">
       <div className="workspace-app-hero">
@@ -197,6 +245,24 @@ function WorkspaceApp() {
             <div><p className="eyebrow">真实文件夹</p><h3>{root?.label ?? "尚未选择桌面目录"}</h3></div>
             <button type="button" onClick={() => void refresh()}>刷新</button>
           </header>
+          <div className="workspace-file-toolbar">
+            <form onSubmit={(event) => { event.preventDefault(); void search(); }}>
+              <input aria-label="搜索桌面文件" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索文件与文件夹" />
+            </form>
+            <button type="button" onClick={() => setEditor({ kind: "mkdir", value: "" })}>新建文件夹</button>
+            <button type="button" disabled={!selectedUri} onClick={() => {
+              const selected = entries.find((entry) => entry.uri === selectedUri);
+              if (selected) setEditor({ kind: "rename", value: selected.name });
+            }}>重命名</button>
+            <button type="button" disabled={!selectedUri} onClick={() => void trashSelected()}>移到废纸篓</button>
+          </div>
+          {editor ? (
+            <form className="workspace-inline-editor" onSubmit={(event) => { event.preventDefault(); void applyEditor(); }}>
+              <label>{editor.kind === "mkdir" ? "文件夹名称" : "新名称"}<input autoFocus value={editor.value} onChange={(event) => setEditor({ ...editor, value: event.target.value })} /></label>
+              <button className="primary-action" type="submit">确认</button>
+              <button type="button" onClick={() => setEditor(undefined)}>取消</button>
+            </form>
+          ) : null}
           <div
             className="workspace-react-dropzone"
             data-drag-over={dragOver ? "true" : "false"}
@@ -215,7 +281,7 @@ function WorkspaceApp() {
             {error ? <p className="workspace-error" role="alert">{error}</p> : null}
             <ul className="workspace-react-list" aria-live="polite">
               {entries.map((entry) => (
-                <li key={entry.uri} onDoubleClick={() => void window.xilingDesktop?.workspace.open(entry.uri)}>
+                <li key={entry.uri} data-selected={selectedUri === entry.uri ? "true" : "false"} onClick={() => setSelectedUri(entry.uri)} onDoubleClick={() => void window.xilingDesktop?.workspace.open(entry.uri)}>
                   <span aria-hidden="true">{entry.kind === "directory" ? "▰" : "▤"}</span>
                   <span title={entry.name}>{entry.name}</span>
                   <small>{formatBytes(entry.size)}</small>

@@ -358,6 +358,13 @@ button { font: inherit; color: inherit; }
 .workspace-app-grid .panel-heading h3 { margin: 0; color: #2a404c; font-size: 16px; }
 .workspace-files-panel { grid-row: span 2; }
 .workspace-artifacts-panel { min-height: 132px; }
+.workspace-file-toolbar { display: grid; grid-template-columns: minmax(150px, 1fr) repeat(3, auto); gap: 7px; padding: 10px; border-bottom: 1px solid rgba(99,127,140,0.16); }
+.workspace-file-toolbar form { min-width: 0; }
+.workspace-file-toolbar input, .workspace-inline-editor input { width: 100%; min-height: 32px; padding: 0 10px; border: 1px solid rgba(74,106,126,0.24); border-radius: 8px; background: rgba(255,255,255,0.76); color: #284353; }
+.workspace-file-toolbar button, .workspace-inline-editor button { min-height: 32px; padding: 0 10px; border: 1px solid rgba(74,106,126,0.2); border-radius: 8px; background: rgba(255,255,255,0.68); color: #315365; cursor: pointer; }
+.workspace-file-toolbar button:disabled { opacity: 0.42; cursor: default; }
+.workspace-inline-editor { display: grid; grid-template-columns: minmax(160px, 1fr) auto auto; align-items: end; gap: 8px; padding: 10px; border-bottom: 1px solid rgba(99,127,140,0.16); background: rgba(222,239,243,0.34); }
+.workspace-inline-editor label { display: grid; gap: 4px; color: #607784; font-size: 11px; }
 .workspace-react-dropzone { min-height: 270px; padding: 10px; border: 1px dashed transparent; transition: background 120ms ease, border-color 120ms ease; }
 .workspace-react-dropzone[data-drag-over="true"] { border-color: rgba(34,132,180,0.58); background: rgba(102,186,225,0.1); }
 .workspace-status { margin: 18px; color: #70828d; font-size: 12px; line-height: 1.6; }
@@ -365,6 +372,7 @@ button { font: inherit; color: inherit; }
 .workspace-react-list { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
 .workspace-react-list li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 9px; min-height: 38px; padding: 0 10px; border-radius: 7px; color: #304858; cursor: default; }
 .workspace-react-list li:hover { background: rgba(112,170,192,0.13); }
+.workspace-react-list li[data-selected="true"] { background: rgba(82,155,184,0.18); outline: 1px solid rgba(54,130,163,0.24); }
 .workspace-react-list li > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-react-list small { color: #758794; font-size: 11px; }
 
@@ -374,6 +382,8 @@ button { font: inherit; color: inherit; }
   .workspace-app-actions { justify-content: flex-start; }
   .workspace-app-grid { grid-template-columns: 1fr; }
   .workspace-files-panel { grid-row: auto; }
+  .workspace-file-toolbar { grid-template-columns: minmax(150px, 1fr) auto; }
+  .workspace-inline-editor { grid-template-columns: 1fr auto auto; }
 }
 
 .dock-scale-settings {

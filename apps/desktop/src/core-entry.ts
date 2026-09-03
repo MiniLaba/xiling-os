@@ -85,6 +85,20 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
     const relativeDirectory = typeof params.relativeDirectory === "string" ? params.relativeDirectory : "";
     return workspaceService().list(relativeDirectory);
   }
+  if (method === "workspace.search") {
+    caller(params, "workspace.read");
+    const limit = typeof params.limit === "number" ? params.limit : 100;
+    return workspaceService().search(stringField(params, "query"), limit);
+  }
+  if (method === "workspace.mkdir") {
+    caller(params, "workspace.write");
+    const relativeDirectory = typeof params.relativeDirectory === "string" ? params.relativeDirectory : "";
+    return workspaceService().createDirectory(relativeDirectory, stringField(params, "name"));
+  }
+  if (method === "workspace.rename") {
+    caller(params, "workspace.write");
+    return workspaceService().rename(stringField(params, "uri"), stringField(params, "name"));
+  }
   if (method === "workspace.import") {
     caller(params, "workspace.write");
     const sourcePaths = params.sourcePaths;
@@ -96,6 +110,13 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
   if (method === "workspace.resolve") {
     caller(params, "workspace.read");
     return { nativePath: await workspaceService().nativePathForUri(stringField(params, "uri")) };
+  }
+  if (method === "workspace.resolveWrite") {
+    caller(params, "workspace.write");
+    const service = workspaceService();
+    const nativePath = await service.nativePathForUri(stringField(params, "uri"));
+    if (nativePath === service.rootPath) throw new Error("The workspace root cannot be moved to trash");
+    return { nativePath };
   }
   if (method === "windows.list") return store.listWindows();
   if (method === "windows.save") {
