@@ -349,16 +349,16 @@ button { font: inherit; color: inherit; }
 .artifacts-panel { grid-column: 1 / -1; }
 
 /* ---------- Snow Leopard 玻璃程序坞 ---------- */
-/* 图标脚、台面后沿和 WebKit 镜像共用 60px 基线。托盘保持低视角、
-   宽顶面和薄前立面，不做现代 macOS 的胶囊形底座。 */
+/* 图标脚位于玻璃纵深中央（78px 基线），而不是贴住后沿。托盘保持
+   Snow Leopard 的低视角宽台面，并以深色前立面和亮边表现实体厚度。 */
 
 .leopard-dock {
-  --dock-baseline: 60px;
+  --dock-baseline: 78px;
   position: absolute;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  height: 124px;
+  height: 132px;
   padding: 0 34px;
   z-index: 30;
 }
@@ -367,9 +367,9 @@ button { font: inherit; color: inherit; }
   position: absolute;
   left: 0;
   right: 0;
-  top: 58px;
+  top: 44px;
   width: 100%;
-  height: 66px;
+  height: 88px;
   z-index: 1;
   filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.72));
 }
@@ -380,13 +380,13 @@ button { font: inherit; color: inherit; }
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  height: 64px;
+  height: 80px;
 }
 
 .leopard-dock-tile {
   position: relative;
   width: 62px;
-  height: 64px;
+  height: 80px;
   border: 0;
   padding: 0;
   background: none;
@@ -404,7 +404,7 @@ button { font: inherit; color: inherit; }
 .dock-gap::after {
   content: "";
   position: absolute;
-  top: 63px;
+  top: 81px;
   left: 50%;
   width: 2px;
   height: 39px;
@@ -449,7 +449,7 @@ button { font: inherit; color: inherit; }
 /* 图标与玻璃的接触阴影 */
 .dock-contact {
   position: absolute;
-  top: 55px;
+  top: 73px;
   left: 50%;
   width: 50px;
   height: 9px;
@@ -463,7 +463,7 @@ button { font: inherit; color: inherit; }
 /* 运行指示灯：嵌在玻璃上的光珠 */
 .leopard-dock-dot {
   position: absolute;
-  top: 109px;
+  top: 114px;
   left: 50%;
   margin-left: -3.5px;
   width: 7px;
@@ -476,7 +476,7 @@ button { font: inherit; color: inherit; }
 .leopard-dock-label {
   display: none;
   position: absolute;
-  bottom: calc(100% + 10px);
+  bottom: calc(100% - 10px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
