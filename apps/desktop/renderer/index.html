@@ -285,13 +285,21 @@
         <svg class="dock-shelf" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="g-shelfTop" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#fbfbff" stop-opacity="0.34"/>
-              <stop offset="0.48" stop-color="#d4d5df" stop-opacity="0.26"/>
-              <stop offset="1" stop-color="#989aa8" stop-opacity="0.36"/>
+              <stop offset="0" stop-color="#e7e9ee" stop-opacity="0.25"/>
+              <stop offset="0.52" stop-color="#aeb2bb" stop-opacity="0.31"/>
+              <stop offset="1" stop-color="#737780" stop-opacity="0.42"/>
+            </linearGradient>
+            <linearGradient id="g-shelfLip" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f7f8fb" stop-opacity="0.58"/>
+              <stop offset="0.42" stop-color="#b7bbc3" stop-opacity="0.5"/>
+              <stop offset="1" stop-color="#686c75" stop-opacity="0.62"/>
             </linearGradient>
           </defs>
-          <!-- 单层透明玻璃薄片：只有一个透视平面，没有厚度、包边或投影。 -->
-          <polygon points="28,4 972,4 996,96 4,96" fill="url(#g-shelfTop)"/>
+          <!-- 后沿各内收 5.5%；屏幕比例下侧边约 60°，前唇仅 2–4px。 -->
+          <polygon points="55,5 945,5 996,94 4,94" fill="url(#g-shelfTop)"/>
+          <path d="M55 6 H945" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.4"/>
+          <path d="M92 41 C260 20 355 59 493 40 S746 19 908 43" fill="none" stroke="rgba(255,255,255,0.13)" stroke-width="3" stroke-linecap="round"/>
+          <polygon points="4,94 996,94 1000,100 0,100" fill="url(#g-shelfLip)"/>
         </svg>
 
         <div class="dock-items">
@@ -300,6 +308,7 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/workbench.png" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/workbench.png" alt="" draggable="false" /></span>
             </span>
             <i class="leopard-dock-dot" aria-hidden="true"></i>
           </button>
@@ -308,6 +317,7 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/chat.png" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/chat.png" alt="" draggable="false" /></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="research" aria-label="研究">
@@ -315,6 +325,7 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/research.png" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/research.png" alt="" draggable="false" /></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="literature" aria-label="文献">
@@ -322,6 +333,7 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/literature.png" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/literature.png" alt="" draggable="false" /></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="data" aria-label="数据">
@@ -329,6 +341,7 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/data.png" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/data.png" alt="" draggable="false" /></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="artifacts" aria-label="产物" data-stack>
@@ -336,6 +349,7 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/artifacts.png" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/artifacts.png" alt="" draggable="false" /></span>
             </span>
             <span class="dock-fan" id="dock-fan">
               <span class="fan-item" role="button" tabindex="-1" data-label="图表"><svg class="fan-art"><use href="#sym-chart"/></svg></span>
@@ -350,6 +364,7 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/settings.png" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/settings.png" alt="" draggable="false" /></span>
             </span>
           </button>
           <span class="dock-gap" aria-hidden="true"></span>
@@ -358,6 +373,7 @@
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
               <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/trash.png" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/trash.png" alt="" draggable="false" /></span>
             </span>
           </button>
         </div>

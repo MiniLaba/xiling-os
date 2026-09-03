@@ -349,8 +349,8 @@ button { font: inherit; color: inherit; }
 .artifacts-panel { grid-column: 1 / -1; }
 
 /* ---------- Snow Leopard 玻璃程序坞 ---------- */
-/* 图标脚位于透明薄片的纵深中央（约 97px 基线）。薄片只有一个透视平面，
-   不绘制厚度、金属包边、端盖或整块投影。 */
+/* 图标脚位于透明薄片的纵深中央（约 97px 基线）。后沿左右各内收 5.5%，
+   侧边约 60°；仅保留 2–4px 的银灰前唇，不绘制整块黑色投影。 */
 
 .leopard-dock {
   --dock-baseline: 97px;
@@ -404,16 +404,15 @@ button { font: inherit; color: inherit; }
   content: "";
   position: absolute;
   top: 94px;
-  left: 50%;
-  width: 2px;
-  height: 31px;
-  border-radius: 2px;
-  transform: skewX(-8deg);
-  background: rgba(255, 255, 255, 0.24);
-  box-shadow: 1px 0 0 rgba(46, 48, 58, 0.11);
+  left: 62%;
+  width: 1px;
+  height: 32px;
+  transform: skewX(-30deg);
+  background: rgba(245, 247, 251, 0.34);
+  box-shadow: 2px 0 0 rgba(42, 45, 53, 0.18);
 }
 
-.dock-gap::after { left: calc(50% + 5px); opacity: 0.42; }
+.dock-gap::after { display: none; }
 
 .dock-figure {
   position: absolute;
@@ -435,12 +434,6 @@ button { font: inherit; color: inherit; }
   justify-content: center;
   z-index: 3;
   filter: drop-shadow(0 3px 3px rgba(16, 18, 24, 0.3));
-  -webkit-box-reflect: below -5px linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.42) 0,
-    rgba(0, 0, 0, 0.14) 36%,
-    transparent 68%
-  );
 }
 
 .dock-art {
@@ -449,6 +442,30 @@ button { font: inherit; color: inherit; }
   height: 64px;
   object-fit: contain;
   user-select: none;
+}
+
+/* 独立倒影层严格裁切在基线至玻璃前沿之间。 */
+.dock-reflection {
+  position: absolute;
+  top: calc(var(--dock-baseline) + 2px);
+  left: 2px;
+  right: 2px;
+  height: 30px;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0.38;
+  filter: blur(0.45px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.58) 38%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.58) 38%, transparent 100%);
+  pointer-events: none;
+}
+
+.dock-reflection .dock-art {
+  flex: 0 0 auto;
+  transform: scaleY(-1);
+  transform-origin: 50% 50%;
 }
 
 /* 图标与玻璃的接触阴影 */
@@ -593,6 +610,7 @@ button { font: inherit; color: inherit; }
   .dock-art { width: 40px; height: 40px; }
   .dock-figure { transform-origin: 50% var(--dock-baseline); }
   .dock-contact { top: 67px; width: 32px; height: 4px; margin-left: -16px; }
+  .dock-reflection { height: 25px; }
   .leopard-dock-dot { top: 84px; }
   .dock-gap { width: 16px; height: 96px; }
   .dock-gap::before, .dock-gap::after { top: 68px; height: 23px; }
