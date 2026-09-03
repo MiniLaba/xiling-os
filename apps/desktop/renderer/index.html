@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="./shell.css" />
   </head>
   <body>
-    <!-- 原创图标精灵图：每个 Dock 图标都有独立剪影与分层材质（非统一圆角矩形） -->
+    <!-- 桌面与 Stacks 使用的内嵌矢量图形；程序坞图标来自 KDE Oxygen。 -->
     <svg class="dock-sprite" aria-hidden="true" focusable="false">
       <defs>
         <linearGradient id="g-steel" x1="0" y1="0" x2="0" y2="1">
@@ -273,7 +273,7 @@
         <div class="leopard-window-body">
           <span class="about-mark" aria-hidden="true">汐</span>
           <h1>汐灵科研桌面<small>XI LING · SCIENCE OS · V2</small></h1>
-          <p>本桌面致敬 Mac OS X 10.5 Leopard 的经典观感：半透明菜单栏、Aqua 光泽窗口与立在玻璃台面上的程序坞。潮汐背景迁移自旧版 Web 启动页的着色器，全部图标为原创绘制，科研核心以独立进程运行。</p>
+          <p>本桌面致敬 Mac OS X 10.5 Leopard 的经典观感：半透明菜单栏、Aqua 光泽窗口与立在玻璃台面上的程序坞。潮汐背景迁移自旧版 Web 启动页的着色器，程序坞采用 KDE Oxygen 开源图标，科研核心以独立进程运行。</p>
           <div class="leopard-window-meta">
             <span>字体栈：Lucida Grande → 苹方</span>
             <span id="about-clock" aria-hidden="true"></span>
@@ -290,9 +290,8 @@
               <stop offset="1" stop-color="#989aa8" stop-opacity="0.36"/>
             </linearGradient>
           </defs>
-          <!-- 单层透明玻璃薄片：只有一个透视平面，没有前立面、包边或端盖。 -->
-          <polygon points="45,2 955,2 995,98 5,98" fill="url(#g-shelfTop)"/>
-          <polygon points="125,10 875,10 925,88 75,88" fill="rgba(255,255,255,0.055)"/>
+          <!-- 单层透明玻璃薄片：只有一个透视平面，没有厚度、包边或投影。 -->
+          <polygon points="28,4 972,4 996,96 4,96" fill="url(#g-shelfTop)"/>
         </svg>
 
         <div class="dock-items">
@@ -300,7 +299,7 @@
             <span class="leopard-dock-label">工作台</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-workbench"/></svg></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/workbench.png" alt="" draggable="false" /></span>
             </span>
             <i class="leopard-dock-dot" aria-hidden="true"></i>
           </button>
@@ -308,35 +307,35 @@
             <span class="leopard-dock-label">对话</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-chat"/></svg></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/chat.png" alt="" draggable="false" /></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="research" aria-label="研究">
             <span class="leopard-dock-label">研究</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-research"/></svg></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/research.png" alt="" draggable="false" /></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="literature" aria-label="文献">
             <span class="leopard-dock-label">文献</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-literature"/></svg></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/literature.png" alt="" draggable="false" /></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="data" aria-label="数据">
             <span class="leopard-dock-label">数据</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-data"/></svg></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/data.png" alt="" draggable="false" /></span>
             </span>
           </button>
           <button class="leopard-dock-tile" type="button" data-app="artifacts" aria-label="产物" data-stack>
             <span class="leopard-dock-label">产物</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-artifacts"/></svg></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/artifacts.png" alt="" draggable="false" /></span>
             </span>
             <span class="dock-fan" id="dock-fan">
               <span class="fan-item" role="button" tabindex="-1" data-label="图表"><svg class="fan-art"><use href="#sym-chart"/></svg></span>
@@ -350,7 +349,7 @@
             <span class="leopard-dock-label">设置</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-settings"/></svg></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/settings.png" alt="" draggable="false" /></span>
             </span>
           </button>
           <span class="dock-gap" aria-hidden="true"></span>
@@ -358,7 +357,7 @@
             <span class="leopard-dock-label">废纸篓</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><svg class="dock-art" aria-hidden="true"><use href="#sym-trash"/></svg></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/trash.png" alt="" draggable="false" /></span>
             </span>
           </button>
         </div>
