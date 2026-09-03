@@ -14,7 +14,7 @@ Desktop V2 只有一个原生 Electron 窗口。桌面、Dock、系统界面和�
 
 当前 `node:sqlite` 实现完全封装在 `SystemStore` 后方。即使 Node 的实验性 API 以后需要替换，也不会改变领域与 UI 契约。
 
-工作区写操作遵循同一边界：搜索、新建和重命名由 Core 校验相对路径、跨平台名称与 `workspace.write` 权限；系统废纸篓必须先由 Core 解析已授权且非根目录的资源，再由 Main 调用原生 API。Preload 只返回成功/失败与 `WorkspaceEntry`，不向 Renderer 泄露绝对路径或通用文件系统能力。
+工作区操作遵循同一边界：导航、搜索和限量文本预览由 Core 校验 `workspace.read`；新建、重命名与同根移动校验相对路径、目标目录、跨平台名称与 `workspace.write`，并拒绝目录移入自身；系统废纸篓必须先由 Core 解析已授权且非根目录的资源，再由 Main 调用原生 API。Preload 只返回成功/失败、`WorkspaceEntry` 与有界预览，不向 Renderer 泄露绝对路径或通用文件系统能力。
 
 ### 资源预算
 
@@ -29,7 +29,7 @@ Desktop V2 只有一个原生 Electron 窗口。桌面、Dock、系统界面和�
 
 窗口坐标、尺寸、层级和状态写入 `desktop_windows`，并通过独立纯函数完成视口收敛、恢复合并与键盘焦点选择。它们是桌面显示状态，不得混入科研对象与关系。当前默认一个应用一个窗口；文献、Artifact、数据预览等文档型多实例尚未实现，未来必须以稳定资源 URI 作为实例键。
 
-自动门禁把动态窗口生产包限制在 350 KB 以内，并在真实 Electron 启动中使用固定的 1040×700 验收视口，实际点击程序坞、确认工作台文件工具栏与缩放入口出现、唤醒 Core，稳定一秒后检查总活动工作集不超过 520 MB。当前实测约 502 MB。该开发/CI 回归线上限来自 Electron 44 在 macOS 上包含 Browser、GPU、Network Service、Renderer 和 Core Utility Process 的真实五进程基线；它不替代发布设备上 250 MB 的空闲目标，D2 结束前还需按进程优化并收紧。
+自动门禁把动态窗口生产包限制在 350 KB 以内，并在真实 Electron 启动中使用固定的 1040×700 验收视口，实际点击程序坞、确认工作台文件工具栏、面包屑、预览区与缩放入口出现、唤醒 Core，稳定一秒后检查总活动工作集不超过 520 MB。当前实测约 461 MB。该开发/CI 回归线上限来自 Electron 44 在 macOS 上包含 Browser、GPU、Network Service、Renderer 和 Core Utility Process 的真实五进程基线；它不替代发布设备上 250 MB 的空闲目标，D2 结束前还需按进程优化并收紧。
 
 ## 产品定义
 
