@@ -38,6 +38,7 @@ for (const dockMotionInvariant of [
 for (const [name, pattern] of [
   ["menu buttons", /\.leopard-menubar button\s*\{[^}]*border-radius:\s*999px;/s],
   ["status items", /\.core-status,\s*\.menubar-system-icon,\s*\.leopard-clock\s*\{[^}]*border-radius:\s*999px;/s],
+  ["centered brand", /\.leopard-menubar-brand\s*\{[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*height:\s*26px;/s],
 ]) {
   if (!pattern.test(css)) throw new Error(`Apple-style menubar capsule invariant missing: ${name}`);
 }

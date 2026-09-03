@@ -58,6 +58,7 @@ button { font: inherit; color: inherit; }
   color: inherit;
   background: none;
   border: 0;
+  height: 26px;
   min-height: 26px;
   padding: 3px 9px;
   border-radius: 999px;
@@ -73,15 +74,18 @@ button { font: inherit; color: inherit; }
 }
 
 .leopard-menubar-brand {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 30px;
-  padding: 2px;
+  height: 26px;
+  padding: 0;
 }
 
 .leopard-menubar-brand img {
-  width: 21px;
-  height: 21px;
+  display: block;
+  width: 19px;
+  height: 19px;
   object-fit: contain;
   filter: brightness(1.12) saturate(1.08) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.24));
   user-select: none;
@@ -102,6 +106,7 @@ button { font: inherit; color: inherit; }
 .core-status,
 .menubar-system-icon,
 .leopard-clock {
+  height: 26px;
   min-height: 26px;
   display: flex;
   align-items: center;
