@@ -326,11 +326,11 @@ function createMainWindow(): void {
       void requestCore("system.ping", {});
       void mainWindow?.webContents
         .executeJavaScript(`
-          document.querySelector('[data-app="chat"]')?.click();
+          document.querySelector('[data-app="workspace"]')?.click();
           new Promise((resolve) => {
             const started = Date.now();
             const check = () => {
-              if (document.querySelector('.managed-window')) return resolve(true);
+              if (document.querySelector('.managed-window[data-app="workspace"] .workspace-app') && document.querySelector('.managed-window-resizer')) return resolve(true);
               if (Date.now() - started > 5000) return resolve(false);
               setTimeout(check, 25);
             };
@@ -339,7 +339,7 @@ function createMainWindow(): void {
         `)
         .then((ready) => {
           managedWindowReady = ready === true;
-          if (!managedWindowReady) throw new Error("React internal window did not open");
+          if (!managedWindowReady) throw new Error("React workspace window did not open with resize controls");
           completeLaunchSmokeIfReady();
         });
     }

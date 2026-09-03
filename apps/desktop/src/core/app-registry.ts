@@ -11,6 +11,14 @@ const CAPABILITIES = new Set<AppCapability>([
 
 export const BUILT_IN_APPS: readonly AppManifest[] = [
   {
+    id: "system.workspace",
+    name: "工作台",
+    version: "1.0.0",
+    entry: "builtin://workspace",
+    capabilities: ["workspace.read", "workspace.write", "artifact.read"],
+    builtIn: true,
+  },
+  {
     id: "system.files",
     name: "文件",
     version: "1.0.0",

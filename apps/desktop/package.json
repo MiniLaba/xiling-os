@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json && vite build --config vite.renderer.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "start": "pnpm build && electron dist/main.js",
-    "test:foundation": "pnpm build && node --test dist/core/*.test.js",
+    "test:foundation": "pnpm build && node --test dist/core/*.test.js dist/windowing/*.test.js",
     "smoke": "pnpm test:foundation && node scripts/smoke.mjs && node scripts/container-independence.mjs"
   },
   "dependencies": {

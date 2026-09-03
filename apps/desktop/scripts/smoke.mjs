@@ -23,6 +23,9 @@ if (!html.includes("Content-Security-Policy")) throw new Error("Desktop renderer
 if (html.includes("generated/window-runtime.js")) {
   throw new Error("React window runtime must remain lazy and absent from cold-launch scripts");
 }
+if (html.includes('id="window-workspace"')) {
+  throw new Error("Static workspace window must not coexist with the React window manager");
+}
 
 const windowRuntime = await readFile(path.join(packageRoot, "renderer/generated/window-runtime.js"));
 if (windowRuntime.byteLength > 350_000) {

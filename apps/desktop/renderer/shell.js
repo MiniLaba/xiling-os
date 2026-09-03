@@ -93,19 +93,17 @@ async function openWindow(id) {
   element.dataset.minimized = "false";
   bringToFront(element);
   scheduleWindowSave(element);
-  if (id === "workspace") void refreshWorkspaceFiles();
 }
 
 function closeWindow(id) {
   const element = windowEl(id);
   if (element) {
     element.dataset.open = "false";
-    if (id === "workspace") disconnectWorkspaceWatcher();
     scheduleWindowSave(element);
   }
 }
 
-const appIdForWindow = { workspace: "system.research", about: "system.settings" };
+const appIdForWindow = { about: "system.settings" };
 let windowSaveTimer = 0;
 
 function windowState(element) {
@@ -226,52 +224,7 @@ for (const titlebar of document.querySelectorAll("[data-drag]")) {
 
 /* ---------- 真实桌面文件夹 ---------- */
 
-const chooseWorkspace = document.querySelector("#choose-workspace");
-const refreshWorkspace = document.querySelector("#refresh-workspace");
-const workspaceTitle = document.querySelector("#workspace-title");
-const workspaceList = document.querySelector("#workspace-file-list");
-const workspaceEmpty = document.querySelector("#workspace-empty");
-const workspaceDropzone = document.querySelector("#workspace-dropzone");
 const workspaceDesktopFiles = document.querySelector("#workspace-desktop-files");
-let disconnectWorkspaceChanges;
-
-function connectWorkspaceWatcher() {
-  disconnectWorkspaceChanges ??= window.xilingDesktop?.workspace.onChanged(() => void refreshWorkspaceFiles());
-}
-
-function disconnectWorkspaceWatcher() {
-  disconnectWorkspaceChanges?.();
-  disconnectWorkspaceChanges = undefined;
-}
-
-function formatBytes(bytes) {
-  if (bytes == null) return "文件夹";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function renderWorkspaceEntries(entries) {
-  if (!workspaceList || !workspaceEmpty) return;
-  workspaceList.replaceChildren();
-  workspaceEmpty.hidden = entries.length > 0;
-  for (const entry of entries) {
-    const row = document.createElement("li");
-    row.className = "workspace-file-row";
-    const icon = document.createElement("span");
-    icon.textContent = entry.kind === "directory" ? "▸" : "·";
-    const name = document.createElement("span");
-    name.className = "workspace-file-name";
-    name.textContent = entry.name;
-    const meta = document.createElement("span");
-    meta.className = "workspace-file-meta";
-    meta.textContent = formatBytes(entry.size);
-    row.append(icon, name, meta);
-    row.addEventListener("dblclick", () => void window.xilingDesktop?.workspace.open(entry.uri));
-    workspaceList.append(row);
-  }
-  renderDesktopFiles(entries);
-}
 
 function renderDesktopFiles(entries) {
   if (!workspaceDesktopFiles) return;
@@ -306,48 +259,18 @@ function renderDesktopFiles(entries) {
   }
 }
 
-async function refreshWorkspaceFiles() {
+async function refreshDesktopFiles() {
   try {
     const rootInfo = await window.xilingDesktop?.workspace.get();
     if (!rootInfo) {
-      if (workspaceTitle) workspaceTitle.textContent = "尚未选择桌面目录";
-      renderWorkspaceEntries([]);
+      renderDesktopFiles([]);
       return;
     }
-    if (workspaceTitle) workspaceTitle.textContent = rootInfo.label;
-    renderWorkspaceEntries(await window.xilingDesktop.workspace.list(""));
-    connectWorkspaceWatcher();
+    renderDesktopFiles(await window.xilingDesktop.workspace.list(""));
   } catch (error) {
     showToast(error instanceof Error ? error.message : "无法读取桌面文件夹");
   }
 }
-
-chooseWorkspace?.addEventListener("click", async () => {
-  const selected = await window.xilingDesktop?.workspace.select();
-  if (selected) await refreshWorkspaceFiles();
-});
-refreshWorkspace?.addEventListener("click", () => void refreshWorkspaceFiles());
-
-for (const eventName of ["dragenter", "dragover"]) {
-  workspaceDropzone?.addEventListener(eventName, (event) => {
-    event.preventDefault();
-    workspaceDropzone.dataset.dragOver = "true";
-  });
-}
-workspaceDropzone?.addEventListener("dragleave", () => { workspaceDropzone.dataset.dragOver = "false"; });
-workspaceDropzone?.addEventListener("drop", async (event) => {
-  event.preventDefault();
-  workspaceDropzone.dataset.dragOver = "false";
-  const files = [...(event.dataTransfer?.files ?? [])];
-  if (!files.length) return;
-  try {
-    await window.xilingDesktop?.workspace.importDroppedFiles(files);
-    await refreshWorkspaceFiles();
-    showToast(`已导入 ${files.length} 个项目`);
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : "导入失败");
-  }
-});
 
 for (const eventName of ["dragenter", "dragover"]) {
   root?.addEventListener(eventName, (event) => {
@@ -356,20 +279,20 @@ for (const eventName of ["dragenter", "dragover"]) {
   });
 }
 root?.addEventListener("drop", async (event) => {
-  if (event.target.closest(".leopard-window, .leopard-dock")) return;
+  if (event.target.closest(".leopard-window, .managed-window, .leopard-dock")) return;
   event.preventDefault();
   const files = [...(event.dataTransfer?.files ?? [])];
   if (!files.length) return;
   try {
     await window.xilingDesktop?.workspace.importDroppedFiles(files);
-    await refreshWorkspaceFiles();
+    await refreshDesktopFiles();
     showToast(`已放入桌面 ${files.length} 个项目`);
   } catch (error) {
     showToast(error instanceof Error ? error.message : "无法放入桌面");
   }
 });
 
-window.addEventListener("beforeunload", disconnectWorkspaceWatcher);
+window.addEventListener("xiling:workspace-entries", (event) => renderDesktopFiles(event.detail ?? []));
 
 /* ---------- 桌面图标 ---------- */
 
@@ -379,7 +302,10 @@ for (const icon of document.querySelectorAll(".leopard-desktop-icon")) {
       other.dataset.selected = other === icon ? "true" : "false";
     }
   });
-  icon.addEventListener("dblclick", () => openWindow(icon.dataset.target));
+  icon.addEventListener("dblclick", () => {
+    if (icon.dataset.target === "workspace") void openManagedApp("workspace");
+    else openWindow(icon.dataset.target);
+  });
 }
 
 root?.addEventListener("pointerdown", (event) => {
@@ -442,7 +368,8 @@ tiles.forEach((tile) => {
   tile.addEventListener("click", () => {
     tile.dataset.bounce = "true";
     const app = tile.dataset.app;
-    if (app === "workspace" || app === "about") openWindow(app);
+    if (app === "workspace") void openManagedApp(app);
+    else if (app === "about") openWindow(app);
     else if (app === "artifacts") setFanOpen(dockFan?.dataset.open !== "true");
     else if (["chat", "research", "literature", "data", "settings"].includes(app)) void openManagedApp(app);
     else if (app !== "trash") showToast(`「${tile.getAttribute("aria-label")}」即将推出`);
