@@ -15,6 +15,7 @@ await Promise.all(required.map((file) => access(path.join(packageRoot, file))));
 
 const main = await readFile(path.join(packageRoot, "dist/main.js"), "utf8");
 const html = await readFile(path.join(packageRoot, "renderer/index.html"), "utf8");
+const css = await readFile(path.join(packageRoot, "renderer/shell.css"), "utf8");
 
 for (const invariant of ["contextIsolation: true", "nodeIntegration: false", "sandbox: true", "requestSingleInstanceLock", "XiLing OS Desktop"]) {
   if (!main.includes(invariant)) throw new Error(`Desktop security invariant missing: ${invariant}`);
@@ -25,6 +26,14 @@ if (html.includes("generated/window-runtime.js")) {
 }
 if (html.includes('id="window-workspace"')) {
   throw new Error("Static workspace window must not coexist with the React window manager");
+}
+for (const dockMotionInvariant of [
+  "@keyframes leopard-bounce-icon",
+  "@keyframes leopard-bounce-reflection",
+  '.leopard-dock-tile[data-bounce="true"] .dock-icon',
+  '.leopard-dock-tile[data-bounce="true"] .dock-reflection .dock-art',
+]) {
+  if (!css.includes(dockMotionInvariant)) throw new Error(`Dock reflection motion invariant missing: ${dockMotionInvariant}`);
 }
 
 const windowRuntime = await readFile(path.join(packageRoot, "renderer/generated/window-runtime.js"));

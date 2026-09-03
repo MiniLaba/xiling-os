@@ -374,5 +374,9 @@ tiles.forEach((tile) => {
     else if (["chat", "research", "literature", "data", "settings"].includes(app)) void openManagedApp(app);
     else if (app !== "trash") showToast(`「${tile.getAttribute("aria-label")}」即将推出`);
   });
-  tile.addEventListener("animationend", () => { tile.dataset.bounce = "false"; });
+  tile.addEventListener("animationend", (event) => {
+    if (event.animationName === "leopard-bounce-icon") {
+      tile.dataset.bounce = "false";
+    }
+  });
 });

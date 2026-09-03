@@ -601,14 +601,22 @@ button { font: inherit; color: inherit; }
 
 .leopard-dock-tile:hover .leopard-dock-label { display: block; }
 
-@keyframes leopard-bounce {
+@keyframes leopard-bounce-icon {
   0%, 100% { translate: 0 0; }
   35% { translate: 0 -48px; }
   60% { translate: 0 -6px; }
   80% { translate: 0 -18px; }
 }
 
-.leopard-dock-tile[data-bounce="true"] .dock-figure { animation: leopard-bounce 0.85s ease-in-out; }
+@keyframes leopard-bounce-reflection {
+  0%, 100% { transform: translateY(0) scaleY(-1); }
+  35% { transform: translateY(48px) scaleY(-1); }
+  60% { transform: translateY(6px) scaleY(-1); }
+  80% { transform: translateY(18px) scaleY(-1); }
+}
+
+.leopard-dock-tile[data-bounce="true"] .dock-icon { animation: leopard-bounce-icon 0.85s ease-in-out; }
+.leopard-dock-tile[data-bounce="true"] .dock-reflection .dock-art { animation: leopard-bounce-reflection 0.85s ease-in-out; }
 
 /* ---------- Stacks 扇形展开 ---------- */
 
@@ -683,7 +691,8 @@ button { font: inherit; color: inherit; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .leopard-dock-tile[data-bounce="true"] .dock-figure { animation: none; }
+  .leopard-dock-tile[data-bounce="true"] .dock-icon,
+  .leopard-dock-tile[data-bounce="true"] .dock-reflection .dock-art { animation: none; }
   .dock-figure { transition: none; }
   .fan-item { transition: none; }
 }
