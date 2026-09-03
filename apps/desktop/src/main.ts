@@ -274,6 +274,19 @@ function registerIpc(): void {
     return requestCore("windows.save", { state: state as DesktopWindowState });
   });
 
+  ipcMain.handle("desktop:appearance-get", async (event) => {
+    assertTrustedSender(event);
+    return requestCore("preferences.get", {});
+  });
+
+  ipcMain.handle("desktop:appearance-set-dock-scale", async (event, value: unknown) => {
+    assertTrustedSender(event);
+    if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("Invalid dock scale");
+    const preferences = await requestCore("preferences.set", { dockScale: value });
+    mainWindow?.webContents.send("desktop:dock-scale-changed", preferences.dockScale);
+    return preferences;
+  });
+
   ipcMain.handle("desktop:window", (event, action: unknown) => {
     assertTrustedSender(event);
     if (!mainWindow || typeof action !== "string") return;

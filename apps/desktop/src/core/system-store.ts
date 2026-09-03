@@ -2,10 +2,11 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import type { AppManifest, DesktopWindowState, WorkspaceRoot } from "./types.js";
+import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceRoot } from "./types.js";
 import type { AppCapability } from "./types.js";
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
+const DEFAULT_DOCK_SCALE = 1;
 
 const SCHEMA = `
 PRAGMA journal_mode = WAL;
@@ -139,6 +140,12 @@ CREATE TABLE IF NOT EXISTS desktop_windows (
   payload_json TEXT NOT NULL DEFAULT '{}',
   updated_at TEXT NOT NULL,
   FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS desktop_preferences (
+  key TEXT PRIMARY KEY,
+  value_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS relations_source_idx ON relations(source_id, kind);
@@ -330,5 +337,28 @@ export class SystemStore {
       payload: JSON.parse(row.payload_json) as Record<string, unknown>,
       updatedAt: row.updated_at,
     }));
+  }
+
+  getDesktopPreferences(): DesktopPreferences {
+    const row = this.database
+      .prepare("SELECT value_json FROM desktop_preferences WHERE key = 'dock_scale'")
+      .get() as { value_json: string } | undefined;
+    if (!row) return { dockScale: DEFAULT_DOCK_SCALE };
+    const stored = Number(JSON.parse(row.value_json));
+    return { dockScale: Number.isFinite(stored) ? Math.min(1.25, Math.max(0.75, stored)) : DEFAULT_DOCK_SCALE };
+  }
+
+  setDockScale(dockScale: number): DesktopPreferences {
+    const normalized = Math.round(Math.min(1.25, Math.max(0.75, dockScale)) * 20) / 20;
+    this.database
+      .prepare(`
+        INSERT INTO desktop_preferences(key, value_json, updated_at)
+        VALUES('dock_scale', ?, ?)
+        ON CONFLICT(key) DO UPDATE SET
+          value_json = excluded.value_json,
+          updated_at = excluded.updated_at
+      `)
+      .run(JSON.stringify(normalized), new Date().toISOString());
+    return { dockScale: normalized };
   }
 }

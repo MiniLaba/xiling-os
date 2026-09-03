@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 
-import type { AppManifest, DesktopWindowState, WorkspaceEntry } from "./core/types.js";
+import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceEntry } from "./core/types.js";
 import type { SafeWorkspaceRoot } from "./core/protocol.js";
 
 const desktopApi = Object.freeze({
@@ -37,6 +37,17 @@ const desktopApi = Object.freeze({
     list: () => ipcRenderer.invoke("desktop:windows-list") as Promise<DesktopWindowState[]>,
     save: (state: DesktopWindowState) =>
       ipcRenderer.invoke("desktop:window-state-save", state) as Promise<{ saved: true }>,
+  }),
+  appearance: Object.freeze({
+    get: () => ipcRenderer.invoke("desktop:appearance-get") as Promise<DesktopPreferences>,
+    setDockScale: (dockScale: number) =>
+      ipcRenderer.invoke("desktop:appearance-set-dock-scale", dockScale) as Promise<DesktopPreferences>,
+    onDockScaleChanged: (listener: (dockScale: number) => void) => {
+      const channel = "desktop:dock-scale-changed";
+      const handler = (_event: Electron.IpcRendererEvent, dockScale: number) => listener(dockScale);
+      ipcRenderer.on(channel, handler);
+      return () => ipcRenderer.removeListener(channel, handler);
+    },
   }),
   minimize: () => ipcRenderer.invoke("desktop:window", "minimize") as Promise<void>,
   toggleMaximize: () =>

@@ -12,7 +12,7 @@ test("system store initializes the unified schema and restores desktop state", (
   context.after(() => rmSync(temporary, { recursive: true, force: true }));
   const databasePath = path.join(temporary, "system.sqlite");
   const store = new SystemStore(databasePath);
-  assert.equal(store.getSchemaVersion(), 1);
+  assert.equal(store.getSchemaVersion(), 2);
   const root = store.setWorkspaceRoot({ id: "primary", label: "研究桌面", nativePath: "/tmp/研究 桌面" });
   assert.equal(root.label, "研究桌面");
 
@@ -34,6 +34,8 @@ test("system store initializes the unified schema and restores desktop state", (
     payload: { folder: "workspace://primary/数据" },
     updatedAt: new Date().toISOString(),
   });
+  assert.deepEqual(store.getDesktopPreferences(), { dockScale: 1 });
+  assert.deepEqual(store.setDockScale(1.17), { dockScale: 1.15 });
   store.close();
 
   const restored = new SystemStore(databasePath);
@@ -43,5 +45,6 @@ test("system store initializes the unified schema and restores desktop state", (
     BUILT_IN_APPS.map((app) => app.id).sort(),
   );
   assert.equal(restored.listWindows()[0]?.payload.folder, "workspace://primary/数据");
+  assert.deepEqual(restored.getDesktopPreferences(), { dockScale: 1.15 });
   restored.close();
 });

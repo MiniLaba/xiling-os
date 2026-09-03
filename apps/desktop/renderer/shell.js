@@ -4,6 +4,8 @@
 
 const MAG_RANGE = 78; // 高斯衰减半径（px）
 const MAG_MAX = 0.8;  // 最大额外放大倍数
+const MIN_DOCK_SCALE = 0.75;
+const MAX_DOCK_SCALE = 1.25;
 
 const clock = document.querySelector("#clock");
 const aboutClock = document.querySelector("#about-clock");
@@ -13,6 +15,15 @@ const dockFan = document.querySelector("#dock-fan");
 const toast = document.querySelector("#toast");
 const root = document.querySelector("#leopard");
 let managedWindowRuntime;
+
+function applyDockScale(value) {
+  const numeric = Number(value);
+  const scale = Number.isFinite(numeric) ? Math.min(MAX_DOCK_SCALE, Math.max(MIN_DOCK_SCALE, numeric)) : 1;
+  dock?.style.setProperty("--dock-scale", String(scale));
+}
+
+void window.xilingDesktop?.appearance.get().then((preferences) => applyDockScale(preferences.dockScale));
+window.xilingDesktop?.appearance.onDockScaleChanged(applyDockScale);
 
 async function openManagedApp(app) {
   managedWindowRuntime ??= import("./generated/window-runtime.js");

@@ -383,6 +383,30 @@ button { font: inherit; color: inherit; }
 .managed-window-content > p:not(.eyebrow) { max-width: 560px; color: #617487; line-height: 1.7; }
 .managed-window-ready { margin-top: 30px; padding-top: 14px; border-top: 1px solid rgba(90, 114, 138, 0.24); color: #188096; font-size: 12px; }
 
+.dock-scale-settings {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid rgba(78, 105, 132, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.dock-scale-settings header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.dock-scale-settings header div { display: grid; gap: 4px; }
+.dock-scale-settings h3 { margin: 0; color: #26384d; font-size: 14px; }
+.dock-scale-settings p { margin: 0; color: #66798d; font-size: 12px; line-height: 1.55; }
+.dock-scale-settings output { min-width: 48px; color: #167f91; font-size: 14px; font-weight: 650; text-align: right; }
+.dock-scale-control { display: grid; grid-template-columns: 24px minmax(180px, 1fr) 30px; align-items: center; gap: 12px; }
+.dock-scale-control > span { color: #607488; font-size: 16px; text-align: center; }
+.dock-scale-control > span:last-child { font-size: 24px; }
+.dock-scale-control input { width: 100%; accent-color: #168ba1; cursor: pointer; }
+.dock-scale-actions { display: flex; justify-content: flex-end; }
+.dock-scale-actions button { padding: 6px 12px; border: 1px solid rgba(73, 99, 124, 0.24); border-radius: 8px; color: #40566d; background: rgba(255, 255, 255, 0.72); cursor: pointer; }
+.dock-scale-actions button:hover { background: #fff; }
+
 .content-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr); gap: 18px; }
 
 .panel { border: 1px solid #c8d8db; border-radius: 18px; background: rgba(249, 252, 252, 0.92); overflow: hidden; }
@@ -403,13 +427,16 @@ button { font: inherit; color: inherit; }
 
 .leopard-dock {
   --dock-baseline: 97px;
+  --dock-scale: 1;
   position: absolute;
   bottom: 0;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(var(--dock-scale));
+  transform-origin: 50% 100%;
   height: 132px;
   padding: 0 34px;
   z-index: 30;
+  transition: transform 160ms cubic-bezier(0.2, 0.75, 0.25, 1);
 }
 
 .dock-shelf {

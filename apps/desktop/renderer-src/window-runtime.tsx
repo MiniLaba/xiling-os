@@ -21,6 +21,11 @@ interface DesktopBridge {
     list(): Promise<PersistedWindowState[]>;
     save(state: PersistedWindowState): Promise<{ saved: true }>;
   };
+  appearance: {
+    get(): Promise<{ dockScale: number }>;
+    setDockScale(dockScale: number): Promise<{ dockScale: number }>;
+    onDockScaleChanged(listener: (dockScale: number) => void): () => void;
+  };
 }
 
 declare global {
@@ -65,6 +70,45 @@ function defaultWindow(appKey: AppKey, index: number): ManagedWindow {
 
 async function saveWindow(state: ManagedWindow): Promise<void> {
   await window.xilingDesktop?.windowState.save({ ...state, updatedAt: new Date().toISOString() });
+}
+
+function DockScaleSettings() {
+  const [dockScale, setDockScale] = useState(1);
+
+  useEffect(() => {
+    let active = true;
+    void window.xilingDesktop?.appearance.get().then((preferences) => {
+      if (active) setDockScale(preferences.dockScale);
+    });
+    const unsubscribe = window.xilingDesktop?.appearance.onDockScaleChanged((value) => setDockScale(value));
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, []);
+
+  const update = (value: number) => {
+    setDockScale(value);
+    void window.xilingDesktop?.appearance.setDockScale(value);
+  };
+
+  return (
+    <section className="dock-scale-settings">
+      <header>
+        <div>
+          <h3>程序坞大小</h3>
+          <p>等比例调整图标、玻璃台面、间距、倒影与指示灯。</p>
+        </div>
+        <output aria-live="polite">{Math.round(dockScale * 100)}%</output>
+      </header>
+      <label className="dock-scale-control">
+        <span aria-hidden="true">◆</span>
+        <input aria-label="程序坞大小" type="range" min="0.75" max="1.25" step="0.05" value={dockScale} onChange={(event) => update(Number(event.target.value))} />
+        <span aria-hidden="true">◆</span>
+      </label>
+      <div className="dock-scale-actions"><button type="button" onClick={() => update(1)}>恢复默认大小</button></div>
+    </section>
+  );
 }
 
 function InternalWindow({
@@ -120,7 +164,9 @@ function InternalWindow({
         <p className="eyebrow">{definition.eyebrow}</p>
         <h2>{definition.title}</h2>
         <p>{definition.body}</p>
-        <div className="managed-window-ready">应用能力已注册 · 内容将在使用时加载</div>
+        {model.appKey === "settings"
+          ? <DockScaleSettings />
+          : <div className="managed-window-ready">应用能力已注册 · 内容将在使用时加载</div>}
       </div>
     </section>
   );

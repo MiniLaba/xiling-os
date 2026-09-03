@@ -38,6 +38,10 @@ export interface DesktopWindowState {
   updatedAt: string;
 }
 
+export interface DesktopPreferences {
+  dockScale: number;
+}
+
 export interface WorkspaceEntry {
   uri: ResourceUri;
   name: string;

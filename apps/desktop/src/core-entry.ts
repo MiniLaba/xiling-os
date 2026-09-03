@@ -102,6 +102,12 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
     store.saveWindow(params.state as unknown as DesktopWindowState);
     return { saved: true };
   }
+  if (method === "preferences.get") return store.getDesktopPreferences();
+  if (method === "preferences.set") {
+    const dockScale = Number(params.dockScale);
+    if (!Number.isFinite(dockScale)) throw new Error("dockScale must be a finite number");
+    return store.setDockScale(dockScale);
+  }
   const exhaustive: never = method;
   throw new Error(`Unsupported method: ${String(exhaustive)}`);
 }

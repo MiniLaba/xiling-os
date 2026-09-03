@@ -1,4 +1,4 @@
-import type { AppManifest, DesktopWindowState, WorkspaceEntry } from "./types.js";
+import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceEntry } from "./types.js";
 
 export interface CoreRequest {
   type: "core-request";
@@ -30,7 +30,9 @@ export type CoreMethod =
   | "workspace.import"
   | "workspace.resolve"
   | "windows.list"
-  | "windows.save";
+  | "windows.save"
+  | "preferences.get"
+  | "preferences.set";
 
 export interface SafeWorkspaceRoot {
   id: string;
@@ -47,4 +49,6 @@ export interface CoreResultMap {
   "workspace.resolve": { nativePath: string };
   "windows.list": DesktopWindowState[];
   "windows.save": { saved: true };
+  "preferences.get": DesktopPreferences;
+  "preferences.set": DesktopPreferences;
 }
