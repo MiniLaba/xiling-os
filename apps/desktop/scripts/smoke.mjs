@@ -35,6 +35,12 @@ for (const dockMotionInvariant of [
 ]) {
   if (!css.includes(dockMotionInvariant)) throw new Error(`Dock reflection motion invariant missing: ${dockMotionInvariant}`);
 }
+for (const [name, pattern] of [
+  ["menu buttons", /\.leopard-menubar button\s*\{[^}]*border-radius:\s*999px;/s],
+  ["status items", /\.core-status,\s*\.menubar-system-icon,\s*\.leopard-clock\s*\{[^}]*border-radius:\s*999px;/s],
+]) {
+  if (!pattern.test(css)) throw new Error(`Apple-style menubar capsule invariant missing: ${name}`);
+}
 
 const windowRuntime = await readFile(path.join(packageRoot, "renderer/generated/window-runtime.js"));
 if (windowRuntime.byteLength > 350_000) {
