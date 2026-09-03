@@ -46,7 +46,7 @@
 | --- | --- | --- |
 | 原生桌面壳 | 已实现 | Electron 单实例、安全 `xiling://` 协议、CSP、沙箱化 Renderer |
 | 应用内多窗口 | 基础已实现 | 一个 `BrowserWindow`；React Window Manager 按需载入、拖动、缩放、聚焦、最大化、最小化卸载、键盘切换与布局恢复 |
-| 真实桌面文件夹 | 基础已实现 | 原生目录选择、`workspace://`、列表、桌面图标、拖入、重名保护、变化事件、本机打开 |
+| 真实桌面文件夹 | D2 基础已实现 | 原生目录选择、`workspace://`、列表/搜索、新建文件夹、重命名、系统废纸篓、桌面图标、拖入、变化事件、本机打开；移动、预览、虚拟化待实现 |
 | 统一结构化存储 | schema/端口已实现 | `SystemStore` 与 `system.sqlite` v1；完整科研仓储 API 尚待实现 |
 | 应用能力系统 | 基础已实现 | Manifest、Registry、Capability Gateway、显式 allow/deny |
 | 资源生命周期 | 基础已实现 | Core 和目录监听的 acquire/release/idle-stop；Agent/索引/运行时待接入 |
@@ -125,10 +125,11 @@ workspace://primary/<encoded path>（Renderer/领域引用）
 - 所有相对路径必须做根目录包含校验；不得通过 `..`、绝对路径或编码绕过。
 - 默认不遍历符号链接、junction 或 reparse point。
 - 拖入先复制到同一根目录的临时名，成功后原子改名；重名使用稳定的编号后缀，不覆盖用户文件。
+- 搜索、新建文件夹与重命名在 Core 中校验路径、重名、跨平台非法字符和 Windows 保留名；移除文件由 Main 在 Core 的写权限校验后调用系统废纸篓，禁止作用于工作区根目录。
 - 目录变化使用原生事件和 120 ms 去抖，不轮询。
 - 工作区窗口订阅期间持有 Core lease；窗口关闭后释放，Core 可进入空闲停止。
 - 双击资源由 Main 消费内部解析出的原生路径并调用系统打开；绝对路径不回传 Renderer。
-- 后续删除必须进入系统废纸篓；批量覆盖、跨卷移动和同步冲突需要单独审批与恢复设计。
+- 删除必须进入系统废纸篓；批量覆盖、跨卷移动和同步冲突仍需要单独审批与恢复设计。
 
 ## 7. 统一存储
 
@@ -211,8 +212,8 @@ Research Graph 将建立在统一对象/关系/事件之上，回答“科学上
 - 空闲总内存：发布参考设备低于 250 MB。
 - 空闲 CPU：低于 1%。
 - 十个空闲内部窗口：新增内存不超过 80 MB。
-- 动态 React 窗口生产包：自动回归上限 350 KB；当前 gzip 约 74 KB。
-- 真实 Electron 打开工作台内部窗口并唤醒 Core 后的活动工作集：开发/CI 回归上限 520 MB；本轮实测约 495 MB。
+- 动态 React 窗口生产包：自动回归上限 350 KB；当前 gzip 约 75 KB。
+- 真实 Electron 打开工作台内部窗口并唤醒 Core 后的活动工作集：开发/CI 回归上限 520 MB；本轮实测约 502 MB。
 - 文件列表、日志、文献、事件和图节点必须虚拟化/有界查询。
 - Core、Agent、索引器、Python、MCP 和领域运行时必须接入统一生命周期，禁止登录即全开。
 
@@ -246,7 +247,7 @@ XILING_DESKTOP_LAUNCH_SMOKE=1 pnpm --filter @xiling/desktop start
 - 窗口视口约束、显式打开与已保存几何合并、键盘焦点切换；
 - Manifest 校验与显式能力 allow/deny；
 - LazyResource 共享实例、最后 lease 后停止；
-- Unicode/空格文件、原子导入、重名保护、路径越界与符号链接；
+- Unicode/空格文件、原子导入、搜索、新建文件夹、重命名、重名保护、跨平台非法名、路径越界与符号链接；
 - 原生目录变化推送和监听器关闭；
 - Electron 安全不变量与无容器依赖；
 - 动态窗口包未进入冷启动、包体上限；
@@ -255,7 +256,7 @@ XILING_DESKTOP_LAUNCH_SMOKE=1 pnpm --filter @xiling/desktop start
 ## 14. 后续顺序
 
 1. 完成窗口系统剩余项：文档型多实例、窗口菜单、无障碍焦点环与 Core/Renderer 崩溃后的恢复提示；“关于”作为系统界面可暂留静态层。
-2. 补齐文件新建、重命名、移动、系统废纸篓、搜索、预览和大目录虚拟化。
+2. 在已完成搜索、新建文件夹、重命名和系统废纸篓的基础上，补齐目录导航、移动、预览和大目录虚拟化。
 3. 在统一 `objects/relations/events/artifacts` 上实现强类型 Repository 和事务性 outbox。
 4. 选择性接回 Pi Harness、上下文装配、Skill/MCP 隔离与模型权限；先做一个可恢复的真实 Agent 纵向切片。
 5. 重建 Research Graph、证据提升、计算溯源和 Artifact 生命周期，并用真实小型科研任务验收。
