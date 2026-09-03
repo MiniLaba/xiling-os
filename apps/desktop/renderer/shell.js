@@ -1,4 +1,4 @@
-// 汐灵科研桌面 V2 renderer 逻辑：Leopard 桌面外壳（时钟、核心状态、
+// 汐灵科研桌面 V2 renderer 逻辑：Tahoe 菜单栏与 Leopard 桌面外壳（时钟、核心状态、
 // 桌面图标、可拖动 Aqua 窗口、程序坞放大/弹跳）。无框架，直接操作 DOM；
 // 动态样式走 CSSOM（CSP style-src 'self' 禁止内联样式属性）。
 
@@ -27,7 +27,7 @@ function leopardClockText() {
   const date = new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric" }).format(now);
   const weekday = new Intl.DateTimeFormat("zh-CN", { weekday: "short" }).format(now);
   const time = new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(now);
-  return `${date} ${weekday} ${time}`;
+  return `${weekday} ${date} ${time}`;
 }
 
 function updateClock() {
@@ -44,10 +44,10 @@ setInterval(updateClock, 15_000);
 async function updateRuntime() {
   try {
     const info = await window.xilingDesktop?.getRuntimeInfo();
-    if (runtime) runtime.textContent = info?.coreReady ? "科研核心已就绪" : "科研核心按需待命";
+    if (runtime) runtime.textContent = info?.coreReady ? "核心已就绪" : "核心待命";
     if (runtime) runtime.dataset.ready = info?.coreReady ? "true" : "false";
   } catch {
-    if (runtime) runtime.textContent = "科研核心不可用";
+    if (runtime) runtime.textContent = "核心不可用";
     if (runtime) runtime.dataset.ready = "error";
   }
 }
