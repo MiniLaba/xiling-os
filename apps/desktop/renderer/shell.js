@@ -330,25 +330,36 @@ function showToast(text) {
 
 const tiles = dock ? [...dock.querySelectorAll(".leopard-dock-tile")] : [];
 const figures = tiles.map((tile) => tile.querySelector(".dock-figure"));
+let magnifyFrame = 0;
+let dockPointerX = 0;
 
 function setMagnify(active) {
   if (dock) dock.dataset.magnify = active ? "true" : "false";
 }
 
 function resetScales() {
+  if (magnifyFrame) window.cancelAnimationFrame(magnifyFrame);
+  magnifyFrame = 0;
   for (const figure of figures) figure.style.transform = "scale(1)";
   setMagnify(false);
 }
 
-dock?.addEventListener("pointermove", (event) => {
+function renderDockMagnification() {
+  magnifyFrame = 0;
+  if (!dock) return;
   const dockLeft = dock.getBoundingClientRect().left;
   setMagnify(true);
   tiles.forEach((tile, index) => {
     const center = dockLeft + tile.offsetLeft + tile.offsetWidth / 2;
-    const distance = event.clientX - center;
+    const distance = dockPointerX - center;
     const scale = 1 + MAG_MAX * Math.exp(-(distance * distance) / (2 * MAG_RANGE * MAG_RANGE));
-    figures[index].style.transform = `scale(${scale.toFixed(3)})`;
+    figures[index].style.transform = `scale(${scale.toFixed(4)})`;
   });
+}
+
+dock?.addEventListener("pointermove", (event) => {
+  dockPointerX = event.clientX;
+  if (!magnifyFrame) magnifyFrame = window.requestAnimationFrame(renderDockMagnification);
 });
 
 dock?.addEventListener("pointerleave", resetScales);

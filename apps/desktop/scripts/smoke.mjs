@@ -9,6 +9,7 @@ const required = [
   "dist/core-entry.js",
   "renderer/index.html",
   "renderer/shell.css",
+  "renderer/shell.js",
   "renderer/generated/window-runtime.js",
 ];
 await Promise.all(required.map((file) => access(path.join(packageRoot, file))));
@@ -16,6 +17,7 @@ await Promise.all(required.map((file) => access(path.join(packageRoot, file))));
 const main = await readFile(path.join(packageRoot, "dist/main.js"), "utf8");
 const html = await readFile(path.join(packageRoot, "renderer/index.html"), "utf8");
 const css = await readFile(path.join(packageRoot, "renderer/shell.css"), "utf8");
+const shell = await readFile(path.join(packageRoot, "renderer/shell.js"), "utf8");
 
 for (const invariant of ["contextIsolation: true", "nodeIntegration: false", "sandbox: true", "requestSingleInstanceLock", "XiLing OS Desktop"]) {
   if (!main.includes(invariant)) throw new Error(`Desktop security invariant missing: ${invariant}`);
@@ -34,6 +36,9 @@ for (const dockMotionInvariant of [
   '.leopard-dock-tile[data-bounce="true"] .dock-reflection .dock-art',
 ]) {
   if (!css.includes(dockMotionInvariant)) throw new Error(`Dock reflection motion invariant missing: ${dockMotionInvariant}`);
+}
+for (const dockMagnificationInvariant of ["requestAnimationFrame(renderDockMagnification)", "cancelAnimationFrame(magnifyFrame)"]) {
+  if (!shell.includes(dockMagnificationInvariant)) throw new Error(`Smooth dock magnification invariant missing: ${dockMagnificationInvariant}`);
 }
 for (const [name, pattern] of [
   ["menu buttons", /\.leopard-menubar button\s*\{[^}]*border-radius:\s*999px;/s],
