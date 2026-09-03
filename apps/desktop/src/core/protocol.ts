@@ -1,4 +1,4 @@
-import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceEntry } from "./types.js";
+import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceEntry, WorkspacePreview } from "./types.js";
 
 export interface CoreRequest {
   type: "core-request";
@@ -30,6 +30,8 @@ export type CoreMethod =
   | "workspace.search"
   | "workspace.mkdir"
   | "workspace.rename"
+  | "workspace.move"
+  | "workspace.preview"
   | "workspace.import"
   | "workspace.resolve"
   | "workspace.resolveWrite"
@@ -52,6 +54,8 @@ export interface CoreResultMap {
   "workspace.search": WorkspaceEntry[];
   "workspace.mkdir": WorkspaceEntry;
   "workspace.rename": WorkspaceEntry;
+  "workspace.move": WorkspaceEntry;
+  "workspace.preview": WorkspacePreview;
   "workspace.import": WorkspaceEntry[];
   "workspace.resolve": { nativePath: string };
   "workspace.resolveWrite": { nativePath: string };

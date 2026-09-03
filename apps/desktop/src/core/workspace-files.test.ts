@@ -64,20 +64,39 @@ test("workspace mutations and bounded search preserve the selected root", async 
     const { rm } = await import("node:fs/promises");
     await rm(temporary, { recursive: true, force: true });
   });
-  const service = new WorkspaceFileService("primary", temporary);
+  const workspace = path.join(temporary, "workspace");
+  const external = path.join(temporary, "导入.csv");
+  await mkdir(workspace);
+  await writeFile(external, "time,value\n0,1\n", "utf8");
+  const service = new WorkspaceFileService("primary", workspace);
   const folder = await service.createDirectory("", "观测 数据");
   await writeFile(path.join(await service.nativePathForUri(folder.uri), "温盐剖面.txt"), "fixture", "utf8");
 
   const matches = await service.search("温盐");
   assert.deepEqual(matches.map((entry) => entry.name), ["温盐剖面.txt"]);
+  const preview = await service.preview(matches[0]!.uri, 1_024);
+  assert.deepEqual({ kind: preview.kind, text: preview.text, truncated: preview.truncated }, { kind: "text", text: "fixture", truncated: false });
+  await writeFile(path.join(await service.nativePathForUri(folder.uri), "长日志.txt"), "x".repeat(2_048), "utf8");
+  const longPreview = await service.preview(service.toUri("观测 数据/长日志.txt"), 1_024);
+  assert.equal(longPreview.text?.length, 1_024);
+  assert.equal(longPreview.truncated, true);
+  await writeFile(path.join(await service.nativePathForUri(folder.uri), "数组.nc"), Buffer.from([0, 1, 2, 3]));
+  assert.equal((await service.preview(service.toUri("观测 数据/数组.nc"))).kind, "unsupported");
 
   const renamed = await service.rename(matches[0]!.uri, "温盐剖面 2026.txt");
   assert.equal(renamed.name, "温盐剖面 2026.txt");
   assert.equal(await readFile(await service.nativePathForUri(renamed.uri), "utf8"), "fixture");
   await writeFile(path.join(await service.nativePathForUri(folder.uri), "重复.txt"), "duplicate", "utf8");
+  const target = await service.createDirectory("", "目标");
+  const moved = await service.move(renamed.uri, target.uri);
+  assert.equal(await readFile(await service.nativePathForUri(moved.uri), "utf8"), "fixture");
+  const child = await service.createDirectory("观测 数据", "子目录");
+  await assert.rejects(() => service.move(folder.uri, child.uri), /inside itself/);
+  const imported = await service.importPaths([external], target.uri);
+  assert.equal(imported[0]?.uri, "workspace://primary/%E7%9B%AE%E6%A0%87/%E5%AF%BC%E5%85%A5.csv");
 
   await assert.rejects(() => service.createDirectory("", "../越界"), /Invalid/);
   await assert.rejects(() => service.createDirectory("", "CON"), /Reserved/);
   await assert.rejects(() => service.createDirectory("", "观测 数据"), /already exists/);
-  await assert.rejects(() => service.rename(renamed.uri, "重复.txt"), /already exists/);
+  await assert.rejects(() => service.rename(imported[0]!.uri, "温盐剖面 2026.txt"), /already exists/);
 });

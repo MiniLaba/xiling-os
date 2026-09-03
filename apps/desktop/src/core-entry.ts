@@ -99,13 +99,23 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
     caller(params, "workspace.write");
     return workspaceService().rename(stringField(params, "uri"), stringField(params, "name"));
   }
+  if (method === "workspace.move") {
+    caller(params, "workspace.write");
+    const targetDirectoryUri = typeof params.targetDirectoryUri === "string" ? params.targetDirectoryUri : undefined;
+    return workspaceService().move(stringField(params, "uri"), targetDirectoryUri);
+  }
+  if (method === "workspace.preview") {
+    caller(params, "workspace.read");
+    return workspaceService().preview(stringField(params, "uri"));
+  }
   if (method === "workspace.import") {
     caller(params, "workspace.write");
     const sourcePaths = params.sourcePaths;
     if (!Array.isArray(sourcePaths) || sourcePaths.some((item) => typeof item !== "string")) {
       throw new Error("sourcePaths must be a string array");
     }
-    return workspaceService().importPaths(sourcePaths as string[]);
+    const targetDirectoryUri = typeof params.targetDirectoryUri === "string" ? params.targetDirectoryUri : undefined;
+    return workspaceService().importPaths(sourcePaths as string[], targetDirectoryUri);
   }
   if (method === "workspace.resolve") {
     caller(params, "workspace.read");

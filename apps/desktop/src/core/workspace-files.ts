@@ -1,9 +1,11 @@
 import { watch as watchNative } from "node:fs";
-import { cp, lstat, mkdir, readdir, rename as renameNative, stat } from "node:fs/promises";
+import { cp, lstat, mkdir, open, readdir, rename as renameNative, stat } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
-import type { ResourceUri, WorkspaceEntry } from "./types.js";
+import type { ResourceUri, WorkspaceEntry, WorkspacePreview } from "./types.js";
+
+const TEXT_EXTENSIONS = new Set([".csv", ".css", ".html", ".ipynb", ".js", ".json", ".log", ".md", ".py", ".r", ".rst", ".toml", ".ts", ".tsx", ".txt", ".xml", ".yaml", ".yml"]);
 
 function encodeRelativePath(relativePath: string): string {
   return relativePath
@@ -54,17 +56,19 @@ export class WorkspaceFileService {
       .sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "directory" ? -1 : 1));
   }
 
-  async importPaths(sourcePaths: readonly string[]): Promise<WorkspaceEntry[]> {
+  async importPaths(sourcePaths: readonly string[], targetDirectoryUri?: string): Promise<WorkspaceEntry[]> {
     await this.ensureRoot();
+    const targetDirectory = targetDirectoryUri ? await this.nativePathForUri(targetDirectoryUri) : this.rootPath;
+    if (!(await stat(targetDirectory)).isDirectory()) throw new Error("Import destination is not a directory");
     const imported: WorkspaceEntry[] = [];
     for (const sourcePath of sourcePaths) {
       const source = path.resolve(sourcePath);
       const sourceInfo = await lstat(source);
       if (sourceInfo.isSymbolicLink()) throw new Error("Symbolic-link imports are not allowed");
-      const destinationName = await this.#availableName(path.basename(source));
+      const destinationName = await this.#availableName(targetDirectory, path.basename(source));
       const temporaryName = `.xiling-import-${randomUUID()}`;
-      const temporaryPath = path.join(this.rootPath, temporaryName);
-      const destinationPath = path.join(this.rootPath, destinationName);
+      const temporaryPath = path.join(targetDirectory, temporaryName);
+      const destinationPath = path.join(targetDirectory, destinationName);
       try {
         await cp(source, temporaryPath, {
           recursive: sourceInfo.isDirectory(),
@@ -80,7 +84,7 @@ export class WorkspaceFileService {
       }
       const details = await stat(destinationPath);
       imported.push({
-        uri: this.toUri(destinationName),
+        uri: this.toUri(path.relative(this.rootPath, destinationPath)),
         name: destinationName,
         kind: details.isDirectory() ? "directory" : "file",
         size: details.isFile() ? details.size : null,
@@ -164,6 +168,58 @@ export class WorkspaceFileService {
     return this.#entry(path.relative(this.rootPath, destination));
   }
 
+  async move(uri: string, targetDirectoryUri?: string): Promise<WorkspaceEntry> {
+    const source = await this.nativePathForUri(uri);
+    if (source === this.rootPath) throw new Error("The workspace root cannot be moved");
+    const targetDirectory = targetDirectoryUri
+      ? await this.nativePathForUri(targetDirectoryUri)
+      : this.rootPath;
+    if (!(await stat(targetDirectory)).isDirectory()) throw new Error("Move destination is not a directory");
+    if (targetDirectory === source || targetDirectory.startsWith(`${source}${path.sep}`)) {
+      throw new Error("A folder cannot be moved inside itself");
+    }
+    const destination = path.join(targetDirectory, path.basename(source));
+    try {
+      await lstat(destination);
+      throw new Error("A file or folder with this name already exists");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    await renameNative(source, destination);
+    return this.#entry(path.relative(this.rootPath, destination));
+  }
+
+  async preview(uri: string, requestedBytes = 256 * 1024): Promise<WorkspacePreview> {
+    const nativePath = await this.nativePathForUri(uri);
+    const details = await stat(nativePath);
+    if (!details.isFile()) throw new Error("Only files can be previewed");
+    const maxBytes = Math.max(1_024, Math.min(512 * 1024, Math.floor(requestedBytes)));
+    const supported = TEXT_EXTENSIONS.has(path.extname(nativePath).toLocaleLowerCase());
+    if (!supported) {
+      return { uri: this.toUri(path.relative(this.rootPath, nativePath)), name: path.basename(nativePath), kind: "unsupported", size: details.size, modifiedAt: details.mtime.toISOString(), truncated: false };
+    }
+    const handle = await open(nativePath, "r");
+    try {
+      const buffer = Buffer.alloc(Math.min(details.size, maxBytes + 1));
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+      const bytes = buffer.subarray(0, Math.min(bytesRead, maxBytes));
+      if (bytes.includes(0)) {
+        return { uri: this.toUri(path.relative(this.rootPath, nativePath)), name: path.basename(nativePath), kind: "unsupported", size: details.size, modifiedAt: details.mtime.toISOString(), truncated: false };
+      }
+      return {
+        uri: this.toUri(path.relative(this.rootPath, nativePath)),
+        name: path.basename(nativePath),
+        kind: "text",
+        size: details.size,
+        modifiedAt: details.mtime.toISOString(),
+        text: bytes.toString("utf8"),
+        truncated: details.size > maxBytes,
+      };
+    } finally {
+      await handle.close();
+    }
+  }
+
   toUri(relativePath: string): ResourceUri {
     const normalized = this.#resolveRelative(relativePath);
     return `workspace://${this.rootId}/${encodeRelativePath(normalized)}`;
@@ -229,12 +285,12 @@ export class WorkspaceFileService {
     return relative === "" ? "" : relative;
   }
 
-  async #availableName(originalName: string): Promise<string> {
+  async #availableName(directory: string, originalName: string): Promise<string> {
     const parsed = path.parse(originalName);
     for (let index = 0; index < 10_000; index += 1) {
       const name = index === 0 ? originalName : `${parsed.name} (${index})${parsed.ext}`;
       try {
-        await lstat(path.join(this.rootPath, name));
+        await lstat(path.join(directory, name));
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return name;
         throw error;

@@ -30,6 +30,16 @@ interface WorkspaceEntry {
   modifiedAt: string;
 }
 
+interface WorkspacePreview {
+  uri: string;
+  name: string;
+  kind: "text" | "unsupported";
+  size: number;
+  modifiedAt: string;
+  text?: string;
+  truncated: boolean;
+}
+
 interface DesktopBridge {
   workspace: {
     get(): Promise<WorkspaceRoot | null>;
@@ -38,9 +48,11 @@ interface DesktopBridge {
     search(query: string): Promise<WorkspaceEntry[]>;
     createDirectory(relativeDirectory: string, name: string): Promise<WorkspaceEntry>;
     rename(uri: string, name: string): Promise<WorkspaceEntry>;
+    move(uri: string, targetDirectoryUri: string | null): Promise<WorkspaceEntry>;
+    preview(uri: string): Promise<WorkspacePreview>;
     trash(uri: string): Promise<{ trashed: true }>;
     open(uri: string): Promise<void>;
-    importDroppedFiles(files: File[]): Promise<WorkspaceEntry[]>;
+    importDroppedFiles(files: File[], targetDirectoryUri?: string | null): Promise<WorkspaceEntry[]>;
     onChanged(listener: (event: { rootId: string }) => void): () => void;
   };
   windowState: {
@@ -131,6 +143,20 @@ function publishWorkspaceEntries(entries: WorkspaceEntry[]): void {
   window.dispatchEvent(new CustomEvent("xiling:workspace-entries", { detail: entries }));
 }
 
+function workspaceRelativePath(uri: string | null): string {
+  if (!uri) return "";
+  return new URL(uri).pathname.split("/").filter(Boolean).map(decodeURIComponent).join("/");
+}
+
+function parentWorkspaceUri(uri: string | null): string | null {
+  if (!uri) return null;
+  const parsed = new URL(uri);
+  const parts = parsed.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  parts.pop();
+  if (!parts.length) return null;
+  return `workspace://${parsed.hostname}/${parts.map(encodeURIComponent).join("/")}`;
+}
+
 function WorkspaceApp() {
   const [root, setRoot] = useState<WorkspaceRoot | null>(null);
   const [entries, setEntries] = useState<WorkspaceEntry[]>([]);
@@ -140,6 +166,10 @@ function WorkspaceApp() {
   const [query, setQuery] = useState("");
   const [selectedUri, setSelectedUri] = useState<string>();
   const [editor, setEditor] = useState<{ kind: "mkdir" | "rename"; value: string }>();
+  const [currentDirectoryUri, setCurrentDirectoryUri] = useState<string | null>(null);
+  const [cutUri, setCutUri] = useState<string>();
+  const [preview, setPreview] = useState<WorkspacePreview>();
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -147,10 +177,11 @@ function WorkspaceApp() {
     try {
       const selected = await window.xilingDesktop?.workspace.get() ?? null;
       setRoot(selected);
-      const nextEntries = selected ? await window.xilingDesktop?.workspace.list("") ?? [] : [];
+      const nextEntries = selected ? await window.xilingDesktop?.workspace.list(workspaceRelativePath(currentDirectoryUri)) ?? [] : [];
       setEntries(nextEntries);
       setSelectedUri(undefined);
-      publishWorkspaceEntries(nextEntries);
+      setPreview(undefined);
+      if (!currentDirectoryUri) publishWorkspaceEntries(nextEntries);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "无法读取桌面文件夹");
     } finally {
@@ -165,12 +196,33 @@ function WorkspaceApp() {
   useEffect(() => {
     if (!root) return;
     return window.xilingDesktop?.workspace.onChanged(() => void refresh());
-  }, [root?.id]);
+  }, [root?.id, currentDirectoryUri]);
+
+  useEffect(() => {
+    if (!root) return;
+    void refresh();
+  }, [currentDirectoryUri]);
+
+  useEffect(() => {
+    const selected = entries.find((entry) => entry.uri === selectedUri);
+    if (!selected || selected.kind !== "file") {
+      setPreview(undefined);
+      return;
+    }
+    let active = true;
+    setPreviewLoading(true);
+    void window.xilingDesktop?.workspace.preview(selected.uri)
+      .then((value) => { if (active) setPreview(value); })
+      .catch((reason) => { if (active) setError(reason instanceof Error ? reason.message : "无法预览文件"); })
+      .finally(() => { if (active) setPreviewLoading(false); });
+    return () => { active = false; };
+  }, [selectedUri]);
 
   const chooseRoot = async () => {
     const selected = await window.xilingDesktop?.workspace.select();
     if (!selected) return;
     setRoot(selected);
+    setCurrentDirectoryUri(null);
     await refresh();
   };
 
@@ -178,7 +230,7 @@ function WorkspaceApp() {
     if (!files.length) return;
     setError(undefined);
     try {
-      await window.xilingDesktop?.workspace.importDroppedFiles(files);
+      await window.xilingDesktop?.workspace.importDroppedFiles(files, currentDirectoryUri);
       await refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "文件导入失败");
@@ -203,7 +255,7 @@ function WorkspaceApp() {
     if (!editor?.value.trim()) return;
     setError(undefined);
     try {
-      if (editor.kind === "mkdir") await window.xilingDesktop?.workspace.createDirectory("", editor.value);
+      if (editor.kind === "mkdir") await window.xilingDesktop?.workspace.createDirectory(workspaceRelativePath(currentDirectoryUri), editor.value);
       else if (selectedUri) await window.xilingDesktop?.workspace.rename(selectedUri, editor.value);
       setEditor(undefined);
       await refresh();
@@ -225,6 +277,22 @@ function WorkspaceApp() {
     }
   };
 
+  const pasteCutItem = async () => {
+    if (!cutUri) return;
+    setError(undefined);
+    try {
+      await window.xilingDesktop?.workspace.move(cutUri, currentDirectoryUri);
+      setCutUri(undefined);
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "无法移动项目");
+    }
+  };
+
+  const pathParts = currentDirectoryUri
+    ? new URL(currentDirectoryUri).pathname.split("/").filter(Boolean).map(decodeURIComponent)
+    : [];
+
   return (
     <div className="workspace-app">
       <div className="workspace-app-hero">
@@ -242,18 +310,29 @@ function WorkspaceApp() {
       <div className="workspace-app-grid">
         <section className="panel workspace-files-panel">
           <header className="panel-heading">
-            <div><p className="eyebrow">真实文件夹</p><h3>{root?.label ?? "尚未选择桌面目录"}</h3></div>
+            <div><p className="eyebrow">真实文件夹</p><h3>{pathParts.at(-1) ?? root?.label ?? "尚未选择桌面目录"}</h3></div>
             <button type="button" onClick={() => void refresh()}>刷新</button>
           </header>
+          <nav className="workspace-breadcrumbs" aria-label="文件夹路径">
+            <button type="button" onClick={() => setCurrentDirectoryUri(null)}>{root?.label ?? "桌面"}</button>
+            {pathParts.map((part, index) => {
+              const parsed = currentDirectoryUri ? new URL(currentDirectoryUri) : null;
+              const uri = parsed ? `workspace://${parsed.hostname}/${pathParts.slice(0, index + 1).map(encodeURIComponent).join("/")}` : null;
+              return <span key={uri}><i aria-hidden="true">›</i><button type="button" onClick={() => setCurrentDirectoryUri(uri)}>{part}</button></span>;
+            })}
+          </nav>
           <div className="workspace-file-toolbar">
             <form onSubmit={(event) => { event.preventDefault(); void search(); }}>
-              <input aria-label="搜索桌面文件" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索文件与文件夹" />
+              <input aria-label="搜索桌面文件" type="search" value={query} onChange={(event) => { setQuery(event.target.value); if (!event.target.value) void refresh(); }} placeholder="搜索文件与文件夹" />
             </form>
+            <button type="button" disabled={!currentDirectoryUri} onClick={() => setCurrentDirectoryUri(parentWorkspaceUri(currentDirectoryUri))}>返回上级</button>
             <button type="button" onClick={() => setEditor({ kind: "mkdir", value: "" })}>新建文件夹</button>
             <button type="button" disabled={!selectedUri} onClick={() => {
               const selected = entries.find((entry) => entry.uri === selectedUri);
               if (selected) setEditor({ kind: "rename", value: selected.name });
             }}>重命名</button>
+            <button type="button" disabled={!selectedUri} onClick={() => setCutUri(selectedUri)}>剪切</button>
+            <button type="button" disabled={!cutUri} onClick={() => void pasteCutItem()}>粘贴到此处</button>
             <button type="button" disabled={!selectedUri} onClick={() => void trashSelected()}>移到废纸篓</button>
           </div>
           {editor ? (
@@ -281,7 +360,10 @@ function WorkspaceApp() {
             {error ? <p className="workspace-error" role="alert">{error}</p> : null}
             <ul className="workspace-react-list" aria-live="polite">
               {entries.map((entry) => (
-                <li key={entry.uri} data-selected={selectedUri === entry.uri ? "true" : "false"} onClick={() => setSelectedUri(entry.uri)} onDoubleClick={() => void window.xilingDesktop?.workspace.open(entry.uri)}>
+                <li key={entry.uri} data-selected={selectedUri === entry.uri ? "true" : "false"} data-cut={cutUri === entry.uri ? "true" : "false"} onClick={() => setSelectedUri(entry.uri)} onDoubleClick={() => {
+                  if (entry.kind === "directory") { setQuery(""); setCurrentDirectoryUri(entry.uri); }
+                  else void window.xilingDesktop?.workspace.open(entry.uri);
+                }}>
                   <span aria-hidden="true">{entry.kind === "directory" ? "▰" : "▤"}</span>
                   <span title={entry.name}>{entry.name}</span>
                   <small>{formatBytes(entry.size)}</small>
@@ -291,9 +373,12 @@ function WorkspaceApp() {
           </div>
         </section>
 
-        <section className="panel workspace-attention-panel">
-          <header className="panel-heading"><div><p className="eyebrow">需要关注</p><h3>任务中心</h3></div><span className="count">0</span></header>
-          <p className="workspace-status">当前没有待处理任务。</p>
+        <section className="panel workspace-preview-panel">
+          <header className="panel-heading"><div><p className="eyebrow">快速查看</p><h3>{preview?.name ?? "文件预览"}</h3></div></header>
+          {previewLoading ? <p className="workspace-status">正在准备预览…</p> : null}
+          {!previewLoading && preview?.kind === "text" ? <div className="workspace-preview-text">{preview.truncated ? <p>仅显示前 256 KB</p> : null}<pre>{preview.text}</pre></div> : null}
+          {!previewLoading && preview?.kind === "unsupported" ? <p className="workspace-status">此格式暂不在应用内预览，双击可用系统应用打开。</p> : null}
+          {!previewLoading && !preview ? <p className="workspace-status">选择文件后在这里查看内容；文件夹双击进入。</p> : null}
         </section>
 
         <section className="panel workspace-artifacts-panel">

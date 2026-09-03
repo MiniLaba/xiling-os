@@ -248,12 +248,31 @@ function registerIpc(): void {
     return requestCore("workspace.rename", { appId: "system.workspace", uri, name });
   });
 
-  ipcMain.handle("desktop:workspace-import", async (event, sourcePaths: unknown) => {
+  ipcMain.handle("desktop:workspace-move", async (event, uri: unknown, targetDirectoryUri: unknown) => {
+    assertTrustedSender(event);
+    if (typeof uri !== "string" || (targetDirectoryUri !== null && typeof targetDirectoryUri !== "string")) {
+      throw new Error("Invalid move request");
+    }
+    return requestCore("workspace.move", {
+      appId: "system.workspace",
+      uri,
+      targetDirectoryUri: targetDirectoryUri ?? undefined,
+    });
+  });
+
+  ipcMain.handle("desktop:workspace-preview", async (event, uri: unknown) => {
+    assertTrustedSender(event);
+    if (typeof uri !== "string" || !uri.startsWith("workspace://")) throw new Error("Invalid resource URI");
+    return requestCore("workspace.preview", { appId: "system.workspace", uri });
+  });
+
+  ipcMain.handle("desktop:workspace-import", async (event, sourcePaths: unknown, targetDirectoryUri: unknown) => {
     assertTrustedSender(event);
     if (!Array.isArray(sourcePaths) || sourcePaths.some((item) => typeof item !== "string")) {
       throw new Error("Invalid import paths");
     }
-    return requestCore("workspace.import", { appId: "system.workspace", sourcePaths });
+    if (targetDirectoryUri !== null && typeof targetDirectoryUri !== "string") throw new Error("Invalid import destination");
+    return requestCore("workspace.import", { appId: "system.workspace", sourcePaths, targetDirectoryUri: targetDirectoryUri ?? undefined });
   });
 
   ipcMain.handle("desktop:workspace-open", async (event, uri: unknown) => {
@@ -356,7 +375,7 @@ function createMainWindow(): void {
           new Promise((resolve) => {
             const started = Date.now();
             const check = () => {
-              if (document.querySelector('.managed-window[data-app="workspace"] .workspace-file-toolbar input[type="search"]') && document.querySelector('.managed-window-resizer')) return resolve(true);
+              if (document.querySelector('.managed-window[data-app="workspace"] .workspace-file-toolbar input[type="search"]') && document.querySelector('.workspace-breadcrumbs') && document.querySelector('.workspace-preview-panel') && document.querySelector('.managed-window-resizer')) return resolve(true);
               if (Date.now() - started > 5000) return resolve(false);
               setTimeout(check, 25);
             };

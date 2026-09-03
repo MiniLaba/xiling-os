@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 
-import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceEntry } from "./core/types.js";
+import type { AppManifest, DesktopPreferences, DesktopWindowState, WorkspaceEntry, WorkspacePreview } from "./core/types.js";
 import type { SafeWorkspaceRoot } from "./core/protocol.js";
 
 const desktopApi = Object.freeze({
@@ -23,12 +23,16 @@ const desktopApi = Object.freeze({
       ipcRenderer.invoke("desktop:workspace-mkdir", relativeDirectory, name) as Promise<WorkspaceEntry>,
     rename: (uri: string, name: string) =>
       ipcRenderer.invoke("desktop:workspace-rename", uri, name) as Promise<WorkspaceEntry>,
+    move: (uri: string, targetDirectoryUri: string | null) =>
+      ipcRenderer.invoke("desktop:workspace-move", uri, targetDirectoryUri) as Promise<WorkspaceEntry>,
+    preview: (uri: string) =>
+      ipcRenderer.invoke("desktop:workspace-preview", uri) as Promise<WorkspacePreview>,
     trash: (uri: string) =>
       ipcRenderer.invoke("desktop:workspace-trash", uri) as Promise<{ trashed: true }>,
     open: (uri: string) => ipcRenderer.invoke("desktop:workspace-open", uri) as Promise<void>,
-    importDroppedFiles: (files: File[]) => {
+    importDroppedFiles: (files: File[], targetDirectoryUri: string | null = null) => {
       const sourcePaths = files.map((file) => webUtils.getPathForFile(file)).filter(Boolean);
-      return ipcRenderer.invoke("desktop:workspace-import", sourcePaths) as Promise<WorkspaceEntry[]>;
+      return ipcRenderer.invoke("desktop:workspace-import", sourcePaths, targetDirectoryUri) as Promise<WorkspaceEntry[]>;
     },
     onChanged: (listener: (event: { rootId: string }) => void) => {
       const channel = "desktop:workspace.changed";

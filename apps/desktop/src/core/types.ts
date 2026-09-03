@@ -49,3 +49,13 @@ export interface WorkspaceEntry {
   size: number | null;
   modifiedAt: string;
 }
+
+export interface WorkspacePreview {
+  uri: ResourceUri;
+  name: string;
+  kind: "text" | "unsupported";
+  size: number;
+  modifiedAt: string;
+  text?: string;
+  truncated: boolean;
+}
