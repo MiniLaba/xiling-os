@@ -9,7 +9,7 @@ const activeFiles = [
   ".github/workflows/ci.yml",
   "apps/desktop/package.json",
   "apps/desktop/src/main.ts",
-  "apps/desktop/src/preload.ts",
+  "apps/desktop/src/preload.cts",
   "apps/desktop/src/core-entry.ts",
 ];
 

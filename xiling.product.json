@@ -1,0 +1,32 @@
+{
+  "activeProduct": "ai-native-virtual-os",
+  "generation": "v3",
+  "entrypoint": "apps/desktop",
+  "canonicalDocs": [
+    "docs/ai-native-os/PRODUCT_SPEC.md",
+    "docs/ai-native-os/ARCHITECTURE.md",
+    "docs/ai-native-os/DELIVERY_PLAN.md"
+  ],
+  "activeWorkspacePaths": [
+    "apps/desktop",
+    "packages/a2a-adapter-standard",
+    "packages/contracts",
+    "packages/credentials",
+    "packages/os-domain",
+    "packages/os-kernel",
+    "packages/os-runtime",
+    "packages/pi-runtime",
+    "packages/ui-tokens"
+  ],
+  "frozenLegacyPaths": [
+    "apps/server", "apps/web", "packages/agent-harness", "packages/api-contracts",
+    "packages/artifacts", "packages/connectors", "packages/context", "packages/domain-ocean",
+    "packages/domain-tabular", "packages/execution", "packages/knowledge", "packages/literature",
+    "packages/multi-agent", "packages/platform", "packages/research-graph", "packages/science-domains"
+  ],
+  "legacyRefs": ["v1-legacy-freeze", "codex/legacy-v1"],
+  "supersededProductDocs": [
+    "docs/desktop-v2/PRODUCT_BOUNDARY.md",
+    "docs/desktop-v2/ROADMAP.md"
+  ]
+}

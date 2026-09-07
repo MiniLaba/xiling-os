@@ -116,6 +116,9 @@ CREATE TABLE IF NOT EXISTS apps (
   capabilities_json TEXT NOT NULL,
   built_in INTEGER NOT NULL DEFAULT 0,
   enabled INTEGER NOT NULL DEFAULT 1,
+  icon TEXT,
+  eyebrow TEXT,
+  description TEXT,
   updated_at TEXT NOT NULL
 );
 
@@ -163,6 +166,14 @@ export class SystemStore {
     }
     this.database = new DatabaseSync(databasePath);
     this.database.exec(SCHEMA);
+    // 既有库升级：apps 表补充插件派生列（幂等）
+    for (const column of ["icon", "eyebrow", "description"]) {
+      try {
+        this.database.exec(`ALTER TABLE apps ADD COLUMN ${column} TEXT`);
+      } catch {
+        // 列已存在
+      }
+    }
     this.database
       .prepare("INSERT OR REPLACE INTO schema_meta(key, value) VALUES('schema_version', ?)")
       .run(String(SCHEMA_VERSION));
@@ -217,14 +228,17 @@ export class SystemStore {
     const now = new Date().toISOString();
     this.database
       .prepare(`
-        INSERT INTO apps(id, name, version, entry, capabilities_json, built_in, enabled, updated_at)
-        VALUES(?, ?, ?, ?, ?, ?, 1, ?)
+        INSERT INTO apps(id, name, version, entry, capabilities_json, built_in, enabled, icon, eyebrow, description, updated_at)
+        VALUES(?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           name = excluded.name,
           version = excluded.version,
           entry = excluded.entry,
           capabilities_json = excluded.capabilities_json,
           built_in = excluded.built_in,
+          icon = excluded.icon,
+          eyebrow = excluded.eyebrow,
+          description = excluded.description,
           updated_at = excluded.updated_at
       `)
       .run(
@@ -234,14 +248,21 @@ export class SystemStore {
         manifest.entry,
         JSON.stringify(manifest.capabilities),
         manifest.builtIn ? 1 : 0,
+        manifest.icon ?? null,
+        manifest.eyebrow ?? null,
+        manifest.description ?? null,
         now,
       );
+  }
+
+  removeApp(appId: string): void {
+    this.database.prepare("DELETE FROM apps WHERE id = ?").run(appId);
   }
 
   listApps(): AppManifest[] {
     const rows = this.database
       .prepare(`
-        SELECT id, name, version, entry, capabilities_json, built_in
+        SELECT id, name, version, entry, capabilities_json, built_in, icon, eyebrow, description
         FROM apps WHERE enabled = 1 ORDER BY built_in DESC, name ASC
       `)
       .all() as Array<{
@@ -251,6 +272,9 @@ export class SystemStore {
       entry: string;
       capabilities_json: string;
       built_in: number;
+      icon: string | null;
+      eyebrow: string | null;
+      description: string | null;
     }>;
     return rows.map((row) => ({
       id: row.id,
@@ -259,6 +283,9 @@ export class SystemStore {
       entry: row.entry,
       capabilities: JSON.parse(row.capabilities_json) as AppManifest["capabilities"],
       builtIn: row.built_in === 1,
+      ...(row.icon ? { icon: row.icon } : {}),
+      ...(row.eyebrow ? { eyebrow: row.eyebrow } : {}),
+      ...(row.description ? { description: row.description } : {}),
     }));
   }
 

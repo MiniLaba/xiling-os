@@ -2,26 +2,35 @@
   <img src="docs/assets/xiling-logo.png" alt="汐灵 XiLing" width="180" />
 </p>
 
-<h1 align="center">汐灵科研桌面 · XiLing Science OS</h1>
+<h1 align="center">汐灵 · AI 原生虚拟操作系统</h1>
 
 <p align="center">
-  面向广泛科学领域的本地优先 AI 科研操作系统。<br />
-  海洋与气候是首个重点领域，但系统内核、应用模型和科研对象不绑定单一学科。
+  从“操作软件”转向“表达目标”。<br />
+  人提出目标，AI 按需组织 Agent、能力、工作空间与界面，并在关键节点请人决策。
 </p>
 
-> 当前分支：Desktop V2 开发版。它是全新的原生桌面应用，不依赖 Docker、WSL2 或浏览器启动。旧版网页产品冻结在 `v1-legacy-freeze` 与 `codex/legacy-v1`，不会与 V2 混合运行。
+> 当前活动产品是 AI Native Virtual OS（V3）。`apps/desktop` 是当前原生宿主路径，不代表产品仍以桌面仿真为中心。旧版网页科研 OS 冻结在 `v1-legacy-freeze` 与 `codex/legacy-v1`；此前的 Desktop V2 桌面壳只作为可复用宿主基础。
 
 ## 产品目标
 
-汐灵不是给聊天网页套一层桌面外观，而是把研究者每天使用的文件、应用、智能体和科研事实放进同一个可恢复工作环境：
+汐灵不是给聊天网页套一层桌面外观，也不是复刻 macOS。它要实现：
 
-- 一个原生应用窗口就是完整科研桌面；对话、研究、文献、数据和设置以应用内窗口并行打开。
+- 用户从目标开始，而不是先挑选 App、Agent 角色或工作流。
+- Agent 是长期存在的通用运行单元，通过任务期加载插件形成 AI 原生应用。
+- Agent、Session、Context 与 Memory 分离；多个 Agent 默认隔离，只通过 A2A 交接必要信息和成果。
+- 比较、选择、地图、日历和审批等界面按任务状态出现，并只使用可信组件。
 - 用户可选择电脑上的真实文件夹作为桌面目录，文件在汐灵内外保持一致，也可从系统文件管理器直接拖入。
 - Agent、索引、科学运行时和应用内容按需启动；关闭或最小化后释放资源，不因“像一个 OS”而常驻一套沉重服务。
-- 论文、证据、数据、运行、断言和产物最终进入可追溯科研关系模型；聊天与画布只是它们的工作视图，不是事实源。
+- 专业应用可以定义自己的对象；科研、文献与海洋能力属于插件，不进入通用 OS 内核。
 - Skill、MCP、模型和科学领域能力通过版本化端口装配，只有当前任务命中的能力进入 Agent 上下文。
 
 ## 当前已经实现
+
+- 系统级文字与语音伴侣：顶部栏或设置开启，与 Main 共用会话，能提交目标、选择文本文件、取消任务和预览结果；不默认监听麦克风。
+- 官方 Harness 的按需进程、会话恢复和自动压缩；受限原生工具支持内部产物、App 协作与追问，界面支持显式输入和导出。
+- 两条独立语音通路：原生音频输入/回复，或独立 STT 识别后提交文字任务、独立 TTS 朗读。设置 → 语音与对话填写模型/音色并真实测试后启用；不自动降级，不默认监听。详见 [语音设计](docs/adr/0055-dual-voice-task-runtime.md)。
+- Hiyori 显示与设置复用 AIRI 默认角色方案；模型与 Cubism Core 是独立许可的本地资源，不随 Git 仓库再分发。克隆后按 [伴侣资源配置](docs/ai-native-os/COMPANION_ASSETS.md) 安装；未配置角色不影响文字、语音和任务功能。
+- 当前验证为真实 SDK + 本地协议 fixture；公网模型、真人麦克风/扬声器和跨平台发布验收尚未完成。旧 Main 可在设置中显式启用真实引擎，不会模拟成功。
 
 - Electron 单实例、安全协议、沙箱化 Renderer、最小 Preload 和独立 Core Utility Process。
 - 一个操作系统原生窗口内的多内部窗口；React 窗口运行时首次打开应用时才动态加载，最小化即卸载内容。
@@ -32,6 +41,12 @@
 - 无容器依赖检查、基础层离线测试、真实 Electron + Dock 点击启动测试、动态窗口包体与活动工作集回归门禁。
 
 当前仍是架构基础版：对话、文献、数据和研究应用已经拥有窗口与能力入口，但完整科研工作流正在重新实现。界面中的空状态不会用示例数据伪装成已完成能力。
+
+## 核心模型
+
+```text
+AI Native App = Agent + Memory + Plugins + Workspace + Generative UI
+```
 
 ## 架构
 
@@ -51,7 +66,7 @@
    ├─ 原生窗口、文件对话框、系统打开与应用生命周期
    └─ LazyResource
       └─ Core Utility Process
-         ├─ Pi Harness（后续选择性接回）
+         ├─ Harness Adapter（当前含 DeepSeek Harness 与测试适配器）
          ├─ Capability Gateway
          ├─ Workspace File Service
          └─ SystemStore → system.sqlite
@@ -102,8 +117,10 @@ Desktop V2 已去除容器依赖，但“独立进程”不等于“安全沙箱
 
 ## 文档
 
-- [Desktop V2 文档入口](docs/desktop-v2/README.md)
-- [目标架构](docs/desktop-v2/ARCHITECTURE.md)
+- [当前产品规格](docs/ai-native-os/PRODUCT_SPEC.md)
+- [当前目标架构](docs/ai-native-os/ARCHITECTURE.md)
+- [当前唯一实施路线 V0–V7](docs/ai-native-os/DELIVERY_PLAN.md)
+- [Desktop V2 宿主历史文档](docs/desktop-v2/README.md)
 - [迁移与删除边界](docs/desktop-v2/MIGRATION.md)
 - [ADR 0043：原生桌面 V2](docs/adr/0043-greenfield-electron-desktop-v2.md)
 - [ADR 0044：无容器执行边界](docs/adr/0044-container-free-native-execution.md)

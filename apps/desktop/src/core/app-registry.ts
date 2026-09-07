@@ -27,10 +27,10 @@ export const BUILT_IN_APPS: readonly AppManifest[] = [
     builtIn: true,
   },
   {
-    id: "system.research",
-    name: "科研工作台",
+    id: "system.tasks",
+    name: "任务中心",
     version: "1.0.0",
-    entry: "builtin://research",
+    entry: "builtin://tasks",
     capabilities: ["workspace.read", "artifact.read", "artifact.write", "agent.invoke"],
     builtIn: true,
   },
@@ -42,22 +42,7 @@ export const BUILT_IN_APPS: readonly AppManifest[] = [
     capabilities: ["workspace.read", "artifact.read", "artifact.write", "agent.invoke"],
     builtIn: true,
   },
-  {
-    id: "system.literature",
-    name: "文献",
-    version: "1.0.0",
-    entry: "builtin://literature",
-    capabilities: ["workspace.read", "artifact.read", "artifact.write", "network.access"],
-    builtIn: true,
-  },
-  {
-    id: "system.data",
-    name: "数据",
-    version: "1.0.0",
-    entry: "builtin://data",
-    capabilities: ["workspace.read", "workspace.write", "artifact.read", "artifact.write", "network.access"],
-    builtIn: true,
-  },
+  // system.literature（文献工作台）由标准插件清单注册：见 src/plugins/literature-workbench.ts
   {
     id: "system.settings",
     name: "设置",
@@ -90,6 +75,9 @@ export function validateManifest(value: unknown): AppManifest {
     entry: manifest.entry,
     capabilities: [...new Set(manifest.capabilities)],
     builtIn: manifest.builtIn === true,
+    ...(typeof manifest.icon === "string" && manifest.icon ? { icon: manifest.icon } : {}),
+    ...(typeof manifest.eyebrow === "string" && manifest.eyebrow ? { eyebrow: manifest.eyebrow } : {}),
+    ...(typeof manifest.description === "string" && manifest.description ? { description: manifest.description } : {}),
   };
 }
 

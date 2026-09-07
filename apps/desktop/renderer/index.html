@@ -3,12 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'" />
-    <title>汐灵科研桌面</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self' blob:" />
+    <title>汐灵 · AI 原生虚拟操作系统</title>
     <link rel="stylesheet" href="./shell.css" />
+    <link rel="stylesheet" href="./literature.css" />
+    <link rel="stylesheet" href="./demo-polish.css" />
   </head>
   <body>
-    <!-- 桌面与 Stacks 使用的内嵌矢量图形；程序坞图标来自 KDE Oxygen。 -->
+    <!-- 桌面与 Stacks 使用的内嵌矢量图形；程序坞图标来自 La Capitaine。 -->
     <svg class="dock-sprite" aria-hidden="true" focusable="false">
       <defs>
         <linearGradient id="g-steel" x1="0" y1="0" x2="0" y2="1">
@@ -202,6 +204,7 @@
         <button type="button">窗口</button>
         <button type="button">帮助</button>
         <div class="leopard-menubar-status">
+          <button id="companion-toggle" type="button" aria-pressed="false" title="开启或关闭虚拟伴侣">汐灵伴侣</button>
           <span class="core-status" id="runtime">核心启动中</span>
           <span class="menubar-system-icon" title="Wi-Fi" aria-label="Wi-Fi 已连接">
             <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M2.2 6.8a10.5 10.5 0 0 1 13.6 0M4.7 9.5a6.7 6.7 0 0 1 8.6 0M7.2 12.2a2.8 2.8 0 0 1 3.6 0"/><circle cx="9" cy="14.5" r="1" fill="currentColor" stroke="none"/></svg>
@@ -221,9 +224,9 @@
           <span class="leopard-icon-tile"><svg aria-hidden="true"><use href="#sym-disk"/></svg></span>
           <span class="leopard-icon-label">灵境 HD</span>
         </button>
-        <button class="leopard-desktop-icon" type="button" data-target="workspace" aria-label="打开科研工作台">
+        <button class="leopard-desktop-icon" type="button" data-target="workspace" aria-label="打开工作空间">
           <span class="leopard-icon-tile"><svg aria-hidden="true"><use href="#sym-folder"/></svg></span>
-          <span class="leopard-icon-label">科研项目</span>
+          <span class="leopard-icon-label">工作空间</span>
         </button>
         <div class="workspace-desktop-files" id="workspace-desktop-files" aria-live="polite"></div>
       </div>
@@ -235,13 +238,13 @@
             <i class="traffic-min" aria-hidden="true"></i>
             <i class="traffic-zoom" aria-hidden="true"></i>
           </div>
-          <div class="leopard-window-title">关于 汐灵科研桌面</div>
+          <div class="leopard-window-title">关于 汐灵</div>
           <div class="leopard-titlebar-spacer" aria-hidden="true"></div>
         </div>
         <div class="leopard-window-body">
           <span class="about-mark" aria-hidden="true">汐</span>
-          <h1>汐灵科研桌面<small>XI LING · SCIENCE OS · V2</small></h1>
-          <p>本桌面致敬 Mac OS X 10.5 Leopard 的经典观感：半透明菜单栏、Aqua 光泽窗口与立在玻璃台面上的程序坞。潮汐背景迁移自旧版 Web 启动页的着色器，程序坞采用 KDE Oxygen 开源图标，科研核心以独立进程运行。</p>
+          <h1>汐灵<small>AI NATIVE VIRTUAL OS · V3</small></h1>
+          <p>人表达目标，汐灵按需组织通用 Agent、能力、工作空间和可信界面推进任务；只有遇到选择、授权或风险时，才把清楚的决定交还给人。</p>
           <div class="leopard-window-meta">
             <span>字体栈：Lucida Grande → 苹方</span>
             <span id="about-clock" aria-hidden="true"></span>
@@ -250,33 +253,13 @@
       </section>
 
       <nav class="leopard-dock" id="dock" aria-label="程序坞">
-        <svg class="dock-shelf" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="g-shelfTop" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#e7e9ee" stop-opacity="0.25"/>
-              <stop offset="0.52" stop-color="#aeb2bb" stop-opacity="0.31"/>
-              <stop offset="1" stop-color="#737780" stop-opacity="0.42"/>
-            </linearGradient>
-            <linearGradient id="g-shelfLip" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#f7f8fb" stop-opacity="0.58"/>
-              <stop offset="0.42" stop-color="#b7bbc3" stop-opacity="0.5"/>
-              <stop offset="1" stop-color="#686c75" stop-opacity="0.62"/>
-            </linearGradient>
-          </defs>
-          <!-- 后沿各内收 5.5%；屏幕比例下侧边约 60°，前唇仅 2–4px。 -->
-          <polygon points="55,5 945,5 996,94 4,94" fill="url(#g-shelfTop)"/>
-          <path d="M55 6 H945" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.4"/>
-          <path d="M92 41 C260 20 355 59 493 40 S746 19 908 43" fill="none" stroke="rgba(255,255,255,0.13)" stroke-width="3" stroke-linecap="round"/>
-          <polygon points="4,94 996,94 1000,100 0,100" fill="url(#g-shelfLip)"/>
-        </svg>
-
         <div class="dock-items">
           <button class="leopard-dock-tile" type="button" data-app="workspace" aria-label="工作台">
             <span class="leopard-dock-label">工作台</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/workbench.png" alt="" draggable="false" /></span>
-              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/workbench.png" alt="" draggable="false" /></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/dock-icons/la-capitaine/workbench.svg" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/dock-icons/la-capitaine/workbench.svg" alt="" draggable="false" /></span>
             </span>
             <i class="leopard-dock-dot" aria-hidden="true"></i>
           </button>
@@ -284,40 +267,25 @@
             <span class="leopard-dock-label">对话</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/chat.png" alt="" draggable="false" /></span>
-              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/chat.png" alt="" draggable="false" /></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/dock-icons/la-capitaine/chat.svg" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/dock-icons/la-capitaine/chat.svg" alt="" draggable="false" /></span>
             </span>
           </button>
-          <button class="leopard-dock-tile" type="button" data-app="research" aria-label="研究">
-            <span class="leopard-dock-label">研究</span>
+          <button class="leopard-dock-tile" type="button" data-app="tasks" aria-label="任务中心">
+            <span class="leopard-dock-label">任务</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/research.png" alt="" draggable="false" /></span>
-              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/research.png" alt="" draggable="false" /></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/dock-icons/la-capitaine/research.svg" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/dock-icons/la-capitaine/research.svg" alt="" draggable="false" /></span>
             </span>
           </button>
-          <button class="leopard-dock-tile" type="button" data-app="literature" aria-label="文献">
-            <span class="leopard-dock-label">文献</span>
-            <span class="dock-figure">
-              <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/literature.png" alt="" draggable="false" /></span>
-              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/literature.png" alt="" draggable="false" /></span>
-            </span>
-          </button>
-          <button class="leopard-dock-tile" type="button" data-app="data" aria-label="数据">
-            <span class="leopard-dock-label">数据</span>
-            <span class="dock-figure">
-              <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/data.png" alt="" draggable="false" /></span>
-              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/data.png" alt="" draggable="false" /></span>
-            </span>
-          </button>
+          <!-- 文献工作台 tile 由标准插件清单注入（shell.js syncDockFromApps），不写死在 HTML -->
           <button class="leopard-dock-tile" type="button" data-app="artifacts" aria-label="产物" data-stack>
             <span class="leopard-dock-label">产物</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/artifacts.png" alt="" draggable="false" /></span>
-              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/artifacts.png" alt="" draggable="false" /></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/dock-icons/la-capitaine/artifacts.svg" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/dock-icons/la-capitaine/artifacts.svg" alt="" draggable="false" /></span>
             </span>
             <span class="dock-fan" id="dock-fan">
               <span class="fan-item" role="button" tabindex="-1" data-label="图表"><svg class="fan-art"><use href="#sym-chart"/></svg></span>
@@ -331,17 +299,16 @@
             <span class="leopard-dock-label">设置</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/settings.png" alt="" draggable="false" /></span>
-              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/settings.png" alt="" draggable="false" /></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/dock-icons/la-capitaine/settings.svg" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/dock-icons/la-capitaine/settings.svg" alt="" draggable="false" /></span>
             </span>
           </button>
-          <span class="dock-gap" aria-hidden="true"></span>
           <button class="leopard-dock-tile" type="button" data-app="trash" aria-label="废纸篓">
             <span class="leopard-dock-label">废纸篓</span>
             <span class="dock-figure">
               <span class="dock-contact" aria-hidden="true"></span>
-              <span class="dock-icon"><img class="dock-art" src="./assets/oxygen/trash.png" alt="" draggable="false" /></span>
-              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/oxygen/trash.png" alt="" draggable="false" /></span>
+              <span class="dock-icon"><img class="dock-art" src="./assets/dock-icons/la-capitaine/trash.svg" alt="" draggable="false" /></span>
+              <span class="dock-reflection" aria-hidden="true"><img class="dock-art" src="./assets/dock-icons/la-capitaine/trash.svg" alt="" draggable="false" /></span>
             </span>
           </button>
         </div>

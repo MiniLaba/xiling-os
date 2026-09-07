@@ -1,5 +1,62 @@
 # 汐灵科研桌面 V2 目标架构
 
+> 本文描述桌面技术架构。Agent、Task、Context、Memory、Plugin、A2A、Artifact 与
+> Generative UI 的产品级约束和交付顺序，以
+> [AI_NATIVE_OS_IMPLEMENTATION_PLAN.md](AI_NATIVE_OS_IMPLEMENTATION_PLAN.md) 为实施主线。
+
+## A2A 协作边界
+
+```text
+OS A2ARouter
+  ├─ 本地 Worker → RuntimeManager → 领域回执
+  └─ 外部 Agent → A2AOutboundPort → 标准适配器 → 可替换 Transport
+                                      ↓
+                         已校验的 task/context/artifact 引用
+```
+
+- Router 保存委托、父子任务依赖、权限衰减与审计事件；不解析外部 wire 数据。
+- `@xiling/a2a-adapter-standard` 负责公开协议映射、关联校验、流式状态和取消；不依赖 OS Kernel。
+- HTTP、WebSocket 或进程内传输由桌面组合根按部署环境注入，不进入领域层。
+- Artifact 必须先被接收端导入本地 Artifact Store，随后才能作为领域回执引用；Router 拒绝悬空或版本不匹配的引用。
+- Main 与 Worker 的私有 Session/Memory 不跨边界，A2A 只传显式 `ContextBundle`。
+
+## 插件生命周期边界
+
+- OS Kernel 以事件保存插件的当前清单、启停状态、历史版本和最近失败；Agent 绑定是独立事实。
+- Capability Resolver 只展开已启用插件，停用无需删除 Agent 绑定，也不会污染任务上下文。
+- Runtime Adapter 通过 Cordis 管理 Fiber；安装清单、Cordis Fiber 和 Agent Activation 是三个不同对象。
+- 升级先准备新版本，启用失败则重新激活旧版本，当前领域版本不变；显式回滚才移动版本历史。
+- 模块下载、签名、完整性和权限差异审批属于尚未开放的供应链入口；Cordis 桥不会自行解释入口字符串或导入任意模块。
+
+## 模型路由与原生模态边界
+
+```text
+Agent ModelPolicy ──┐
+Task requirement ───┼─▶ ModelRouter ─▶ ResolvedModelRoute ─▶ Context Compiler
+Model declaration ──┘                                      │
+Runtime native I/O ─────── 第二道门禁 ──────────────────────┴─▶ AgentRuntime
+```
+
+- 模型选择属于 Agent 身份策略，Main Agent 和动态 Worker 可分别配置；`providerId` 与 `modelId` 是开放字符串，不因内置清单限制自定义模型名。
+- 模态能力必须落在具体模型声明上，提供商卡片只负责连接和凭据，不代表旗下所有模型的能力。
+- Kernel 的模型目录只常驻地址和模态摘要，精确命中后才展开窗口、工具与推理能力；完整厂商目录、连接信息和密钥不进入领域层或模型上下文。
+- 运行前先校验 Runtime Adapter 是否真的能传输对应原生内容，再校验模型能力。当前只发送 Artifact URI 的适配器不得宣称支持原生图像、音频或视频。
+- Context Receipt 保存所用模型和能力来源，但不保存密钥或原始上下文；模型窗口决定动态上下文预算，不设置人为固定 token 消耗目标。
+- 设置页通过窄 IPC 调用模型目录与 Agent 策略服务；Renderer 不能直接修改事件文件。模型能力声明与 Agent 分配可重放，API Key、令牌和连接测试结果不写入声明。
+- 凭据模块按需载入 Core：界面只读取提供商、字段定义、来源和“是否已配置”，从不读取秘密值。连接测试在 Core 内构造一次性 Pi Runtime，会话限时取消，返回结果先按密钥脱敏；测试结果不等同于多模态能力证明。
+- 当前 AES-256-GCM 文件存储是开发期复用实现。发布版必须用平台凭据库封装主密钥，且不得把凭据搬入 SQLite、事件流、Agent Memory 或 Context Receipt。
+- 模型能力证据分三级：Pi 模型目录精确命中记为 `provider-catalog`，未来真实原生请求成功才记为 `native-probe`，其余一律为 `user-declared`。只有前两类证据可放行非文字任务；文本连通测试、厂商级宣传和用户勾选均不能升级模态能力。
+
+## 生成式界面边界
+
+- `UISurface` 是版本化声明，不是 HTML、脚本或 Renderer 组件源码。v1 只接受已注册的 approval、form、comparison、diff、table、chart、artifact 与 task_board。
+- Kernel 在写入 `ui.presented` 前校验组件数据、动作唯一性和 action 输入 schema；Renderer 再检查协议版本与注册类型，双层失败均显示为不可执行的错误状态。
+- Renderer 只回传 `surfaceId + actionId + typed input`。Core 重新读取当前 Surface、Task 与 Approval；过期审批被拒绝，成功决定后立即关闭 Surface，不能重放按钮造成重复副作用。
+- v1 图表是有界的轻量声明式视图，不接受 Vega/HTML/JavaScript。更复杂的科研可视化必须以后作为经过签名、版本化、权限声明的受信组件加入注册表。
+- Task 投影保留最近一次状态原因，但不复制 Harness 的逐步轨迹。对话内控制中心只默认显示结果、等待、风险和下一步；模型地址、能力来源、激活插件、上下文估算与协作细节属于按需展开的诊断层。
+- 表单或消息输入不追加到 Harness 私有轨迹的复制品，而是形成 `task.input_submitted` 领域事件。任务从 `waiting_input` 回到队列，Context Compiler 下一轮仅按任务预算装入这些结构化输入并保留输入 ID。
+- `artifact.select` 只接受本地 Artifact Store 中存在的 ID 与当前版本；`task.approve/reject` 和 `tool.confirm` 必须命中仍为 pending 的 Approval。动作必须由用户上下文发起，成功后关闭 Surface，重放同一按钮会被生命周期门禁拒绝。
+
 ## 2026-09 基础边界
 
 Desktop V2 只有一个原生 Electron 窗口。桌面、Dock、系统界面和应用窗口都位于同一个 Renderer 中；打开应用只创建受管的内部窗口，不创建新的 `BrowserWindow`。
@@ -71,7 +128,7 @@ packages/*           Pi、上下文、科研图谱、产物、执行和连接器
 
 - D0：冻结产品、进程、权限和迁移边界。
 - D1：可启动的原生壳、独立核心、单实例、崩溃恢复。
-- D2：项目空间、Dock、分栏、命令面板、任务中心和状态恢复。
+- D2：项目空间、Dock、分栏、命令面板和状态恢复；任务中心的领域控制闭环在 D4.4 完成。
 - D3：统一 Application Service 与强类型 IPC，Fastify 降为适配器。
 - D4：科研语义数据 V2 和可追溯 Research Graph。
 - D5：后台 Agent、权限、插件/MCP 隔离和恢复。

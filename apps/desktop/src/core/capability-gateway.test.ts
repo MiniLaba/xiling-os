@@ -11,10 +11,10 @@ test("capability gateway defaults local built-ins safely and requires consent fo
   const gateway = new CapabilityGateway(store);
 
   assert.equal(gateway.authorize("system.files", "workspace.read").id, "system.files");
-  assert.throws(() => gateway.authorize("system.research", "agent.invoke"), /explicit/);
-  gateway.decide("system.research", "agent.invoke", "allow");
-  assert.equal(gateway.authorize("system.research", "agent.invoke").id, "system.research");
-  gateway.decide("system.research", "agent.invoke", "deny");
-  assert.throws(() => gateway.authorize("system.research", "agent.invoke"), /denied/);
+  assert.throws(() => gateway.authorize("system.tasks", "agent.invoke"), /explicit/);
+  gateway.decide("system.tasks", "agent.invoke", "allow");
+  assert.equal(gateway.authorize("system.tasks", "agent.invoke").id, "system.tasks");
+  gateway.decide("system.tasks", "agent.invoke", "deny");
+  assert.throws(() => gateway.authorize("system.tasks", "agent.invoke"), /denied/);
   store.close();
 });

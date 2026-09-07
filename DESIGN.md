@@ -1,35 +1,68 @@
-# 汐灵科研桌面 V2 设计文档
+# 汐灵 AI 原生虚拟操作系统设计文档
 
-> 状态：当前有效的 living design document
+> **当前范围（2026-09-07）**：按用户最新指示，以演示美学、人机功效、AIRI 默认 Hiyori 伴侣和声明式生成 UI 为优先；此前未完成的生态/发布事项暂缓。见 [ADR 0054](docs/adr/0054-demo-ui-and-airi-default-companion.md)。不要继续按历史“全部开发”条目扩大本轮范围。
+
+> **语音增补（2026-09-07）**：两条独立通路、配置验证、按需麦克风、共享 Main Task/Session、表单回流与音频 Artifact 已接入。契约和验收边界见 [ADR 0055](docs/adr/0055-dual-voice-task-runtime.md)；不是全双工 Realtime，公网语音尚未验收。
+
+> 当前执行计划：[三阶段最终交付路线](docs/ai-native-os/FINISH_PLAN.md)。顺序压缩，不删减权限、持久化或 App = Persistent Agent 契约。
+
+> 2026-09-06 当前实现：官方 Harness 工具桥、官方自动压缩、显式文件输入/导出、App 委托与追问、可审阅记忆、系统文字伴侣已接入。以 [ADR 0053](docs/adr/0053-native-tools-compaction-and-companion.md) 为准；下面按批次保留的“尚未实现”是历史状态，不能当作现状。公网提供商和跨平台发布仍未验收。
+
+> 状态：实现现状记录；产品语义以 `docs/ai-native-os/` 为准
 >
-> 最后核对：2026-09-03
+> 最后核对：2026-09-04
 >
-> 当前分支：`codex/desktop-v2-foundation`
+> 本批提交分支：`codex/demo-dual-voice`（基于 `codex/desktop-v2-foundation`，不更新 main）
 >
 > 冻结旧版：`v1-legacy-freeze`、`codex/legacy-v1`
 
+> 唯一产品规格与实施顺序：[PRODUCT_SPEC.md](docs/ai-native-os/PRODUCT_SPEC.md) · [DELIVERY_PLAN.md](docs/ai-native-os/DELIVERY_PLAN.md)。旧 Gate、D、S 编号不再驱动产品开发。
+
+## 2026-09-05 目标纠偏
+
+批次 9：自定义模型端点接入 Harness 配置；Main 会话可继续、任务异步返回、界面按事件刷新。三阶段路线见 FINISH_PLAN.md。仍未完成真实模型/工具交付或伴侣，不能因减少步骤而跳过完成证据。
+批次 8：内置官方 DSH 最小运行组合已完成真实协议握手，默认按需启动，不再要求先安装外部运行程序。关闭 Shell/Skill 扫描/工作区扫描，工具仍未接通；详见 [ADR 0051](docs/adr/0051-bundled-text-harness.md)。运行上下文按 Session 隔离。此前“没有内置运行程序”是历史状态，真实模型与完整工具闭环仍未验收。
+
+批次 7：现有 CredentialStore 通过只读回调接入 Harness 工厂，按任务路由取最新密钥，子进程不再继承全部父环境。提供商映射、脱敏及限制见 [ADR 0050](docs/adr/0050-selected-model-credential-bridge.md)。完整运行组合尚未真实验证，不能声称已打通 P1。
+
+批次 6：Harness 启动改为显式程序和 JSON 参数，移除猜测的 `--profile sdk`，见 [ADR 0049](docs/adr/0049-explicit-harness-launch.md)。SDK 与完整运行程序分离；模型设置可达不代表任务执行就绪。异常清理始终释放会话锁。P1 运行组合、凭据桥和工具闭环继续保持未完成。
+
+批次 5：独立 App 工作窗口已实现，通过 AppService.view 读取所属 Session 的任务与消息；使用同一个内部窗口管理器、任务服务及事件源。批次 4 的“尚无独立窗口”描述为历史状态。P1 真实工具闭环与 P3 委托仍未完成。新增[系统级虚拟伴侣规划](docs/ai-native-os/COMPANION_PLAN.md)，作为可关闭、懒加载的 Main 交互层，不是新运行内核或记忆库，尚未实现。
+
+批次 4：设置页的个人 Agent 应用管理通过 `desktop:os-apps-manage` → `os.apps.manage` → AppService 接入持久化。创建/会话打开/提交/启停/卸载是真实内核命令；客户端不传 caller 身份。`AppService.submit` 复用 TaskService。入口目前在管理面板内，独立 App 窗口和委托调用尚未完成；新组件惰性加载。
+
+批次 3：AppService 增加停用后原位升级与保留数据的卸载。升级事件同时更新包与 Agent 指令，保留用户模型/记忆/工作区策略；权限或 Runtime 变化不走原位升级。旧激活记录在升级投影中失效，下一次需重新激活。该能力目前为内核 API，并非已完成桌面安装管理体验。
+
+批次 2 实现：`kernel.apps` 管理声明式 App 的安装、独立 Session、启停与能力发现；App 与 Agent 通过同一安装事件持久化，无额外数据库。桌面安装 UI、升级及三入口尚未完成。Runtime 现在每次执行独占进程以支持安全取消，等待消息消费回执后判定完成；当前 SDK 无工具/审批回调的部分明确拒绝。详见 ADR 0048，不将离线测试当真实运行验收。
+
+最新目标是 App = Persistent Agent；用户直用、Main 委托及 App 间调用共用应用逻辑。固定 UI 与生成 UI 同时保留。实施顺序和状态见 [App-Agent 交付计划](docs/ai-native-os/APP_AGENT_DELIVERY.md)。下文“临时应用形态”属于旧设计，不得用于取消持久 App。产品目标优先于实现现状；测试用于证明实现，不能改变用户目标。
+
 ## 1. 文档规则
 
-本文描述 Desktop V2 的当前产品与架构，不再把冻结网页版本当作现行系统。发生冲突时按以下顺序判断：
+本文记录当前实现，不再把冻结网页版本或桌面壳试验当作现行产品定义。发生冲突时按以下顺序判断：
 
 1. 自动化测试和公开代码端口；
-2. 本文；
-3. 未被替代的 Desktop V2 ADR；
-4. `docs/desktop-v2/` 专题文档；
+2. `docs/ai-native-os/` 产品规格、架构和路线；
+3. 本文；
+4. 未被替代的 ADR；
 5. 冻结旧版文档，仅作选择性移植参考。
 
 架构变化必须在同一分支更新本文与 ADR。界面存在不等于功能完成；“已实现”必须具备真实调用路径和自动化验证。
 
 ## 2. 产品定义
 
-汐灵是面向广泛科学领域的本地优先 AI 科研操作系统。海洋与气候是首个重点领域，但桌面、Agent、对象关系、应用接口和执行边界必须保持领域中立。
+汐灵是运行在现有操作系统之上的 AI 原生虚拟操作系统。人表达目标，Main Agent 组织通用 Agent、按需 Plugins、Workspace、Memory 与 Generative UI 推进任务。科研只是可安装能力方向之一。
 
-“科研 OS”在 V2 中有四层含义：
+```text
+AI Native App = Agent + Memory + Plugins + Workspace + Generative UI
+```
 
-- **桌面层**：打开应用即进入一个完整科研桌面；多个应用在一个原生窗口内并行工作。
-- **应用层**：对话、研究、文献、数据、设置以及未来领域应用都通过 Manifest、窗口和能力端口接入。
-- **科研事实层**：问题、论文、证据、数据、运行、断言和产物形成可审计关系，而不是散落在聊天或页面缓存中。
-- **智能体层**：Pi Harness、Skill、MCP、模型和子智能体只接收当前任务所需的有界上下文，运行过程可取消、恢复和追溯。
+“AI 原生 OS”有四层含义：
+
+- **交互层**：从目标开始；界面只在比较、查看、选择或审批时出现。
+- **应用层**：应用形态由通用 Agent 在任务期装配能力形成，不由固定职业角色或页面列表定义。
+- **专业对象层**：应用可定义带来源的专业对象；OS 只提供通用对象、事件、Artifact 与权限机制。
+- **智能体层**：Harness、Skill、MCP、模型和子智能体只接收当前任务所需的有界上下文，运行过程可取消、恢复和追溯。
 
 ### 不做什么
 
@@ -256,6 +289,8 @@ XILING_DESKTOP_LAUNCH_SMOKE=1 pnpm --filter @xiling/desktop start
 
 ## 14. 后续顺序
 
+本节由 `docs/desktop-v2/ROADMAP.md` 的 S0–S7 阶段统领；若文字冲突，以该路线和机器可读 `xiling.product.json` 为准。
+
 1. 完成窗口系统剩余项：文档型多实例、窗口菜单、无障碍焦点环与 Core/Renderer 崩溃后的恢复提示；“关于”作为系统界面可暂留静态层。
 2. 在已完成目录导航、分页、搜索、新建、重命名、剪切移动、系统废纸篓和文本/小型图像预览的基础上，补齐 PDF/科研格式独立查看器和长列表 DOM 虚拟化。
 3. 在统一 `objects/relations/events/artifacts` 上实现强类型 Repository 和事务性 outbox。
@@ -265,3 +300,6 @@ XILING_DESKTOP_LAUNCH_SMOKE=1 pnpm --filter @xiling/desktop start
 7. 完成安装、签名、自动更新、备份恢复、低资源设备与真实三平台发布验收。
 
 任何阶段都必须保持：一个原生 OS 窗口、真实目录、单一结构化事实源、按需资源、能力网关和科研可追溯性。
+# 2026-09-06 实现补记
+
+会话恢复和回答产物边界见 [ADR 0052](docs/adr/0052-session-resume-and-answer-artifacts.md)。内置 Harness 通过官方 JSONL 和公开 resume API 持久化，Context 避免重复历史。用户保存回答是显式产物提升，不替代自动工具执行或研究验证。

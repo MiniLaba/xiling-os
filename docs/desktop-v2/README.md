@@ -1,16 +1,25 @@
-# XiLing OS Desktop V2
+# XiLing OS Desktop V2（宿主历史文档）
+
+> 当前产品已经转为小册子定义的 AI 原生虚拟操作系统。唯一产品规格与路线见
+> [`../ai-native-os/PRODUCT_SPEC.md`](../ai-native-os/PRODUCT_SPEC.md) 与
+> [`../ai-native-os/DELIVERY_PLAN.md`](../ai-native-os/DELIVERY_PLAN.md)。本目录只保留原生宿主实现记录。
 
 本目录记录汐灵科研桌面 V2 的全新实现。旧版网页应用冻结在 `v1-legacy-freeze` 和 `codex/legacy-v1`；V2 可以替换应用代码、页面和开发期存储，不承担旧数据兼容义务。
 
+- [AI 原生 OS 实施主线](AI_NATIVE_OS_IMPLEMENTATION_PLAN.md)
+- [产品边界](PRODUCT_BOUNDARY.md)
+- [当前唯一实施路线](ROADMAP.md)
 - [目标架构](ARCHITECTURE.md)
 - [迁移与删除边界](MIGRATION.md)
 - [ADR 0043](../adr/0043-greenfield-electron-desktop-v2.md)
 
 ## 当前阶段
 
-Desktop V2 已完成 D0/D1 基础纵向切片，并进入 D2：一个 Electron 原生窗口承载应用内桌面与多内部窗口；安全 Preload 只暴露版本化能力；Core Utility Process 按需启动并在空闲后退出；`system.sqlite` 统一保存应用、权限、科研对象、关系、事件、Agent 状态和窗口布局；用户可选择真实电脑文件夹作为桌面目录，并将文件直接拖入而不向 Renderer 暴露绝对路径。
+新版已完成 S0 产品隔离，当前进入 S1 桌面与窗口系统。阶段编号与顺序只以 [ROADMAP.md](ROADMAP.md) 为准。
 
-原静态工作台已经迁入按需加载的 React Window Manager。工作台窗口支持拖动、右下角缩放、双击最大化、最小化卸载、层级聚焦、键盘切换和布局恢复；桌面只接收工作台发布的文件投影，不再维护第二套文件窗口逻辑。文件工具栏已支持目录导航、每页 120 项的按需分页、有界搜索、新建、重命名、剪切后粘贴、系统废纸篓、最多 512 KB 的安全文本预览和 2 MB 内常见图像预览；PDF/科学数据独立查看器与长列表 DOM 虚拟化仍待完成。对话、研究、文献和数据目前仍是能力占位，不能视为旧版功能已经迁移。
+Desktop V2 已完成 D0/D1 基础纵向切片，并进入 D2.5：一个 Electron 原生窗口承载应用内桌面与多内部窗口；安全 Preload 只暴露版本化能力；Core Utility Process 按需启动并在空闲后退出；`system.sqlite` 统一保存应用、权限、科研对象、关系、事件、Agent 状态和窗口布局；用户可选择真实电脑文件夹作为桌面目录，并将文件直接拖入而不向 Renderer 暴露绝对路径。
+
+原静态工作台已经迁入按需加载的 React Window Manager。工作台窗口支持拖动、右下角缩放、双击最大化、最小化卸载、层级聚焦、键盘切换和布局恢复；桌面只接收工作台发布的文件投影，不再维护第二套文件窗口逻辑。文件工具栏已支持目录导航、每页 120 项的按需分页、有界搜索、新建、重命名、剪切后粘贴、系统废纸篓、最多 512 KB 的安全文本预览和 2 MB 内常见图像预览；PDF/科学数据独立查看器与长列表 DOM 虚拟化仍待完成。对话已经接入 Main Agent 的目标、任务、消息、审批与 Artifact 投影；文献工作台已迁为标准插件。研究和数据仍是能力占位，不能视为旧版功能已经迁移。
 
 当前桌面工作区与旧版存储完全断开。旧数据和源码仍由冻结标签/分支保存，自动实施阶段不物理删除。模型生成的任意代码和可执行第三方应用仍保持禁用，直到系统级沙箱通过安全验收。
 

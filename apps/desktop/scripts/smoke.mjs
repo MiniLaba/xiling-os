@@ -5,12 +5,24 @@ import process from "node:process";
 const packageRoot = path.resolve(process.cwd());
 const required = [
   "dist/main.js",
-  "dist/preload.js",
+  "dist/preload.cjs",
   "dist/core-entry.js",
   "renderer/index.html",
   "renderer/shell.css",
   "renderer/shell.js",
   "renderer/generated/window-runtime.js",
+  "renderer/assets/dock-icons/la-capitaine/workbench.svg",
+  "renderer/assets/dock-icons/la-capitaine/chat.svg",
+  "renderer/assets/dock-icons/la-capitaine/research.svg",
+  "renderer/assets/dock-icons/la-capitaine/literature.svg",
+  "renderer/assets/dock-icons/la-capitaine/data.svg",
+  "renderer/assets/dock-icons/la-capitaine/artifacts.svg",
+  "renderer/assets/dock-icons/la-capitaine/settings.svg",
+  "renderer/assets/dock-icons/la-capitaine/trash.svg",
+  "renderer/assets/dock-icons/la-capitaine/applications-other.svg",
+  "renderer/assets/dock-icons/la-capitaine/LICENSE",
+  "renderer/assets/dock-icons/la-capitaine/COPYING",
+  "renderer/assets/dock-icons/la-capitaine/Credits.md",
 ];
 await Promise.all(required.map((file) => access(path.join(packageRoot, file))));
 
@@ -29,14 +41,23 @@ if (html.includes("generated/window-runtime.js")) {
 if (html.includes('id="window-workspace"')) {
   throw new Error("Static workspace window must not coexist with the React window manager");
 }
-for (const dockMotionInvariant of [
-  "@keyframes leopard-bounce-icon",
-  "@keyframes leopard-bounce-reflection",
-  '.leopard-dock-tile[data-bounce="true"] .dock-icon',
-  '.leopard-dock-tile[data-bounce="true"] .dock-reflection .dock-art',
-]) {
-  if (!css.includes(dockMotionInvariant)) throw new Error(`Dock reflection motion invariant missing: ${dockMotionInvariant}`);
+for (const dockIcon of ["workbench", "chat", "research", "artifacts", "settings", "trash"]) {
+  if (!html.includes(`dock-icons/la-capitaine/${dockIcon}.svg`)) throw new Error(`La Capitaine dock icon missing: ${dockIcon}`);
 }
+if (html.includes("dock-gap")) throw new Error("Dock spacing must not reserve a separator slot");
+if (!css.includes('.leopard-dock-tile[data-app="settings"]::after')) throw new Error("Dock separator must be decorative");
+if (!css.includes("gap: 14px")) throw new Error("Dock spacing must remain comfortably expanded and uniform");
+if (shell.includes("assets/oxygen/")) throw new Error("Dock must not fall back to the legacy Oxygen icon theme");
+// 悬浮程序坞：玻璃台面与倒影已退场，弹跳仅作用于图标本体
+for (const dockFloatingInvariant of [
+  "@keyframes leopard-bounce-icon",
+  '.leopard-dock-tile[data-bounce="true"] .dock-icon',
+  ".dock-reflection, .dock-contact { display: none; }",
+]) {
+  if (!css.includes(dockFloatingInvariant)) throw new Error(`Floating dock invariant missing: ${dockFloatingInvariant}`);
+}
+if (html.includes("dock-shelf")) throw new Error("Floating dock must not render a glass shelf");
+if (css.includes("leopard-bounce-reflection")) throw new Error("Reflection motion must be removed with the glass shelf");
 for (const dockMagnificationInvariant of ["requestAnimationFrame(renderDockMagnification)", "cancelAnimationFrame(magnifyFrame)"]) {
   if (!shell.includes(dockMagnificationInvariant)) throw new Error(`Smooth dock magnification invariant missing: ${dockMagnificationInvariant}`);
 }
@@ -49,6 +70,10 @@ for (const [name, pattern] of [
 }
 
 const windowRuntime = await readFile(path.join(packageRoot, "renderer/generated/window-runtime.js"));
+const kernelHost = await readFile(path.join(packageRoot, "dist/os-kernel-host.js"), "utf8");
+if (kernelHost.includes("ScriptedRuntimeAdapter") || kernelHost.includes("scripted noop")) {
+  throw new Error("Production host must never simulate successful execution");
+}
 if (windowRuntime.byteLength > 350_000) {
   throw new Error(`React window runtime exceeds 350 KB: ${windowRuntime.byteLength}`);
 }

@@ -1,4 +1,4 @@
-// 汐灵科研桌面 V2 renderer 逻辑：Tahoe 菜单栏与 Leopard 桌面外壳（时钟、核心状态、
+// 汐灵 AI 原生虚拟操作系统 renderer 宿主：菜单栏、桌面、多窗口与程序坞。
 // 桌面图标、可拖动 Aqua 窗口、程序坞放大/弹跳）。无框架，直接操作 DOM；
 // 动态样式走 CSSOM（CSP style-src 'self' 禁止内联样式属性）。
 
@@ -16,6 +16,24 @@ const dockFan = document.querySelector("#dock-fan");
 const toast = document.querySelector("#toast");
 const root = document.querySelector("#leopard");
 let managedWindowRuntime;
+let companionEnabled = false;
+let companionModule;
+let companionRevision = 0;
+async function toggleCompanion(enabled) {
+  companionEnabled = enabled === true;
+  const revision = ++companionRevision;
+  document.querySelector("#companion-toggle")?.setAttribute("aria-pressed", String(companionEnabled));
+  try { localStorage.setItem("xiling:companion-enabled", String(companionEnabled)); } catch { /* preview */ }
+  if (!companionEnabled) { companionModule?.mountCompanion(false); return; }
+  try {
+    companionModule ??= await import("./generated/companion.js");
+    if (revision === companionRevision) companionModule.mountCompanion(true);
+  } catch { document.querySelector("#companion-toggle")?.setAttribute("title", "伴侣加载失败，请重新构建应用"); }
+}
+document.querySelector("#companion-toggle")?.addEventListener("click", () => { void toggleCompanion(!companionEnabled); });
+window.addEventListener("xiling:companion-enabled", (event) => { void toggleCompanion(event.detail); });
+window.addEventListener("xiling:companion-open-app", (event) => { if (["chat", "tasks"].includes(event.detail)) void openManagedApp(event.detail); });
+try { if (localStorage.getItem("xiling:companion-enabled") === "true") void toggleCompanion(true); } catch { /* preview */ }
 
 function applyDockScale(value) {
   const numeric = Number(value);
@@ -54,7 +72,7 @@ function updateClock() {
 updateClock();
 setInterval(updateClock, 15_000);
 
-/* ---------- 科研核心状态（IPC） ---------- */
+/* ---------- AI OS 核心状态（IPC） ---------- */
 
 async function updateRuntime() {
   try {
@@ -328,10 +346,15 @@ function showToast(text) {
 
 /* ---------- 程序坞 ---------- */
 
-const tiles = dock ? [...dock.querySelectorAll(".leopard-dock-tile")] : [];
-const figures = tiles.map((tile) => tile.querySelector(".dock-figure"));
+let tiles = dock ? [...dock.querySelectorAll(".leopard-dock-tile")] : [];
+let figures = tiles.map((tile) => tile.querySelector(".dock-figure"));
 let magnifyFrame = 0;
 let dockPointerX = 0;
+
+function refreshDockTiles() {
+  tiles = dock ? [...dock.querySelectorAll(".leopard-dock-tile")] : [];
+  figures = tiles.map((tile) => tile.querySelector(".dock-figure"));
+}
 
 function setMagnify(active) {
   if (dock) dock.dataset.magnify = active ? "true" : "false";
@@ -375,19 +398,94 @@ for (const item of dockFan?.querySelectorAll(".fan-item") ?? []) {
   });
 }
 
-tiles.forEach((tile) => {
-  tile.addEventListener("click", () => {
-    tile.dataset.bounce = "true";
-    const app = tile.dataset.app;
-    if (app === "workspace") void openManagedApp(app);
-    else if (app === "about") openWindow(app);
-    else if (app === "artifacts") setFanOpen(dockFan?.dataset.open !== "true");
-    else if (["chat", "research", "literature", "data", "settings"].includes(app)) void openManagedApp(app);
-    else if (app !== "trash") showToast(`「${tile.getAttribute("aria-label")}」即将推出`);
-  });
-  tile.addEventListener("animationend", (event) => {
-    if (event.animationName === "leopard-bounce-icon") {
-      tile.dataset.bounce = "false";
-    }
-  });
+// 点击/弹跳走事件委托：静态 tile 与插件注入的 tile 行为一致
+const MANAGED_APPS = ["workspace", "chat", "tasks", "literature", "settings"];
+
+dock?.addEventListener("click", (event) => {
+  const tile = event.target.closest?.(".leopard-dock-tile");
+  if (!tile) return;
+  tile.dataset.bounce = "true";
+  const app = tile.dataset.app;
+  if (app === "about") openWindow(app);
+  else if (app === "artifacts") setFanOpen(dockFan?.dataset.open !== "true");
+  else if (MANAGED_APPS.includes(app)) void openManagedApp(app);
+  else if (app !== "trash") showToast(`「${tile.getAttribute("aria-label")}」即将推出`);
 });
+
+dock?.addEventListener("animationend", (event) => {
+  const tile = event.target.closest?.(".leopard-dock-tile");
+  if (tile && event.animationName === "leopard-bounce-icon") tile.dataset.bounce = "false";
+});
+
+/* ---------- 插件 APP 注入：标准插件清单的 ui 描述符 → dock 图标 ---------- */
+
+function iconSrcFor(iconKey) {
+  const iconKeyName = String(iconKey ?? "").replace(/^system\./, "");
+  const iconName = {
+    workspace: "workbench",
+    workbench: "workbench",
+    chat: "chat",
+    tasks: "research",
+    literature: "literature",
+    data: "data",
+    artifacts: "artifacts",
+    settings: "settings",
+    trash: "trash",
+  }[iconKeyName] ?? "applications-other";
+  return `./assets/dock-icons/la-capitaine/${encodeURIComponent(iconName)}.svg`;
+}
+
+function buildPluginTile(app) {
+  const tile = document.createElement("button");
+  tile.className = "leopard-dock-tile";
+  tile.type = "button";
+  tile.dataset.app = (app.id ?? "").replace(/^system\./, "");
+  tile.setAttribute("aria-label", app.name ?? app.id);
+  tile.title = app.description ?? "";
+  const figure = document.createElement("span");
+  figure.className = "dock-figure";
+  const label = document.createElement("span");
+  label.className = "leopard-dock-label";
+  label.textContent = app.name ?? "";
+  const icon = document.createElement("span");
+  icon.className = "dock-icon";
+  const art = document.createElement("img");
+  art.className = "dock-art";
+  art.src = iconSrcFor(app.icon ?? app.id);
+  art.alt = "";
+  art.draggable = false;
+  art.addEventListener("error", () => {
+    if (art.dataset.fallback === "true") return;
+    art.dataset.fallback = "true";
+    art.src = iconSrcFor("applications-other");
+  });
+  icon.append(art);
+  figure.append(label, icon);
+  tile.append(figure);
+  return tile;
+}
+
+async function syncDockFromApps() {
+  if (!dock || !window.xilingDesktop?.listApps) return;
+  let apps;
+  try {
+    apps = await window.xilingDesktop.listApps();
+  } catch {
+    return;
+  }
+  const known = new Set(tiles.map((tile) => tile.dataset.app));
+  const trashTile = tiles.find((tile) => tile.dataset.app === "trash") ?? null;
+  // tile 并非 #dock 的直接子元素（在 .dock-items 容器里）：插到 trash 的实际父节点
+  const anchorParent = trashTile?.parentElement ?? dock;
+  for (const app of apps) {
+    if (!app.icon) continue;
+    const appKey = (app.id ?? "").replace(/^system\./, "");
+    if (known.has(appKey)) continue;
+    const tile = buildPluginTile(app);
+    anchorParent.insertBefore(tile, trashTile);
+    known.add(appKey);
+  }
+  refreshDockTiles();
+}
+
+void syncDockFromApps();

@@ -12,14 +12,23 @@
     "smoke": "pnpm test:foundation && node scripts/smoke.mjs && node scripts/container-independence.mjs"
   },
   "dependencies": {
+    "@pixi/unsafe-eval": "catalog:",
+    "@xiling/credentials": "workspace:*",
+    "@xiling/os-domain": "workspace:*",
+    "@xiling/os-kernel": "workspace:*",
+    "@xiling/os-runtime": "workspace:*",
+    "@xiling/pi-runtime": "workspace:*",
+    "cytoscape": "3.34.1",
+    "pixi-live2d-display": "catalog:",
+    "pixi.js": "catalog:",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@types/node": "22.19.19",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "6.1.0",
-    "@types/node": "22.19.19",
     "electron": "44.0.0",
     "typescript": "5.9.3",
     "vite": "8.2.2"

@@ -1,0 +1,987 @@
+/* 文献工作台样式 —— 自旧版 Web OS（27ebdf7 + views.css）原样迁移。
+   作用域 :where(.literature-workbench-root) 保留旧 :where() 的零优先级语义；
+   --xl-* 令牌取旧版 poxiao（浅色）主题原值。 */
+
+.literature-workbench-root {
+  --ink: #131b2b;
+  --line: #e2e7ef;
+  --line-strong: #cfd7e3;
+  --wash: #f6f8fb;
+  --hf-caption: 12px;
+  --hf-control: 13px;
+  --hf-body: 14px;
+  --hf-section: 18px;
+  --hf-title: 26px;
+  --hf-hit: 38px;
+  --hf-line: #dde3e6;
+  --hf-muted: #667681;
+  --hf-accent: #3478c7;
+  --type-caption: 11px;
+  --type-meta: 12px;
+  --type-control: 13px;
+  --type-body: 14px;
+  --type-section: 20px;
+  --xl-bg: #F6F8FB;
+  --xl-bg-secondary: #EDF1F7;
+  --xl-surface: #FFFFFF;
+  --xl-elevated: #FFFFFF;
+  --xl-hover: #EAF1F8;
+  --xl-border: #DCE5EF;
+  --xl-border-strong: #BCCBDD;
+  --xl-text: #14212F;
+  --xl-muted: #53657B;
+  --xl-faint: #63748A;
+  --xl-accent: #0E87A8;
+  --xl-accent-soft: #E0F2F8;
+  --xl-evidence: #B45309;
+  --xl-type-caption: 11px;
+  --xl-type-small: 12px;
+  --xl-type-control: 13px;
+  --xl-type-lead: 15px;
+  --xl-type-title: 21px;
+  --xl-leading-ui: 1.45;
+  --xl-leading-cjk: 1.75;
+  --xl-space-2: 8px;
+  --xl-space-3: 12px;
+  --xl-space-4: 16px;
+  --xl-space-5: 20px;
+  --xl-space-6: 24px;
+  --xl-radius-sm: 6px;
+  --xl-radius-md: 10px;
+  --xl-radius-lg: 14px;
+  --xl-radius-full: 999px;
+  --xl-motion-fast: 180ms;
+  --xl-motion-normal: 320ms;
+  --xl-ease-tide: cubic-bezier(0.22, 0.68, 0.31, 0.99);
+  --xl-shadow-sm: 0 1px 2px rgba(21, 33, 47, 0.07);
+  --xl-shadow-lg: 0 18px 48px -8px rgba(21, 33, 47, 0.18), 0 6px 16px rgba(21, 33, 47, 0.08);
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--xl-bg);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #102b35;
+}
+
+@keyframes xl-tide-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.literature-workbench-root :is(button, input, textarea, select) { font: inherit; }
+.literature-workbench-root button { cursor: pointer; }
+.literature-workbench-root > :is(.literature-start, .paper-graph-view) { flex: 1; width: 100%; min-height: 0; }
+
+
+/* Remove properties introduced after 27ebdf7 before replaying the preserved cascade. */
+:where(.literature-workbench-root) .knowledge-wiki { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-library { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-library-title { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-library-title > div > small { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-library-title b { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-search { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-search input { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-search input:focus { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-search-results { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-search-results button { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-search-results button:hover { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-page-grid { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-page-grid > button { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-page-grid > button:hover { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-page-grid > button.active { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-page-glyph { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-page-grid > button span { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-create { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-empty { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-progress { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-error { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-main { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-article { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-article-head { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-article-head h1 { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-article-head small { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-lead { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-article-actions { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-edit-note { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-article-body { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-infobox { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-section-title { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-toc { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-toc a { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-toc a:hover { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-evidence-list { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-artifact-grid { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-related { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-evidence-list > div { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-artifact-grid > div { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-related > button { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-related > button:hover { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-history-panel { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-history-content { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-history-content > div { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-revision-preview { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-milkdown { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-milkdown .milkdown { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .wiki-milkdown .editor { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-graph-main { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-head { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-head small { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-head form { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-head .paper-open-row { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-head input { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-head input:focus { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-tabs { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-tabs button { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-tabs button.active { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-scroll { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-empty { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-scroll article { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-scroll article:hover { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-scroll article.active { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-scroll article b { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-scroll article small { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-list-scroll article .paper-promote { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-action-status { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-graph-canvas { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-graph-toolbar { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-graph-toolbar small { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-graph-actions { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-graph-actions button { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-graph-actions button:hover { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-graph-canvas .paper-graph-bottom { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-relation-legend { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .year-legend { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-relation-legend span { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .year-legend span { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-relation-legend i { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .year-legend i { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .graph-utility { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .graph-utility button { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .graph-utility button:hover { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .algorithm-note { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-detail { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-detail-head { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-detail-head small { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-detail-head button { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-detail-head button:hover { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-detail h2 { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-abstract { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-evidence-semantics { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-annotation { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-annotation.compact { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-annotation textarea { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-annotation select { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-annotation input { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .paper-detail-reopen { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-management { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-management-head { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-management-head small { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-management-head h1 { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-picker { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-picker button { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-picker button.active { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-stats { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-stats > div { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-stats b { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-stats small { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-domain-tags { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-domain-tags span { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-tabs { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-tabs button { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-tabs button.active { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-board { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .board-column { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .board-column > header { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .board-column article { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .board-column article b { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .board-column article small { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .inline-create { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .item-create { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .inline-create input { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .item-create input { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .item-create select { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .inline-create select { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-composite { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .record-expand { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .record-preview { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .record-full-text { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-workflow-dashboard { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-workflow-stats { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-workflow-list { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-workflow-empty { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .project-workflow-list article { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-scope { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-scope b { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-scope span { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-disclosure { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-disclosure span { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-progress { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-progress i { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-approval { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-artifacts { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-artifacts a { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-artifacts button { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-error { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-inline-error { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .workflow-review { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .record-modal-backdrop { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .record-modal { all: revert; box-sizing: border-box; }
+:where(.literature-workbench-root) .record-modal-content { all: revert; box-sizing: border-box; }
+/* The old views were grid-row children; this is the only adapter to the current flex workspace shell. */
+:where(.literature-workbench-root) > :is(.literature-start, .paper-graph-view, .project-management, .project-composite, .project-workflow-dashboard, .knowledge-wiki) { flex: 1; width: 100%; min-height: 0; }
+:where(.literature-workbench-root) :is(.literature-start, .paper-graph-view, .project-management, .project-composite, .project-workflow-dashboard, .knowledge-wiki) { font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; color: #102b35; }
+:where(.literature-workbench-root) :is(.literature-start, .paper-graph-view, .project-management, .project-composite, .project-workflow-dashboard, .knowledge-wiki) :is(button, input, textarea, select) { font: inherit; }
+:where(.literature-workbench-root) :is(.literature-start, .paper-graph-view, .project-management, .project-composite, .project-workflow-dashboard, .knowledge-wiki) button { cursor: pointer; }
+:where(.literature-workbench-root) .project-view { overflow: auto; padding: 34px 38px 56px; background: #f3f7f7; }
+:where(.literature-workbench-root) .project-hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; }
+:where(.literature-workbench-root) .project-hero small, :where(.literature-workbench-root) .wiki-kicker { color: #14816f; font-size: 10px; letter-spacing: .14em; }
+:where(.literature-workbench-root) .project-hero h1 { max-width: 820px; margin: 9px 0 8px; font-size: 28px; line-height: 1.3; }
+:where(.literature-workbench-root) .project-hero p { color: #688087; margin: 0; }
+:where(.literature-workbench-root) .workflow-buttons { display: flex; gap: 8px; margin: 15px 0 26px; }
+:where(.literature-workbench-root) .workflow-buttons button { border: 1px solid #cbdadc; color: #426068; background: #fff; padding: 9px 13px; border-radius: 8px; font-size: 12px; }
+:where(.literature-workbench-root) .workflow-buttons button.primary { border-color: #167e70; background: #167e70; color: white; }
+:where(.literature-workbench-root) .workflow-buttons button:disabled { cursor: not-allowed; opacity: .45; }
+:where(.literature-workbench-root) .workflow-buttons button.cancel { border-color: #ad5a52; color: #9b443c; }
+:where(.literature-workbench-root) .wiki-view { display: grid; grid-template-columns: 230px minmax(0, 760px); gap: 48px; overflow: auto; padding: 36px 48px; background: #f6f9f9; }
+:where(.literature-workbench-root) .wiki-view aside { display: flex; flex-direction: column; gap: 6px; padding-right: 22px; border-right: 1px solid #dbe4e5; }
+:where(.literature-workbench-root) .wiki-view aside small { color: #789096; margin: 5px 10px 16px; }
+:where(.literature-workbench-root) .wiki-view aside button { border: 0; border-radius: 7px; padding: 9px 10px; text-align: left; background: transparent; color: #647d83; font-size: 12px; }
+:where(.literature-workbench-root) .wiki-view aside button.active { background: #e1efec; color: #176d61; }
+:where(.literature-workbench-root) .wiki-view article { padding-bottom: 50px; }
+:where(.literature-workbench-root) .wiki-view article h1 { font-size: 32px; margin: 12px 0 30px; }
+:where(.literature-workbench-root) .wiki-view article h2 { font-size: 17px; margin-top: 28px; }
+:where(.literature-workbench-root) .wiki-view article p { color: #526b72; line-height: 1.75; font-size: 13px; }
+:where(.literature-workbench-root) .wiki-markdown { padding: 18px 22px; border-left: 3px solid #45b9a5; background: white; }
+:where(.literature-workbench-root) .paper-graph-view { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; background: #eef4f4; }
+:where(.literature-workbench-root) .paper-graph-main { min-width: 0; min-height: 0; position: relative; display: grid; grid-template-rows: auto 1fr auto; padding: 24px 26px 16px; }
+:where(.literature-workbench-root) .paper-graph-toolbar { display: flex; justify-content: space-between; align-items: center; }
+:where(.literature-workbench-root) .paper-graph-toolbar small { color: #7f6fc0; font-size: 9px; letter-spacing: .14em; }
+:where(.literature-workbench-root) .paper-graph-toolbar h1 { margin: 6px 0 4px; font-size: 22px; }
+:where(.literature-workbench-root) .paper-graph-toolbar p { margin: 0; color: #809399; font-size: 9px; }
+:where(.literature-workbench-root) .paper-graph-actions { display: flex; gap: 7px; align-items: center; }
+:where(.literature-workbench-root) .paper-graph-actions input { width: 155px; border: 1px solid #c9d8da; background: #fff; border-radius: 7px; padding: 8px 9px; color: #526d73; font-size: 10px; outline: 0; }
+:where(.literature-workbench-root) .paper-graph-toolbar select { border: 1px solid #c9d8da; background: #fff; border-radius: 7px; padding: 8px 10px; color: #526d73; font-size: 11px; }
+:where(.literature-workbench-root) .paper-graph-actions button { border: 1px solid #c9d8da; background: #fff; border-radius: 7px; padding: 8px 10px; color: #526d73; font-size: 10px; }
+:where(.literature-workbench-root) .paper-graph-actions button:disabled { opacity: .55; cursor: wait; }
+:where(.literature-workbench-root) .paper-graph-canvas { min-height: 480px; }
+:where(.literature-workbench-root) .paper-detail { overflow: auto; padding: 34px 25px; border-left: 1px solid #d2dfe0; background: #f9fbfb; }
+:where(.literature-workbench-root) .paper-detail > small { color: #7d6abb; letter-spacing: .12em; font-size: 9px; }
+:where(.literature-workbench-root) .paper-detail h2 { font-size: 19px; line-height: 1.35; margin: 10px 0; }
+:where(.literature-workbench-root) .paper-detail > p { color: #70868b; font-size: 11px; line-height: 1.6; }
+:where(.literature-workbench-root) .paper-detail dl { margin: 22px 0; }
+:where(.literature-workbench-root) .paper-detail dl div { display: flex; justify-content: space-between; padding: 7px 0; border-top: 1px solid #e1e9ea; font-size: 11px; }
+:where(.literature-workbench-root) .paper-detail dt { color: #84979b; }
+:where(.literature-workbench-root) .paper-detail dd { margin: 0; }
+:where(.literature-workbench-root) .paper-detail > button { width: 100%; margin: 4px 0; padding: 8px; border: 1px solid #cbd9db; border-radius: 7px; background: white; color: #41656b; font-size: 11px; }
+:where(.literature-workbench-root) .paper-detail > button:disabled { cursor: default; color: #177566; border-color: #bcdad4; background: #e8f4f1; }
+:where(.literature-workbench-root) .paper-action-status { margin: 8px 0 0 !important; color: #177566 !important; text-align: center; font-size: 9px !important; }
+:where(.literature-workbench-root) .algorithm-note { margin-top: 24px; padding: 13px; border-radius: 8px; background: #edf2f2; color: #60757a; font-size: 10px; line-height: 1.55; }
+:where(.literature-workbench-root) .algorithm-note p { margin: 6px 0; }
+:where(.literature-workbench-root) .project-composite { min-height: 0; overflow: auto; background: #f3f7f7; }
+:where(.literature-workbench-root) .project-composite .project-view { overflow: visible; }
+:where(.literature-workbench-root) .project-management { min-height: 0; overflow: auto; padding: 26px 32px 48px; background: #f2f6f6; }
+:where(.literature-workbench-root) .project-tabs { display: flex; gap: 5px; margin-bottom: 20px; }
+:where(.literature-workbench-root) .project-tabs button { border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #6c8389; font-size: 11px; }
+:where(.literature-workbench-root) .project-tabs button.active { background: #dcefeb; color: #176d61; }
+:where(.literature-workbench-root) .project-composite > .project-tabs { position: sticky; z-index: 4; top: 0; margin: 0; padding: 16px 38px 0; background: #f3f7f7; }
+:where(.literature-workbench-root) .project-management-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 30px; }
+:where(.literature-workbench-root) .project-management-head small { color: #16816f; letter-spacing: .13em; font-size: 9px; }
+:where(.literature-workbench-root) .project-management-head h1 { margin: 8px 0 6px; font-size: 27px; }
+:where(.literature-workbench-root) .project-management-head p { margin: 0; color: #6e858a; font-size: 12px; }
+:where(.literature-workbench-root) .project-picker { display: flex; gap: 7px; }
+:where(.literature-workbench-root) .project-picker select, :where(.literature-workbench-root) .project-picker button, :where(.literature-workbench-root) .inline-create input, :where(.literature-workbench-root) .inline-create button, :where(.literature-workbench-root) .item-create select, :where(.literature-workbench-root) .item-create input, :where(.literature-workbench-root) .item-create button { border: 1px solid #cad9db; border-radius: 8px; padding: 9px 11px; background: #fff; color: #45636a; font-size: 11px; }
+:where(.literature-workbench-root) .project-picker button, :where(.literature-workbench-root) .inline-create button, :where(.literature-workbench-root) .item-create button { color: #fff; border-color: #177e70; background: #177e70; }
+:where(.literature-workbench-root) .inline-create { display: grid; grid-template-columns: 220px 1fr auto; gap: 8px; margin: 18px 0; padding: 13px; border: 1px solid #d5e1e2; border-radius: 10px; background: #f9fbfb; }
+:where(.literature-workbench-root) .project-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin: 24px 0 14px; }
+:where(.literature-workbench-root) .project-stats article { display: flex; align-items: baseline; gap: 8px; padding: 13px 15px; border: 1px solid #d6e1e2; border-radius: 10px; background: #fff; }
+:where(.literature-workbench-root) .project-stats b { font-size: 22px; }
+:where(.literature-workbench-root) .project-stats span { color: #748a8f; font-size: 10px; }
+:where(.literature-workbench-root) .item-create { display: grid; grid-template-columns: 115px 1fr auto; gap: 8px; margin-bottom: 17px; }
+:where(.literature-workbench-root) .project-board { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 9px; align-items: start; }
+:where(.literature-workbench-root) .board-column { min-height: 310px; padding: 9px; border-radius: 11px; background: #e8eeee; }
+:where(.literature-workbench-root) .board-column > header { height: auto; padding: 4px 3px 10px; border: 0; background: transparent; font-size: 11px; }
+:where(.literature-workbench-root) .board-column > header span { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #d4dfdf; color: #667d82; font-size: 9px; }
+:where(.literature-workbench-root) .board-column article { margin-bottom: 8px; padding: 12px; border: 1px solid #d4dfe0; border-radius: 9px; background: #fff; box-shadow: 0 4px 12px #2446500b; }
+:where(.literature-workbench-root) .board-column article small { color: #16816f; text-transform: uppercase; font-size: 8px; letter-spacing: .11em; }
+:where(.literature-workbench-root) .board-column article h3 { margin: 7px 0 5px; font-size: 12px; line-height: 1.4; }
+:where(.literature-workbench-root) .board-column article p { min-height: 28px; margin: 0 0 10px; color: #7a8e92; font-size: 9px; line-height: 1.5; }
+:where(.literature-workbench-root) .board-column article select { width: 100%; border: 1px solid #d6e1e2; border-radius: 6px; padding: 5px; background: #f7fafa; color: #60787e; font-size: 9px; }
+:where(.literature-workbench-root) .record-preview { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 6; }
+:where(.literature-workbench-root) .record-expand { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: -2px 0 9px; padding: 6px 7px; border: 0; border-radius: 6px; color: #356ca9; background: #f1f6fc; text-align: left; font-size: 8px; }
+:where(.literature-workbench-root) .record-expand:hover { color: #24558f; background: #e7f1fc; }
+:where(.literature-workbench-root) .record-expand span { font-size: 9px; }
+:where(.literature-workbench-root) .research-card > .record-preview { -webkit-line-clamp: 7; }
+:where(.literature-workbench-root) .research-card > .record-expand { margin: 7px 0 2px; padding: 5px 6px; }
+:where(.literature-workbench-root) .record-modal-open { overflow: hidden; }
+:where(.literature-workbench-root) .record-modal-backdrop { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 36px; background: rgba(17,28,43,.34); backdrop-filter: blur(8px) saturate(.9); }
+:where(.literature-workbench-root) .record-modal { width: min(780px, calc(100vw - 72px)); max-height: min(820px, calc(100vh - 72px)); display: grid; grid-template-rows: auto minmax(0,1fr) auto; overflow: hidden; border: 1px solid rgba(194,207,223,.92); border-radius: 16px; background: #fff; box-shadow: 0 28px 90px rgba(22,44,74,.28); }
+:where(.literature-workbench-root) .record-modal > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; padding: 20px 22px 16px; border-bottom: 1px solid #e5eaf0; background: linear-gradient(180deg,#fcfdff,#f8fafc); }
+:where(.literature-workbench-root) .record-modal > header small { display: block; margin-bottom: 6px; color: #3977d8; font-size: 8px; font-weight: 700; letter-spacing: .1em; }
+:where(.literature-workbench-root) .record-modal > header h2 { margin: 0; color: #18263a; font-family: Georgia, "Songti SC", serif; font-size: 20px; font-weight: 520; line-height: 1.35; }
+:where(.literature-workbench-root) .record-modal > header button { flex: 0 0 auto; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; color: #728092; background: #eef2f6; font-size: 20px; line-height: 1; }
+:where(.literature-workbench-root) .record-modal-content { min-height: 0; overflow: auto; padding: 22px 26px 32px; }
+:where(.literature-workbench-root) .record-full-text { color: #344357; font-family: Inter, "SF Pro Text", "Segoe UI", "PingFang SC", sans-serif; font-size: 12px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
+:where(.literature-workbench-root) .record-modal > footer { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px 11px 22px; border-top: 1px solid #e5eaf0; color: #8a96a4; background: #fafbfd; font-size: 8px; }
+:where(.literature-workbench-root) .record-modal > footer button { padding: 7px 13px; border: 1px solid #d7e0ea; border-radius: 7px; color: #455a72; background: #fff; font-size: 9px; }
+:where(.literature-workbench-root) .knowledge-wiki { min-height: 0; display: grid; grid-template-columns: 245px minmax(0, 1fr); background: #f5f8f8; }
+:where(.literature-workbench-root) .knowledge-wiki > aside { overflow: auto; padding: 25px 16px; border-right: 1px solid #d5e0e1; background: #edf3f3; }
+:where(.literature-workbench-root) .knowledge-wiki > aside > div:first-child { display: flex; align-items: center; justify-content: space-between; margin: 0 5px 16px; }
+:where(.literature-workbench-root) .knowledge-wiki > aside > div:first-child small { color: #6d858a; font-size: 9px; letter-spacing: .12em; }
+:where(.literature-workbench-root) .knowledge-wiki > aside > div:first-child button, :where(.literature-workbench-root) .wiki-create button { border: 0; border-radius: 6px; padding: 6px 8px; background: #d9ebe8; color: #176d61; font-size: 9px; }
+:where(.literature-workbench-root) .wiki-create { display: grid; grid-template-columns: 1fr auto; gap: 5px; margin-bottom: 12px; }
+:where(.literature-workbench-root) .wiki-create input { min-width: 0; border: 1px solid #cbdadb; border-radius: 6px; padding: 7px; font-size: 10px; }
+:where(.literature-workbench-root) .knowledge-wiki aside nav { display: grid; gap: 5px; }
+:where(.literature-workbench-root) .knowledge-wiki aside nav button { display: flex; align-items: center; justify-content: space-between; border: 0; border-radius: 7px; padding: 9px 10px; background: transparent; color: #587178; text-align: left; }
+:where(.literature-workbench-root) .knowledge-wiki aside nav button.active { background: #d9ebe8; color: #145f55; }
+:where(.literature-workbench-root) .knowledge-wiki aside nav b { font-size: 11px; }
+:where(.literature-workbench-root) .knowledge-wiki aside nav small { font-size: 8px; color: #86999d; }
+:where(.literature-workbench-root) .wiki-editor-shell { min-width: 0; overflow: auto; display: grid; grid-template-rows: auto minmax(360px, 1fr) auto; padding: 25px max(4vw, 36px) 32px; }
+:where(.literature-workbench-root) .wiki-editor-shell > header { height: auto; padding: 0 0 17px; border: 0; background: transparent; align-items: flex-end; }
+:where(.literature-workbench-root) .wiki-editor-shell > header span { color: #7e70bb; font-family: ui-monospace, monospace; font-size: 9px; }
+:where(.literature-workbench-root) .wiki-editor-shell > header h1 { margin: 6px 0 0; font-size: 25px; }
+:where(.literature-workbench-root) .wiki-editor-shell > header > div:last-child { display: flex; align-items: center; gap: 9px; }
+:where(.literature-workbench-root) .wiki-editor-shell > header small { color: #778c91; font-size: 9px; }
+:where(.literature-workbench-root) .wiki-editor-shell > header button { border: 0; border-radius: 7px; padding: 8px 11px; background: #177e70; color: #fff; font-size: 10px; }
+:where(.literature-workbench-root) .wiki-editor-shell > header button:disabled { opacity: .45; }
+:where(.literature-workbench-root) .wiki-milkdown { min-height: 420px; border: 1px solid #d7e1e2; border-radius: 12px; background: #fff; overflow: hidden; }
+:where(.literature-workbench-root) .wiki-milkdown .milkdown { min-height: 420px; --crepe-color-background: #fff; --crepe-color-surface: #f5f8f8; --crepe-color-primary: #177e70; --crepe-font-default: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror { min-height: 400px; padding: 34px 42px !important; }
+:where(.literature-workbench-root) .wiki-editor-shell > footer { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; padding: 14px; border-radius: 10px; background: #eaf0f0; }
+:where(.literature-workbench-root) .wiki-editor-shell > footer > div { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+:where(.literature-workbench-root) .wiki-editor-shell > footer b { width: 100%; color: #536e74; font-size: 10px; }
+:where(.literature-workbench-root) .wiki-editor-shell > footer button, :where(.literature-workbench-root) .wiki-editor-shell > footer span { border: 0; border-radius: 5px; padding: 5px 7px; background: #f7fafa; color: #667e83; font-size: 8px; }
+:where(.literature-workbench-root) .research-workflow-card { overflow: hidden; border: 1px solid #d9e2ec; border-radius: 13px; background: #fff; box-shadow: 0 10px 28px rgba(40,70,108,.07); }
+:where(.literature-workbench-root) .research-workflow-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 13px 15px 11px; border-bottom: 1px solid #e7ebf0; background: linear-gradient(100deg,#f8fbff,#fbfbff); }
+:where(.literature-workbench-root) .research-workflow-card > header small { color: #3977d8; font-size: 7px; font-weight: 700; letter-spacing: .1em; }
+:where(.literature-workbench-root) .research-workflow-card > header h3 { margin: 4px 0 0; font-size: 11px; font-weight: 620; }
+:where(.literature-workbench-root) .research-workflow-card > header > span { display: flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 999px; color: #66788b; background: #eef2f6; font-size: 7px; white-space: nowrap; }
+:where(.literature-workbench-root) .research-workflow-card > header > span i { width: 5px; height: 5px; border-radius: 50%; background: #6393d3; }
+:where(.literature-workbench-root) .workflow-scope { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px 14px; padding: 12px 15px; }
+:where(.literature-workbench-root) .workflow-scope span { min-width: 0; overflow: hidden; color: #5f6e7e; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+:where(.literature-workbench-root) .workflow-scope b { display: block; margin-bottom: 3px; color: #909ba7; font-size: 6px; font-weight: 650; letter-spacing: .06em; }
+:where(.literature-workbench-root) .workflow-disclosure, :where(.literature-workbench-root) .workflow-approval, :where(.literature-workbench-root) .workflow-progress { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0 12px 12px; padding: 10px 11px; border-radius: 9px; background: #f3f7fb; }
+:where(.literature-workbench-root) .workflow-disclosure p, :where(.literature-workbench-root) .workflow-approval p { margin: 0; color: #637383; font-size: 8px; line-height: 1.5; }
+:where(.literature-workbench-root) .workflow-approval b { display: block; margin-bottom: 3px; font-size: 9px; }
+:where(.literature-workbench-root) .workflow-approval > div:last-child { display: flex; gap: 6px; flex: 0 0 auto; }
+:where(.literature-workbench-root) .research-workflow-card button { padding: 6px 9px; border: 0; border-radius: 7px; color: #fff; background: linear-gradient(145deg,#3388cf,#586fd8); font-size: 8px; white-space: nowrap; }
+:where(.literature-workbench-root) .research-workflow-card button.secondary { border: 1px solid #d4dce5; color: #647383; background: #fff; }
+:where(.literature-workbench-root) .research-workflow-card button:disabled { opacity: .5; }
+:where(.literature-workbench-root) .workflow-progress { justify-content: flex-start; color: #4e6479; font-size: 8px; }
+:where(.literature-workbench-root) .workflow-progress > i { width: 9px; height: 9px; border: 2px solid #a9bed5; border-top-color: #3977d8; border-radius: 50%; animation: workflow-spin .8s linear infinite; }
+:where(.literature-workbench-root) .workflow-progress button { margin-left: auto; color: #7c5960; background: #f2e9eb; }
+:where(.literature-workbench-root) .workflow-review { display: grid; gap: 5px; margin: 0 12px 12px; padding: 10px 11px; border: 1px solid #d8e2dd; border-radius: 7px; color: #4e675e; background: #f2f8f5; font-size: 8px; }
+:where(.literature-workbench-root) .workflow-review.rejected { border-color: #e5d8d3; color: #755c54; background: #fbf5f2; }
+:where(.literature-workbench-root) .workflow-review b { font-size: 9px; }
+:where(.literature-workbench-root) .workflow-review p { margin: 4px 0 0; line-height: 1.5; }
+:where(.literature-workbench-root) .workflow-artifacts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 15px 12px; }
+:where(.literature-workbench-root) .workflow-artifacts b { width: 100%; color: #8b97a4; font-size: 7px; }
+:where(.literature-workbench-root) .workflow-artifacts a, :where(.literature-workbench-root) .workflow-artifacts span { padding: 5px 7px; border: 1px solid #dde5ed; border-radius: 6px; color: #346ba8; background: #fbfdff; font-size: 7px; text-decoration: none; }
+:where(.literature-workbench-root) .research-workflow-card > footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 13px; border-top: 1px solid #e7ebf0; color: #477264; background: #f8fafb; font-size: 8px; }
+:where(.literature-workbench-root) .research-workflow-card > footer.workflow-error { color: #98564d; }
+:where(.literature-workbench-root) .workflow-inline-error { margin: 0 14px 12px; color: #a35249; font-size: 8px; }
+:where(.literature-workbench-root) .paper-graph-view { height: 100%; min-height: 0; overflow: hidden; grid-template-columns: 268px minmax(420px, 1fr) 318px; background: white; }
+:where(.literature-workbench-root) .paper-list { min-height: 0; display: grid; grid-template-rows: auto auto minmax(0,1fr); border-right: 1px solid var(--line); background: #fafaf8; }
+:where(.literature-workbench-root) .paper-list-head { display: flex; align-items: baseline; justify-content: space-between; padding: 17px 16px 11px; }
+:where(.literature-workbench-root) .paper-list-head small { color: #3977d8; font-size: 9px; }
+:where(.literature-workbench-root) .paper-list-head b { font-size: 10px; }
+:where(.literature-workbench-root) .paper-list-tabs { display: flex; padding: 0 12px 9px; border-bottom: 1px solid var(--line); }
+:where(.literature-workbench-root) .paper-list-tabs button { padding: 6px 5px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #85857f; font-size: 8px; }
+:where(.literature-workbench-root) .paper-list-tabs button.active { border-color: #4b8fe3; color: #245ea8; }
+:where(.literature-workbench-root) .paper-list-scroll { overflow: auto; }
+:where(.literature-workbench-root) .paper-list-empty { padding: 28px 16px; color: #8a8d88; font-size: 9px; line-height: 1.6; }
+:where(.literature-workbench-root) .paper-list-scroll > button { width: 100%; display: grid; gap: 5px; padding: 13px 16px; border: 0; border-bottom: 1px solid #e7e7e3; background: transparent; text-align: left; }
+:where(.literature-workbench-root) .paper-list-scroll > button:hover { background: #f2f6fb; }
+:where(.literature-workbench-root) .paper-list-scroll > button.active { background: linear-gradient(100deg, #eaf4ff, #f2f1ff); box-shadow: inset 3px 0 #4a8ee3; }
+:where(.literature-workbench-root) .paper-list-scroll > button small { color: #969690; font-size: 7px; }
+:where(.literature-workbench-root) .paper-list-scroll > button.seed small { color: #3977d8; font-weight: 700; }
+:where(.literature-workbench-root) .paper-list-scroll > button b { overflow: hidden; font-size: 10px; font-weight: 550; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+:where(.literature-workbench-root) .paper-list-scroll > button span { overflow: hidden; color: #84847e; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+:where(.literature-workbench-root) .paper-graph-main { min-height: 0; overflow: hidden; padding: 17px 18px 12px; background: #fff; }
+:where(.literature-workbench-root) .paper-graph-toolbar { align-items: flex-start; }
+:where(.literature-workbench-root) .paper-graph-toolbar small { color: #8b8b85; font-size: 7px; }
+:where(.literature-workbench-root) .paper-graph-toolbar h1 { margin: 4px 0 3px; font-size: 16px; }
+:where(.literature-workbench-root) .paper-graph-toolbar p { font-size: 7px; }
+:where(.literature-workbench-root) .paper-graph-actions { max-width: 52%; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+:where(.literature-workbench-root) .paper-graph-actions input { width: 145px; padding: 6px 7px; border-color: var(--line); border-radius: 6px; font-size: 8px; }
+:where(.literature-workbench-root) .paper-graph-actions button, :where(.literature-workbench-root) .paper-graph-toolbar select { padding: 6px 7px; border-color: var(--line); border-radius: 6px; font-size: 8px; }
+:where(.literature-workbench-root) .paper-graph-canvas { min-height: 410px; }
+:where(.literature-workbench-root) .paper-graph-bottom { position: absolute; z-index: 3; right: 18px; bottom: 13px; left: 18px; display: grid; grid-template-columns: auto minmax(170px, 52%); align-items: end; justify-content: space-between; gap: 30px; pointer-events: none; }
+:where(.literature-workbench-root) .graph-utility { display: flex; gap: 9px; }
+:where(.literature-workbench-root) .graph-utility button { width: 32px; height: 32px; padding: 0; border: 1px solid #82a9aa; border-radius: 50%; color: #0f565c; background: rgba(255,255,255,.94); font-size: 16px; pointer-events: auto; }
+:where(.literature-workbench-root) .year-legend { display: grid; gap: 3px; }
+:where(.literature-workbench-root) .year-legend small { color: #627d7e; font-size: 7px; }
+:where(.literature-workbench-root) .year-legend > i { display: block; width: 100%; height: 12px; background: linear-gradient(90deg, #c5d5d5 0%, #2f696c 100%); }
+:where(.literature-workbench-root) .year-legend > div { display: flex; justify-content: space-between; margin-top: 3px; color: #0c5056; font-size: 9px; }
+:where(.literature-workbench-root) .paper-detail { min-height: 0; padding: 27px 22px; border-color: var(--line); background: #fcfcfa; }
+:where(.literature-workbench-root) .paper-detail > small { color: #3977d8; font-size: 7px; }
+:where(.literature-workbench-root) .paper-detail h2 { margin: 9px 0; font-family: Georgia, "Songti SC", serif; font-size: 19px; line-height: 1.3; }
+:where(.literature-workbench-root) .paper-detail > p { color: #797973; font-size: 9px; }
+:where(.literature-workbench-root) .paper-open-row { display: flex; align-items: center; justify-content: space-between; margin: 18px 0; padding: 10px 0; border-block: 1px solid #e5e5e0; color: #777872; font-size: 9px; }
+:where(.literature-workbench-root) .paper-open-row button { border: 0; background: transparent; font-size: 9px; }
+:where(.literature-workbench-root) .paper-open-row a { color: #286eaa; text-decoration: none; }
+:where(.literature-workbench-root) .paper-abstract b { font-size: 10px; }
+:where(.literature-workbench-root) .paper-abstract p { color: #4f504b; font-size: 10px; line-height: 1.65; }
+:where(.literature-workbench-root) .paper-detail dl { margin: 15px 0; }
+:where(.literature-workbench-root) .paper-detail dl div { font-size: 9px; }
+:where(.literature-workbench-root) .paper-detail > button { padding: 7px; border-color: var(--line); background: white; font-size: 9px; }
+:where(.literature-workbench-root) .paper-annotation { display: grid; gap: 7px; margin: 14px 0 10px; color: #6f736e; font-size: 9px; }
+:where(.literature-workbench-root) .paper-annotation textarea { min-height: 92px; resize: vertical; padding: 10px; border: 1px solid #d8dcd8; border-radius: 7px; background: #fff; color: #353936; font: inherit; line-height: 1.55; }
+:where(.literature-workbench-root) .paper-annotation textarea:disabled { background: #f4f5f2; color: #666b67; }
+:where(.literature-workbench-root) .paper-evidence-semantics { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 8px; margin-bottom: 10px; }
+:where(.literature-workbench-root) .paper-evidence-semantics label { display: grid; gap: 5px; color: #707570; font-size: 8px; }
+:where(.literature-workbench-root) .paper-evidence-semantics select { min-width: 0; padding: 7px; border: 1px solid #d8dcd8; border-radius: 6px; background: white; color: #363b37; font: inherit; }
+:where(.literature-workbench-root) .paper-detail > .paper-promote { border-color: #367cad; color: white; background: #367cad; }
+:where(.literature-workbench-root) .paper-detail > .paper-promote:disabled { border-color: #d7ddd9; color: #66726b; background: #edf1ee; }
+:where(.literature-workbench-root) .algorithm-note { margin-top: 18px; padding: 11px; background: #f2f2ef; font-size: 8px; }
+:where(.literature-workbench-root) .knowledge-wiki { grid-template-columns: 205px minmax(460px, 1fr); background: white; }
+:where(.literature-workbench-root) .knowledge-wiki > .wiki-library { padding: 24px 13px; border-color: var(--line); background: #fafaf8; }
+:where(.literature-workbench-root) .knowledge-wiki > aside > div:first-child small { color: #575852; font-size: 9px; font-weight: 650; }
+:where(.literature-workbench-root) .knowledge-wiki aside nav { gap: 2px; }
+:where(.literature-workbench-root) .knowledge-wiki aside nav button { padding: 7px 8px; border-radius: 5px; }
+:where(.literature-workbench-root) .knowledge-wiki aside nav button.active { color: var(--ink); background: #ecece8; }
+:where(.literature-workbench-root) .knowledge-wiki aside nav b { font-size: 9px; font-weight: 500; }
+:where(.literature-workbench-root) .knowledge-wiki aside nav small { font-size: 7px; }
+:where(.literature-workbench-root) .wiki-toc { display: grid !important; justify-content: normal !important; gap: 2px; margin: 23px 7px 0 !important; padding-top: 17px; border-top: 1px solid var(--line); }
+:where(.literature-workbench-root) .wiki-toc small { margin-bottom: 7px; color: #888882 !important; font-weight: 500 !important; }
+:where(.literature-workbench-root) .wiki-toc a { padding: 5px 0; color: #666762; font-size: 8px; text-decoration: none; }
+:where(.literature-workbench-root) .wiki-toc a:hover { color: #3977d8; }
+:where(.literature-workbench-root) .wiki-editor-shell { padding: 28px clamp(30px, 5vw, 78px) 40px; background: white; }
+:where(.literature-workbench-root) .wiki-editor-shell > header { padding-bottom: 17px; border-bottom: 1px solid #cfcfc9; }
+:where(.literature-workbench-root) .wiki-editor-shell > header span { color: #8c8c86; font-family: inherit; font-size: 8px; }
+:where(.literature-workbench-root) .wiki-editor-shell > header h1 { margin: 10px 0 5px; font-family: Georgia, "Songti SC", "STSong", serif; font-size: 30px; font-weight: 500; letter-spacing: -.025em; }
+:where(.literature-workbench-root) .wiki-editor-shell > header p { margin: 0; color: #92928c; font-size: 9px; }
+:where(.literature-workbench-root) .wiki-editor-shell > header button { background: linear-gradient(145deg, #2f79cc, #586bd3); box-shadow: 0 5px 14px rgba(52,101,184,.18); font-size: 8px; }
+:where(.literature-workbench-root) .wiki-milkdown { min-height: 420px; border: 0; border-radius: 0; }
+:where(.literature-workbench-root) .wiki-milkdown .milkdown { --crepe-font-default: Georgia, "Songti SC", "STSong", serif; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror { max-width: 760px; min-height: 440px; padding: 30px 0 !important; color: #292a27; font-size: 14px; line-height: 1.85; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror h1, :where(.literature-workbench-root) .wiki-milkdown .ProseMirror h2 { font-weight: 500; }
+:where(.literature-workbench-root) .wiki-editor-shell > footer { margin-top: 20px; padding: 13px 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+:where(.literature-workbench-root) .wiki-appearance { overflow: auto; padding: 24px 16px; border-left: 1px solid var(--line); background: #fafaf8; }
+:where(.literature-workbench-root) .wiki-appearance > div { display: flex; align-items: center; justify-content: space-between; padding-bottom: 11px; border-bottom: 1px solid var(--line); }
+:where(.literature-workbench-root) .wiki-appearance > div small { color: #555650; font-size: 9px; font-weight: 650; }
+:where(.literature-workbench-root) .wiki-appearance > div button { border: 0; background: transparent; font-size: 15px; }
+:where(.literature-workbench-root) .wiki-appearance section { display: grid; gap: 9px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+:where(.literature-workbench-root) .wiki-appearance section b { font-size: 9px; }
+:where(.literature-workbench-root) .wiki-appearance section label, :where(.literature-workbench-root) .wiki-appearance section p { margin: 0; color: #777872; font-size: 8px; }
+:where(.literature-workbench-root) .project-view, :where(.literature-workbench-root) .project-composite, :where(.literature-workbench-root) .project-management { background: var(--wash); }
+:where(.literature-workbench-root) .project-view { padding: 30px 34px 50px; }
+:where(.literature-workbench-root) .project-stats article, :where(.literature-workbench-root) .board-column article { border-color: var(--line); border-radius: 9px; box-shadow: none; }
+:where(.literature-workbench-root) .project-hero h1, :where(.literature-workbench-root) .project-management-head h1 { color: var(--ink); font-family: Georgia, "Songti SC", serif; font-weight: 500; }
+:where(.literature-workbench-root) .workflow-buttons button.primary, :where(.literature-workbench-root) .project-picker button, :where(.literature-workbench-root) .inline-create button, :where(.literature-workbench-root) .item-create button { border-color: #3977d8; background: linear-gradient(145deg, #2e83cf, #596ed8); box-shadow: 0 6px 15px rgba(49,105,190,.16); }
+:where(.literature-workbench-root) .project-hero small, :where(.literature-workbench-root) .wiki-kicker, :where(.literature-workbench-root) .project-management-head small { color: #3977d8; }
+:where(.literature-workbench-root) .project-tabs button.active { color: #275fa8; background: #eaf3ff; }
+:where(.literature-workbench-root) .paper-action-status { color: #3977d8 !important; }
+:where(.literature-workbench-root) .board-column article small { color: #3977d8; }
+:where(.literature-workbench-root) .wiki-milkdown .milkdown { --crepe-color-primary: #3977d8; }
+:where(.literature-workbench-root) .research-workflow-card,
+:where(.literature-workbench-root) .record-modal {
+  border-color: #d8dee6;
+}
+:where(.literature-workbench-root) .project-domain-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+:where(.literature-workbench-root) .project-domain-tags span { padding: 4px 8px; border: 1px solid #d8e3e7; border-radius: 5px; color: #5d7581; background: #fafcfc; font-size: 11px; }
+:where(.literature-workbench-root) .paper-list-scroll > button.active {
+  border-left: 3px solid #4a8ee3;
+  padding-left: 13px;
+}
+@media (max-width: 1250px) {
+  :where(.literature-workbench-root) .paper-graph-view { grid-template-columns: 230px minmax(390px,1fr) 285px; }
+  :where(.literature-workbench-root) .knowledge-wiki { grid-template-columns: 180px minmax(430px,1fr); }
+}
+:where(.literature-workbench-root) .knowledge-wiki {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 226px minmax(0, 1fr);
+  color: #202524;
+  background: #fff;
+}
+:where(.literature-workbench-root) .knowledge-wiki > .wiki-library {
+  min-width: 0;
+  overflow: auto;
+  padding: 22px 13px 28px;
+  border-right: 1px solid #e0e3e1;
+  background: #f8f9f7;
+}
+:where(.literature-workbench-root) .wiki-library-title {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 10px;
+  margin: 0 6px 17px !important;
+}
+:where(.literature-workbench-root) .wiki-library-title > div { min-width: 0; display: grid; gap: 5px; }
+:where(.literature-workbench-root) .wiki-library-title small { color: #848983 !important; font-size: 8px !important; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; }
+:where(.literature-workbench-root) .wiki-library-title b { overflow: hidden; color: #292d2b; font-size: 11px; font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
+:where(.literature-workbench-root) .wiki-library-title > button {
+  flex: 0 0 auto;
+  width: 25px;
+  height: 25px;
+  padding: 0 !important;
+  border: 1px solid #d8ddda !important;
+  border-radius: 6px !important;
+  color: #424744 !important;
+  background: #fff !important;
+  font-size: 15px !important;
+}
+:where(.literature-workbench-root) .wiki-create { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 5px; margin: 0 2px 10px; }
+:where(.literature-workbench-root) .wiki-create input { min-width: 0; padding: 7px 8px; border: 1px solid #d5dad7; border-radius: 6px; outline: 0; color: #303633; background: #fff; font-size: 9px; }
+:where(.literature-workbench-root) .wiki-create button { border: 1px solid #3977d8; border-radius: 6px; color: #fff; background: #3977d8; font-size: 8px; }
+:where(.literature-workbench-root) .wiki-search { position: relative; display: flex; align-items: center; gap: 6px; margin: 0 2px 15px; padding: 7px 8px; border: 1px solid #d9dddb; border-radius: 7px; color: #858b87; background: #fff; }
+:where(.literature-workbench-root) .wiki-search > span { font-size: 15px; line-height: 1; transform: translateY(-1px); }
+:where(.literature-workbench-root) .wiki-search > input { width: 100%; min-width: 0; padding: 0; border: 0; outline: 0; color: #313633; background: transparent; font-size: 9px; }
+:where(.literature-workbench-root) .wiki-search-results { position: absolute; z-index: 8; top: calc(100% + 5px); left: -1px; right: -1px; overflow: hidden; border: 1px solid #d6dbd8; border-radius: 7px; background: #fff; }
+:where(.literature-workbench-root) .wiki-search-results button { width: 100%; display: grid; gap: 3px; padding: 9px 10px; border: 0; border-bottom: 1px solid #eceeec; color: #2e3431; background: #fff; text-align: left; }
+:where(.literature-workbench-root) .wiki-search-results button:last-child { border-bottom: 0; }
+:where(.literature-workbench-root) .wiki-search-results button:hover { background: #f5f7f5; }
+:where(.literature-workbench-root) .wiki-search-results b { font-size: 9px; font-weight: 650; }
+:where(.literature-workbench-root) .wiki-search-results span { overflow: hidden; color: #7f8581; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-library nav { display: grid; gap: 2px; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-library nav > button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 18px minmax(0,1fr);
+  align-items: start;
+  gap: 5px;
+  padding: 8px 7px;
+  border: 0;
+  border-radius: 6px;
+  color: #5f6662;
+  background: transparent;
+  text-align: left;
+}
+:where(.literature-workbench-root) .knowledge-wiki .wiki-library nav > button:hover { background: #f0f2f0; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-library nav > button.active { color: #202522; background: #e9ece9; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-library nav > button > span:last-child { min-width: 0; display: grid; gap: 3px; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-library nav b { overflow: hidden; font-size: 9px; font-weight: 590; text-overflow: ellipsis; white-space: nowrap; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-library nav small { overflow: hidden; color: #969b97; font-size: 7px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+:where(.literature-workbench-root) .wiki-page-glyph { color: #8a908c; font-family: Georgia, serif; font-size: 11px; text-align: center; }
+:where(.literature-workbench-root) .wiki-nav-label { display: flex; align-items: center; justify-content: space-between; margin: 17px 7px 5px; color: #989d99; font-size: 7px; font-weight: 650; letter-spacing: .1em; text-transform: uppercase; }
+:where(.literature-workbench-root) .wiki-nav-label span { padding: 2px 5px; border-radius: 8px; background: #e9ece9; letter-spacing: 0; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-toc {
+  display: grid !important;
+  justify-content: stretch !important;
+  gap: 0;
+  margin: 23px 7px 0 !important;
+  padding-top: 17px;
+  border-top: 1px solid #e0e3e1;
+}
+:where(.literature-workbench-root) .knowledge-wiki .wiki-toc small { margin-bottom: 7px; color: #999e9a !important; font-size: 7px; font-weight: 650 !important; letter-spacing: .1em; text-transform: uppercase; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-toc a { overflow: hidden; padding: 4px 0; color: #686e6a; font-size: 8px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-toc a.level-3 { padding-left: 11px; color: #8d928e; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-toc a:hover { color: #3977d8; }
+:where(.literature-workbench-root) .wiki-main { position: relative; min-width: 0; min-height: 0; overflow: auto; background: #fff; scroll-behavior: smooth; }
+:where(.literature-workbench-root) .wiki-article { width: min(100%, 1020px); margin: 0 auto; padding: 35px clamp(34px, 5.2vw, 76px) 70px; }
+:where(.literature-workbench-root) .wiki-article-head { min-height: 95px; display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; padding: 0 0 22px; border-bottom: 1px solid #cdd1ce; }
+:where(.literature-workbench-root) .wiki-article-head > div:first-child { min-width: 0; }
+:where(.literature-workbench-root) .wiki-article-head > div:first-child > span { color: #858b87; font-size: 8px; }
+:where(.literature-workbench-root) .wiki-article-head h1 { margin: 9px 0 6px; color: #1d2220; font-family: Georgia, "Songti SC", "STSong", serif; font-size: clamp(27px, 3vw, 38px); font-weight: 500; letter-spacing: -.035em; line-height: 1.12; }
+:where(.literature-workbench-root) .wiki-article-head p { max-width: 720px; margin: 0; color: #858b87; font-size: 9px; line-height: 1.55; }
+:where(.literature-workbench-root) .wiki-article-head > div:first-child > input { width: min(620px, 70vw); margin: 8px 0 5px; padding: 4px 0 6px; border: 0; border-bottom: 1px solid #aeb5b0; outline: 0; color: #1d2220; background: transparent; font-family: Georgia, "Songti SC", serif; font-size: 30px; }
+:where(.literature-workbench-root) .wiki-article-head > button,
+:where(.literature-workbench-root) .wiki-article-actions button,
+:where(.literature-workbench-root) .wiki-section-title button { flex: 0 0 auto; border: 1px solid #d3d8d4; border-radius: 6px; padding: 7px 10px; color: #4c5450; background: #fff; font-size: 8px; }
+:where(.literature-workbench-root) .wiki-article-head button.primary,
+:where(.literature-workbench-root) .wiki-article-actions button.primary { border-color: #2f6fc9; color: #fff; background: #3977d8; }
+:where(.literature-workbench-root) .wiki-article-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+:where(.literature-workbench-root) .wiki-article-actions small { margin-right: 3px; color: #939994; font-size: 7px; }
+:where(.literature-workbench-root) .wiki-article-actions button span { margin-left: 3px; color: inherit; opacity: .65; }
+:where(.literature-workbench-root) .wiki-article-actions button.quiet { border-color: transparent; background: transparent; }
+:where(.literature-workbench-root) .wiki-article-body { padding-top: 25px; color: #2d332f; }
+:where(.literature-workbench-root) .wiki-article-body::after { content: ""; display: block; clear: both; }
+:where(.literature-workbench-root) .wiki-infobox { float: right; width: 250px; margin: 0 0 26px 32px; border: 1px solid #cfd4d0; background: #fafbf9; }
+:where(.literature-workbench-root) .wiki-infobox > strong { display: block; padding: 13px 15px; border-bottom: 1px solid #d9ddda; color: #252a27; font-family: Georgia, "Songti SC", serif; font-size: 15px; font-weight: 500; line-height: 1.35; }
+:where(.literature-workbench-root) .wiki-infobox > p { margin: 0; padding: 12px 15px 3px; color: #707773; font-size: 8px; line-height: 1.65; }
+:where(.literature-workbench-root) .wiki-infobox dl { margin: 0; padding: 8px 15px 12px; }
+:where(.literature-workbench-root) .wiki-infobox dl > div { display: grid; grid-template-columns: 82px minmax(0,1fr); gap: 8px; padding: 5px 0; border-bottom: 1px solid #eaedea; font-size: 8px; }
+:where(.literature-workbench-root) .wiki-infobox dl > div:last-child { border-bottom: 0; }
+:where(.literature-workbench-root) .wiki-infobox dt { color: #888e8a; }
+:where(.literature-workbench-root) .wiki-infobox dd { margin: 0; color: #343a36; text-align: right; }
+:where(.literature-workbench-root) .wiki-lead { min-height: 115px; }
+:where(.literature-workbench-root) .wiki-lead > p { margin: 3px 0 18px; color: #3d4540; font-family: Georgia, "Songti SC", serif; font-size: 15px; line-height: 1.9; }
+:where(.literature-workbench-root) .wiki-overview #contents { clear: both; }
+:where(.literature-workbench-root) .wiki-article-body > section:not(.wiki-lead):not(.wiki-artifacts) { margin-top: 34px; }
+:where(.literature-workbench-root) .wiki-section-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 13px; padding-bottom: 9px; border-bottom: 1px solid #d4d8d5; }
+:where(.literature-workbench-root) .wiki-section-title > div { display: grid; gap: 3px; }
+:where(.literature-workbench-root) .wiki-section-title small { color: #477dbd; font-size: 7px; font-weight: 700; letter-spacing: .13em; }
+:where(.literature-workbench-root) .wiki-section-title h2 { margin: 0; color: #252b27; font-family: Georgia, "Songti SC", serif; font-size: 18px; font-weight: 500; }
+:where(.literature-workbench-root) .wiki-section-title > span { color: #929793; font-size: 8px; }
+:where(.literature-workbench-root) .wiki-section-title button { padding-right: 0; border-color: transparent; color: #3977d8; background: transparent; }
+:where(.literature-workbench-root) .wiki-page-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); border-top: 1px solid #e0e3e0; border-left: 1px solid #e0e3e0; }
+:where(.literature-workbench-root) .wiki-page-grid > button { min-width: 0; display: grid; grid-template-columns: 22px minmax(0,1fr) auto; align-items: center; gap: 8px; padding: 15px 13px; border: 0; border-right: 1px solid #e0e3e0; border-bottom: 1px solid #e0e3e0; color: #303632; background: #fff; text-align: left; }
+:where(.literature-workbench-root) .wiki-page-grid > button:hover { background: #f8f9f7; }
+:where(.literature-workbench-root) .wiki-page-grid > button > span { color: #7f8983; font-family: Georgia, serif; font-size: 17px; }
+:where(.literature-workbench-root) .wiki-page-grid h3 { overflow: hidden; margin: 0 0 4px; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+:where(.literature-workbench-root) .wiki-page-grid p { margin: 0; color: #949a96; font-size: 7px; }
+:where(.literature-workbench-root) .wiki-page-grid i { color: #a4aaa6; font-size: 12px; font-style: normal; }
+:where(.literature-workbench-root) .wiki-evidence-list { border-top: 1px solid #e3e5e3; }
+:where(.literature-workbench-root) .wiki-evidence-list article { display: grid; grid-template-columns: 44px minmax(0,1fr); gap: 12px; padding: 11px 4px; border-bottom: 1px solid #e3e5e3; }
+:where(.literature-workbench-root) .wiki-evidence-list article > span { color: #6f7872; font-family: Georgia, serif; font-size: 10px; }
+:where(.literature-workbench-root) .wiki-evidence-list h3 { margin: 0 0 4px; color: #313733; font-size: 10px; font-weight: 570; line-height: 1.35; }
+:where(.literature-workbench-root) .wiki-evidence-list p { margin: 0; color: #929894; font-size: 7px; }
+:where(.literature-workbench-root) .wiki-empty { padding: 17px 0; color: #969c98; font-size: 9px; line-height: 1.6; }
+:where(.literature-workbench-root) .wiki-progress { max-width: 640px; }
+:where(.literature-workbench-root) .wiki-progress > strong { display: block; margin-bottom: 9px; font-family: Georgia, serif; font-size: 22px; font-weight: 500; }
+:where(.literature-workbench-root) .wiki-progress > strong small { color: #8b918d; font-family: inherit; font-size: 9px; font-weight: 400; }
+:where(.literature-workbench-root) .wiki-progress > div { height: 3px; margin-bottom: 13px; background: #e5e8e5; }
+:where(.literature-workbench-root) .wiki-progress > div i { display: block; height: 100%; background: #3977d8; }
+:where(.literature-workbench-root) .wiki-progress > p { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; gap: 5px; margin: 0; padding: 7px 2px; border-bottom: 1px solid #eceeec; color: #464d48; font-size: 9px; }
+:where(.literature-workbench-root) .wiki-progress > p > span { color: #969d98; }
+:where(.literature-workbench-root) .wiki-progress > p > span.done { color: #39806e; }
+:where(.literature-workbench-root) .wiki-progress > p small { color: #969d98; font-size: 7px; }
+:where(.literature-workbench-root) .wiki-milkdown { min-height: 0; overflow: visible; border: 0; border-radius: 0; background: transparent; }
+:where(.literature-workbench-root) .wiki-milkdown .milkdown { min-height: 0; --crepe-font-default: Georgia, "Songti SC", "STSong", serif; --crepe-color-primary: #3977d8; background: transparent; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror { max-width: none; min-height: 0; padding: 0 !important; color: #303632; font-family: Georgia, "Songti SC", "STSong", serif; font-size: 13px; line-height: 1.88; }
+:where(.literature-workbench-root) .wiki-milkdown.is-reading .ProseMirror { cursor: default; }
+:where(.literature-workbench-root) .wiki-milkdown.is-editing { min-height: 420px; clear: both; margin-top: 12px; padding: 24px 29px; border: 1px solid #d5dad6; background: #fff; }
+:where(.literature-workbench-root) .wiki-milkdown.is-editing .ProseMirror { min-height: 370px; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror h1,
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror h2,
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror h3 { color: #252b27; font-weight: 500; scroll-margin-top: 24px; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror h1 { margin-top: 32px; font-size: 24px; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror h2 { margin: 31px 0 10px; padding-bottom: 7px; border-bottom: 1px solid #d6dad7; font-size: 18px; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror h3 { margin-top: 23px; font-size: 14px; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror p { margin: 10px 0; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror a { color: #2f70c8; text-decoration: none; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror a:hover { text-decoration: underline; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror blockquote { margin: 18px 0; padding: 3px 17px; border-left: 2px solid #9aa9a0; color: #69706b; }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror code { padding: 1px 4px; border-radius: 3px; color: #3d5b50; background: #f0f3f0; font-family: ui-monospace, monospace; font-size: .86em; }
+:where(.literature-workbench-root) .wiki-edit-note { clear: both; margin-bottom: 12px; padding: 8px 10px; border: 1px solid #d9e3f0; color: #5b6f84; background: #f6f9fd; font-size: 8px; }
+:where(.literature-workbench-root) .wiki-artifacts { clear: both; margin-top: 37px; scroll-margin-top: 24px; }
+:where(.literature-workbench-root) .wiki-artifacts.compact { margin-top: 0; }
+:where(.literature-workbench-root) .wiki-artifacts.compact > .wiki-section-title { display: none; }
+:where(.literature-workbench-root) .wiki-artifact-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); border-top: 1px solid #e0e3e0; border-left: 1px solid #e0e3e0; }
+:where(.literature-workbench-root) .wiki-artifact-grid article { min-width: 0; display: grid; grid-template-columns: 36px minmax(0,1fr) auto; align-items: center; gap: 9px; padding: 12px; border-right: 1px solid #e0e3e0; border-bottom: 1px solid #e0e3e0; }
+:where(.literature-workbench-root) .wiki-artifact-grid article > span { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #d5dbd7; border-radius: 5px; color: #5d6d63; background: #f6f8f6; font-size: 7px; font-weight: 700; }
+:where(.literature-workbench-root) .wiki-artifact-grid article > div { min-width: 0; }
+:where(.literature-workbench-root) .wiki-artifact-grid h3 { overflow: hidden; margin: 0 0 4px; font-size: 9px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+:where(.literature-workbench-root) .wiki-artifact-grid p { overflow: hidden; margin: 0; color: #9aa09c; font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
+:where(.literature-workbench-root) .wiki-artifact-grid a,
+:where(.literature-workbench-root) .wiki-artifact-grid button { padding: 5px 0 5px 7px; border: 0; color: #3977d8; background: transparent; font-size: 7px; text-decoration: none; }
+:where(.literature-workbench-root) .wiki-artifact-grid button:disabled { color: #a4aaa6; }
+:where(.literature-workbench-root) .wiki-related { clear: both; scroll-margin-top: 24px; }
+:where(.literature-workbench-root) .wiki-related > h2 { margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid #d4d8d5; font-family: Georgia, "Songti SC", serif; font-size: 18px; font-weight: 500; }
+:where(.literature-workbench-root) .wiki-related > div { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+:where(.literature-workbench-root) .wiki-related article { min-width: 0; }
+:where(.literature-workbench-root) .wiki-related article > small { display: block; margin-bottom: 8px; color: #909692; font-size: 7px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+:where(.literature-workbench-root) .wiki-related article p { margin: 5px 0; color: #747b76; font-size: 8px; }
+:where(.literature-workbench-root) .wiki-related article button { display: block; padding: 4px 0; border: 0; color: #3977d8; background: transparent; font-size: 8px; text-align: left; }
+:where(.literature-workbench-root) .wiki-history-panel { position: absolute; z-index: 12; inset: 0 0 0 auto; width: min(680px, calc(100% - 30px)); overflow: auto; border-left: 1px solid #cfd4d0; background: #fff; }
+:where(.literature-workbench-root) .wiki-history-panel > header { position: sticky; z-index: 2; top: 0; display: flex; align-items: flex-start; justify-content: space-between; padding: 21px 24px 17px; border-bottom: 1px solid #d9ddda; background: #fff; }
+:where(.literature-workbench-root) .wiki-history-panel > header small { color: #8b918d; font-size: 7px; letter-spacing: .12em; text-transform: uppercase; }
+:where(.literature-workbench-root) .wiki-history-panel > header h2 { margin: 5px 0 0; font-family: Georgia, "Songti SC", serif; font-size: 19px; font-weight: 500; }
+:where(.literature-workbench-root) .wiki-history-panel > header button { width: 27px; height: 27px; border: 1px solid #d6dbd7; border-radius: 50%; color: #5e6560; background: #fff; font-size: 17px; }
+:where(.literature-workbench-root) .wiki-history-content { min-height: calc(100% - 70px); display: grid; grid-template-columns: 155px minmax(0,1fr); }
+:where(.literature-workbench-root) .wiki-history-content > nav { padding: 13px 9px; border-right: 1px solid #e1e4e1; background: #f8f9f7; }
+:where(.literature-workbench-root) .wiki-history-content > nav button { width: 100%; display: grid; gap: 3px; padding: 9px; border: 0; border-radius: 5px; color: #5f6661; background: transparent; text-align: left; }
+:where(.literature-workbench-root) .wiki-history-content > nav button.active { color: #222824; background: #e9ece9; }
+:where(.literature-workbench-root) .wiki-history-content > nav b { font-size: 8px; }
+:where(.literature-workbench-root) .wiki-history-content > nav small { color: #969c97; font-size: 6px; }
+:where(.literature-workbench-root) .wiki-history-content > section { min-width: 0; padding: 18px 23px 35px; }
+:where(.literature-workbench-root) .wiki-history-content > section > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 13px; border-bottom: 1px solid #dfe2df; }
+:where(.literature-workbench-root) .wiki-history-content > section > header > div { display: grid; gap: 3px; }
+:where(.literature-workbench-root) .wiki-history-content > section > header b { font-size: 9px; }
+:where(.literature-workbench-root) .wiki-history-content > section > header small { color: #969c97; font-size: 7px; }
+:where(.literature-workbench-root) .wiki-history-content > section > header button { padding: 7px 9px; border: 1px solid #3977d8; border-radius: 5px; color: #3977d8; background: #fff; font-size: 7px; }
+:where(.literature-workbench-root) .wiki-revision-preview { padding-top: 13px; }
+:where(.literature-workbench-root) .wiki-revision-preview p { margin: 6px 0; color: #464d48; font-family: Georgia, "Songti SC", serif; font-size: 10px; line-height: 1.7; white-space: pre-wrap; }
+:where(.literature-workbench-root) .wiki-error { position: sticky; z-index: 15; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 8px 13px; border-bottom: 1px solid #e4cdc9; color: #83544d; background: #fff6f4; font-size: 8px; }
+:where(.literature-workbench-root) .wiki-error button { border: 0; color: inherit; background: transparent; font-size: 8px; }
+@media (max-width: 1050px) {
+  :where(.literature-workbench-root) .knowledge-wiki { grid-template-columns: 188px minmax(0,1fr); }
+  :where(.literature-workbench-root) .wiki-article { padding-right: 34px; padding-left: 34px; }
+  :where(.literature-workbench-root) .wiki-infobox { width: 220px; margin-left: 24px; }
+}
+@media (max-width: 820px) {
+  :where(.literature-workbench-root) .knowledge-wiki { grid-template-columns: 160px minmax(0,1fr); }
+  :where(.literature-workbench-root) .wiki-article { padding: 26px 22px 55px; }
+  :where(.literature-workbench-root) .wiki-article-head { align-items: flex-start; flex-direction: column; gap: 14px; }
+  :where(.literature-workbench-root) .wiki-infobox { float: none; width: 100%; margin: 0 0 22px; }
+  :where(.literature-workbench-root) .wiki-page-grid, :where(.literature-workbench-root) .wiki-artifact-grid { grid-template-columns: 1fr; }
+}
+:where(.literature-workbench-root) .workflow-card small,
+:where(.literature-workbench-root) .workflow-card-status,
+:where(.literature-workbench-root) .workflow-artifact small,
+:where(.literature-workbench-root) .workflow-card footer { font-size: var(--type-caption); }
+:where(.literature-workbench-root) .workflow-card h3 { font-size: var(--type-body); }
+:where(.literature-workbench-root) .workflow-card p,
+:where(.literature-workbench-root) .workflow-scope,
+:where(.literature-workbench-root) .workflow-disclosure,
+:where(.literature-workbench-root) .workflow-review,
+:where(.literature-workbench-root) .workflow-card button { font-size: var(--type-meta); line-height: 1.5; }
+:where(.literature-workbench-root) .workflow-label { font-size: 10.5px; }
+:where(.literature-workbench-root) .paper-list-head small,
+:where(.literature-workbench-root) .paper-list-item small,
+:where(.literature-workbench-root) .paper-list-item span,
+:where(.literature-workbench-root) .paper-detail > small { font-size: var(--type-caption); }
+:where(.literature-workbench-root) .paper-list-head b,
+:where(.literature-workbench-root) .paper-list-item b { font-size: var(--type-control); line-height: 1.4; }
+:where(.literature-workbench-root) .paper-tabs button,
+:where(.literature-workbench-root) .paper-detail button { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .paper-detail h2 { font-size: 22px; line-height: 1.25; }
+:where(.literature-workbench-root) .paper-detail p { font-size: var(--type-control); line-height: 1.65; }
+:where(.literature-workbench-root) .paper-detail dl { font-size: 12.5px; }
+:where(.literature-workbench-root) .wiki-library-nav header b,
+:where(.literature-workbench-root) .wiki-library-nav button b { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .wiki-library-nav header small,
+:where(.literature-workbench-root) .wiki-library-nav button small,
+:where(.literature-workbench-root) .wiki-toc small,
+:where(.literature-workbench-root) .wiki-page-card small,
+:where(.literature-workbench-root) .wiki-progress > strong small,
+:where(.literature-workbench-root) .wiki-progress > p small,
+:where(.literature-workbench-root) .wiki-related article > small,
+:where(.literature-workbench-root) .wiki-history-panel > header small,
+:where(.literature-workbench-root) .wiki-history-content > nav small,
+:where(.literature-workbench-root) .wiki-history-content > section > header small { font-size: var(--type-caption); }
+:where(.literature-workbench-root) .wiki-toc a,
+:where(.literature-workbench-root) .wiki-page-card p,
+:where(.literature-workbench-root) .wiki-progress > p,
+:where(.literature-workbench-root) .wiki-related article p,
+:where(.literature-workbench-root) .wiki-related article button,
+:where(.literature-workbench-root) .wiki-edit-note { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .wiki-section-title,
+:where(.literature-workbench-root) .wiki-page-card h3,
+:where(.literature-workbench-root) .wiki-artifact-grid h3 { font-size: var(--type-control); }
+:where(.literature-workbench-root) .wiki-milkdown .ProseMirror { font-size: 15px; line-height: 1.82; }
+:where(.literature-workbench-root) .wiki-artifact-grid article > span,
+:where(.literature-workbench-root) .wiki-artifact-grid p,
+:where(.literature-workbench-root) .wiki-artifact-grid a,
+:where(.literature-workbench-root) .wiki-artifact-grid button { font-size: var(--type-caption); }
+:where(.literature-workbench-root) .wiki-history-content { grid-template-columns: 180px minmax(0,1fr); }
+:where(.literature-workbench-root) .wiki-history-content > nav b { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .wiki-history-content > section > header b { font-size: var(--type-control); }
+:where(.literature-workbench-root) .wiki-history-content > section > header button { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .wiki-revision-preview p { font-size: var(--type-control); line-height: 1.75; }
+:where(.literature-workbench-root) .wiki-error { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .project-hero p,
+:where(.literature-workbench-root) .project-management-head p { font-size: var(--type-control); line-height: 1.6; }
+:where(.literature-workbench-root) .project-tabs button,
+:where(.literature-workbench-root) .project-management button,
+:where(.literature-workbench-root) .project-management select { font-size: var(--type-control); }
+:where(.literature-workbench-root) .record-expand,
+:where(.literature-workbench-root) .record-modal footer { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .record-expand span { font-size: var(--type-caption); }
+@media (min-width: 1251px) {
+  :where(.literature-workbench-root) .paper-graph-view { grid-template-columns: 290px minmax(390px, 1fr) 340px; }
+  :where(.literature-workbench-root) .knowledge-wiki { grid-template-columns: 220px minmax(0, 1fr); }
+}
+@media (max-width: 1250px) {
+  :where(.literature-workbench-root) .paper-graph-view { grid-template-columns: 260px minmax(360px, 1fr) 310px; }
+  :where(.literature-workbench-root) .knowledge-wiki { grid-template-columns: 205px minmax(0, 1fr); }
+}
+@media (max-width: 820px) {
+  :where(.literature-workbench-root) .knowledge-wiki { grid-template-columns: 190px minmax(0, 1fr); }
+}
+:where(.literature-workbench-root) .paper-list-head small,
+:where(.literature-workbench-root) .paper-list-scroll > button small,
+:where(.literature-workbench-root) .paper-list-scroll > button span,
+:where(.literature-workbench-root) .paper-graph-toolbar small { font-size: var(--type-caption); }
+:where(.literature-workbench-root) .paper-list-head b,
+:where(.literature-workbench-root) .paper-list-scroll > button b { font-size: var(--type-control); }
+:where(.literature-workbench-root) .paper-list-tabs button,
+:where(.literature-workbench-root) .paper-graph-actions input,
+:where(.literature-workbench-root) .paper-graph-actions button,
+:where(.literature-workbench-root) .paper-graph-toolbar select,
+:where(.literature-workbench-root) .year-legend { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .paper-list-tabs button { min-height: 34px; padding-inline: 8px; }
+:where(.literature-workbench-root) .paper-list-scroll > button { min-height: 76px; }
+:where(.literature-workbench-root) .paper-graph-toolbar h1 { font-size: var(--type-section); }
+:where(.literature-workbench-root) .paper-graph-toolbar p { font-size: var(--type-meta); line-height: 1.5; }
+:where(.literature-workbench-root) .paper-open-row,
+:where(.literature-workbench-root) .paper-open-row button,
+:where(.literature-workbench-root) .paper-abstract b,
+:where(.literature-workbench-root) .paper-abstract p,
+:where(.literature-workbench-root) .paper-detail dl div,
+:where(.literature-workbench-root) .paper-detail > button,
+:where(.literature-workbench-root) .algorithm-note { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .year-legend small,
+:where(.literature-workbench-root) .year-legend span,
+:where(.literature-workbench-root) .algorithm-note span { font-size: var(--type-caption); }
+:where(.literature-workbench-root) .wiki-create input,
+:where(.literature-workbench-root) .wiki-create button,
+:where(.literature-workbench-root) .wiki-search > input,
+:where(.literature-workbench-root) .wiki-search-results b,
+:where(.literature-workbench-root) .wiki-search-results span,
+:where(.literature-workbench-root) .wiki-nav-label,
+:where(.literature-workbench-root) .knowledge-wiki .wiki-toc small,
+:where(.literature-workbench-root) .knowledge-wiki .wiki-toc a { font-size: var(--type-caption); }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-library nav > button { min-height: 46px; }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-library nav b { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .knowledge-wiki .wiki-library nav small { font-size: var(--type-caption); }
+:where(.literature-workbench-root) .wiki-library-title small,
+:where(.literature-workbench-root) .wiki-evidence-list article > span { font-size: var(--type-caption); }
+:where(.literature-workbench-root) .wiki-article-head > div:first-child > span,
+:where(.literature-workbench-root) .wiki-article-actions small,
+:where(.literature-workbench-root) .wiki-section-title small,
+:where(.literature-workbench-root) .wiki-section-title > span { font-size: var(--type-caption); }
+:where(.literature-workbench-root) .wiki-article-head p,
+:where(.literature-workbench-root) .wiki-article-head > button,
+:where(.literature-workbench-root) .wiki-article-actions button,
+:where(.literature-workbench-root) .wiki-section-title button { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .wiki-infobox > p,
+:where(.literature-workbench-root) .wiki-infobox dl > div { font-size: var(--type-meta); line-height: 1.55; }
+:where(.literature-workbench-root) .wiki-page-grid h3,
+:where(.literature-workbench-root) .wiki-evidence-list h3 { font-size: var(--type-control); }
+:where(.literature-workbench-root) .wiki-page-grid p,
+:where(.literature-workbench-root) .wiki-evidence-list p,
+:where(.literature-workbench-root) .wiki-empty { font-size: var(--type-meta); }
+:where(.literature-workbench-root) .wiki-page-grid > button { min-height: 78px; }
+:where(.literature-workbench-root) .project-management article, :where(.literature-workbench-root) .research-workflow-card, :where(.literature-workbench-root) .paper-list-scroll > button.active { box-shadow: none !important; }
+:where(.literature-workbench-root) .project-workflow-dashboard { min-height: 0; overflow: auto; padding: 28px clamp(20px, 4vw, 54px) 60px; background: #f7f9f9; }
+:where(.literature-workbench-root) .project-workflow-dashboard > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+:where(.literature-workbench-root) .project-workflow-dashboard > header small { color: #54809a; font-size: var(--hf-caption); }
+:where(.literature-workbench-root) .project-workflow-dashboard > header h1 { margin: 5px 0; font-size: var(--hf-title); }
+:where(.literature-workbench-root) .project-workflow-dashboard > header p { color: var(--hf-muted); font-size: var(--hf-body); }
+:where(.literature-workbench-root) .project-workflow-dashboard > header button { min-height: var(--hf-hit); }
+:where(.literature-workbench-root) .project-workflow-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 24px 0; border: 1px solid var(--hf-line); background: #fff; }
+:where(.literature-workbench-root) .project-workflow-stats article { display: grid; gap: 5px; padding: 18px; border-right: 1px solid var(--hf-line); }
+:where(.literature-workbench-root) .project-workflow-stats article:last-child { border-right: 0; }
+:where(.literature-workbench-root) .project-workflow-stats b { font-size: 22px; }
+:where(.literature-workbench-root) .project-workflow-stats span { color: var(--hf-muted); font-size: var(--hf-control); }
+:where(.literature-workbench-root) .project-workflow-list { display: grid; gap: 14px; }
+:where(.literature-workbench-root) .project-workflow-empty { max-width: 520px; margin: 70px auto; text-align: center; }
+:where(.literature-workbench-root) .project-workflow-empty span { font-size: 40px; color: #5896b9; }
+:where(.literature-workbench-root) .project-workflow-empty h2 { font-size: var(--hf-section); }
+:where(.literature-workbench-root) .project-workflow-empty p { color: var(--hf-muted); font-size: var(--hf-body); line-height: 1.65; }
+:where(.literature-workbench-root) .research-workflow-card header small, :where(.literature-workbench-root) .research-workflow-card header span, :where(.literature-workbench-root) .workflow-scope, :where(.literature-workbench-root) .workflow-disclosure, :where(.literature-workbench-root) .workflow-approval, :where(.literature-workbench-root) .workflow-progress, :where(.literature-workbench-root) .workflow-review, :where(.literature-workbench-root) .workflow-artifacts, :where(.literature-workbench-root) .research-workflow-card footer { font-size: var(--hf-control); }
+:where(.literature-workbench-root) .literature-start { min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 40px; padding: clamp(34px, 7vw, 90px); background: #fff; }
+:where(.literature-workbench-root) .literature-start > section { max-width: 760px; align-self: center; }
+:where(.literature-workbench-root) .literature-start > section > small { color: #3977d8; font-size: var(--hf-caption); }
+:where(.literature-workbench-root) .literature-start h1 { max-width: 680px; margin: 12px 0; font-family: Georgia, "Songti SC", serif; font-size: clamp(30px, 4vw, 50px); line-height: 1.16; }
+:where(.literature-workbench-root) .literature-start > section > p { color: var(--hf-muted); font-size: 16px; line-height: 1.7; }
+:where(.literature-workbench-root) .literature-start > section > div { display: flex; gap: 8px; margin-top: 28px; }
+:where(.literature-workbench-root) .literature-start input { flex: 1; min-width: 0; min-height: 48px; padding: 10px 14px; border: 1px solid #bfcdd2; border-radius: 9px; }
+:where(.literature-workbench-root) .literature-start button { min-height: 48px; padding: 10px 18px; border: 0; border-radius: 9px; color: #fff; background: #3478a7; }
+:where(.literature-workbench-root) .literature-start > aside { align-self: center; border-left: 1px solid var(--hf-line); padding-left: 28px; }
+:where(.literature-workbench-root) .literature-start > aside header { display: flex; justify-content: space-between; margin-bottom: 12px; }
+:where(.literature-workbench-root) .literature-start > aside article { padding: 12px 0; border-bottom: 1px solid var(--hf-line); }
+:where(.literature-workbench-root) .literature-start > aside article small { color: #50816f; font-size: var(--hf-caption); }
+:where(.literature-workbench-root) .literature-start > aside article b { display: block; margin: 5px 0; font-size: var(--hf-control); }
+:where(.literature-workbench-root) .literature-start > aside article p { overflow: hidden; margin: 0; color: var(--hf-muted); font-size: var(--hf-caption); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+:where(.literature-workbench-root) .paper-graph-view.detail-closed { grid-template-columns: 268px minmax(0, 1fr); }
+:where(.literature-workbench-root) .paper-graph-view.detail-closed .paper-detail { display: none; }
+:where(.literature-workbench-root) .paper-detail-head { display: flex; align-items: center; justify-content: space-between; }
+:where(.literature-workbench-root) .paper-detail-head small { color: #3977d8; font-size: var(--hf-caption); }
+:where(.literature-workbench-root) .paper-detail-head button { width: 38px; height: 38px; border: 0; background: transparent; font-size: 20px; }
+:where(.literature-workbench-root) .paper-detail-reopen { position: absolute; z-index: 8; top: 14px; right: 16px; min-height: 38px; border: 1px solid var(--hf-line); border-radius: 8px; background: #fff; }
+:where(.literature-workbench-root) .paper-list-head small, :where(.literature-workbench-root) .paper-list-scroll > button small, :where(.literature-workbench-root) .paper-list-scroll > button span, :where(.literature-workbench-root) .paper-graph-toolbar small, :where(.literature-workbench-root) .paper-graph-toolbar p { font-size: var(--hf-caption); }
+:where(.literature-workbench-root) .paper-list-head b, :where(.literature-workbench-root) .paper-list-scroll > button b, :where(.literature-workbench-root) .paper-list-tabs button, :where(.literature-workbench-root) .paper-graph-actions input, :where(.literature-workbench-root) .paper-graph-actions button, :where(.literature-workbench-root) .paper-graph-toolbar select, :where(.literature-workbench-root) .paper-detail > p, :where(.literature-workbench-root) .paper-open-row, :where(.literature-workbench-root) .paper-abstract p, :where(.literature-workbench-root) .paper-detail dl div, :where(.literature-workbench-root) .paper-annotation, :where(.literature-workbench-root) .paper-evidence-semantics label, :where(.literature-workbench-root) .paper-detail > button, :where(.literature-workbench-root) .algorithm-note { font-size: var(--hf-control); }
+:where(.literature-workbench-root) .paper-detail { padding: 20px; }
+:where(.literature-workbench-root) .paper-detail h2 { font-size: 22px; }
+:where(.literature-workbench-root) .paper-annotation input, :where(.literature-workbench-root) .paper-annotation select { width: 100%; min-height: 38px; padding: 8px; border: 1px solid #d8dcd8; border-radius: 7px; background: #fff; }
+:where(.literature-workbench-root) .paper-annotation.compact { margin-block: 9px; }
+:where(.literature-workbench-root) .paper-annotation.compact input { font: inherit; }
+:where(.literature-workbench-root) .paper-relation-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 10px; border: 1px solid var(--hf-line); border-radius: 8px; color: #64727a; background: rgba(255,255,255,.92); font-size: var(--hf-caption); }
+:where(.literature-workbench-root) .paper-relation-legend span { display: inline-flex; align-items: center; gap: 5px; }
+:where(.literature-workbench-root) .paper-relation-legend i { width: 18px; height: 0; border-top: 2px solid; }
+:where(.literature-workbench-root) .paper-relation-legend i.dashed { border-top-style: dashed; }
+:where(.literature-workbench-root) .paper-relation-legend i.dotted { border-top-style: dotted; }
+:where(.literature-workbench-root) .wiki-editor-shell { max-width: 1120px; }
+:where(.literature-workbench-root) .wiki-article p, :where(.literature-workbench-root) .wiki-lead p, :where(.literature-workbench-root) .wiki-editor-shell { font-size: var(--hf-body); line-height: 1.72; }
+@media (max-width: 1199px) {
+  :where(.literature-workbench-root) .paper-graph-view.detail-open { grid-template-columns: 250px minmax(0, 1fr); position: relative; }
+  :where(.literature-workbench-root) .paper-graph-view.detail-open .paper-detail { position: absolute; z-index: 15; top: 0; right: 0; bottom: 0; width: min(430px, calc(100% - 24px)); border-left: 1px solid #cdd8dc; }
+  :where(.literature-workbench-root) .paper-graph-view.detail-closed { grid-template-columns: 250px minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  :where(.literature-workbench-root) .literature-start { grid-template-columns: 1fr; padding: 34px 24px; }:where(.literature-workbench-root) .literature-start > aside { border-left: 0; border-top: 1px solid var(--hf-line); padding: 24px 0 0; }
+  :where(.literature-workbench-root) .paper-graph-view.detail-open, :where(.literature-workbench-root) .paper-graph-view.detail-closed { grid-template-columns: minmax(0, 1fr); }
+  :where(.literature-workbench-root) .paper-list { display: none; }:where(.literature-workbench-root) .paper-graph-main { padding: 14px; }:where(.literature-workbench-root) .paper-graph-actions { max-width: 100%; }:where(.literature-workbench-root) .paper-graph-toolbar { flex-direction: column; }
+  :where(.literature-workbench-root) .knowledge-wiki { grid-template-columns: minmax(0, 1fr) !important; }:where(.literature-workbench-root) .knowledge-wiki > .wiki-library { display: none; }:where(.literature-workbench-root) .wiki-editor-shell { padding: 22px; }
+  :where(.literature-workbench-root) .project-workflow-stats { grid-template-columns: repeat(2, 1fr); }:where(.literature-workbench-root) .project-workflow-stats article:nth-child(2) { border-right: 0; }:where(.literature-workbench-root) .project-workflow-stats article:nth-child(-n+2) { border-bottom: 1px solid var(--hf-line); }
+}
+
+/* —— 第 2 层：views.css · 文献工作台（原样迁移，后应用覆盖重置） ─────────────────────────────────────────────── */
+
+.paper-graph-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px minmax(0, 1fr); background: var(--xl-bg); }
+.paper-list { border-right: 1px solid var(--xl-border); background: var(--xl-bg-secondary); display: flex; flex-direction: column; min-height: 0; }
+.paper-list-head { padding: var(--xl-space-4); display: grid; gap: var(--xl-space-3); }
+.paper-list-head small { font-size: var(--xl-type-caption); letter-spacing: 0.12em; color: var(--xl-faint); }
+.paper-list-head form, .paper-list-head .paper-open-row { display: flex; gap: var(--xl-space-2); }
+.paper-list-head input { flex: 1; padding: 7px var(--xl-space-3); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-md); background: var(--xl-surface); color: var(--xl-text); font-size: var(--xl-type-control); outline: none; }
+.paper-list-head input:focus { border-color: var(--xl-accent); }
+.paper-list-tabs { display: inline-flex; padding: 3px; border-radius: var(--xl-radius-md); background: var(--xl-surface); border: 1px solid var(--xl-border); }
+.paper-list-tabs button { padding: 4px var(--xl-space-2); border-radius: var(--xl-radius-sm); font-size: var(--xl-type-caption); color: var(--xl-muted); }
+.paper-list-tabs button.active { background: var(--xl-accent-soft); color: var(--xl-accent); font-weight: 600; }
+.paper-list-scroll { flex: 1; overflow: auto; display: grid; gap: var(--xl-space-2); padding: 0 var(--xl-space-3) var(--xl-space-3); align-content: start; }
+.paper-list-empty { padding: var(--xl-space-6) var(--xl-space-3); color: var(--xl-faint); font-size: var(--xl-type-small); text-align: center; }
+.paper-list-scroll article {
+  padding: var(--xl-space-3);
+  border-radius: var(--xl-radius-md);
+  background: var(--xl-surface);
+  border: 1px solid var(--xl-border);
+  display: grid;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-color var(--xl-motion-fast) var(--xl-ease-tide), box-shadow var(--xl-motion-fast) var(--xl-ease-tide);
+}
+.paper-list-scroll article:hover { border-color: var(--xl-border-strong); box-shadow: var(--xl-shadow-sm); }
+.paper-list-scroll article.active { border-color: var(--xl-accent); }
+.paper-list-scroll article b { font-size: var(--xl-type-small); line-height: var(--xl-leading-ui); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.paper-list-scroll article small { font-size: var(--xl-type-caption); color: var(--xl-faint); }
+.paper-list-scroll article .paper-promote { justify-self: start; font-size: var(--xl-type-caption); color: var(--xl-evidence); }
+.paper-action-status { padding: 0 var(--xl-space-4) var(--xl-space-2); font-size: var(--xl-type-caption); color: var(--xl-muted); }
+
+.paper-graph-canvas { position: relative; min-width: 0; display: flex; flex-direction: column; }
+.paper-graph-toolbar { display: flex; align-items: center; gap: var(--xl-space-3); padding: var(--xl-space-3) var(--xl-space-4); border-bottom: 1px solid var(--xl-border); }
+.paper-graph-toolbar small { font-size: var(--xl-type-caption); color: var(--xl-faint); }
+.paper-graph-actions { display: flex; gap: var(--xl-space-2); margin-left: auto; }
+.paper-graph-actions button { padding: 5px var(--xl-space-3); border-radius: var(--xl-radius-md); border: 1px solid var(--xl-border); background: var(--xl-surface); color: var(--xl-muted); font-size: var(--xl-type-small); }
+.paper-graph-actions button:hover { background: var(--xl-hover); color: var(--xl-text); }
+.paper-graph-canvas .paper-graph-bottom { display: flex; justify-content: space-between; align-items: center; padding: var(--xl-space-2) var(--xl-space-4); border-top: 1px solid var(--xl-border); font-size: var(--xl-type-caption); color: var(--xl-faint); }
+.paper-relation-legend, .year-legend { display: flex; flex-wrap: wrap; gap: var(--xl-space-3); }
+.paper-relation-legend span, .year-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.paper-relation-legend i, .year-legend i { width: 9px; height: 9px; border-radius: var(--xl-radius-full); display: inline-block; }
+.graph-utility { position: absolute; top: var(--xl-space-3); right: var(--xl-space-3); z-index: 5; display: flex; gap: var(--xl-space-2); }
+.graph-utility button { padding: 5px var(--xl-space-2); border-radius: var(--xl-radius-md); background: var(--xl-elevated); border: 1px solid var(--xl-border); color: var(--xl-muted); font-size: var(--xl-type-caption); box-shadow: var(--xl-shadow-sm); }
+.graph-utility button:hover { color: var(--xl-text); }
+.algorithm-note { font-size: var(--xl-type-caption); color: var(--xl-faint); }
+
+.paper-detail {
+  position: absolute;
+  top: var(--xl-space-3);
+  right: var(--xl-space-3);
+  bottom: var(--xl-space-3);
+  z-index: 6;
+  width: min(400px, calc(100% - 32px));
+  overflow: auto;
+  padding: var(--xl-space-4);
+  display: grid;
+  gap: var(--xl-space-3);
+  align-content: start;
+  background: var(--xl-elevated);
+  border: 1px solid var(--xl-border-strong);
+  border-radius: var(--xl-radius-lg);
+  box-shadow: var(--xl-shadow-lg);
+  animation: xl-tide-rise var(--xl-motion-normal) var(--xl-ease-tide) both;
+}
+.paper-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--xl-space-2); }
+.paper-detail-head small { font-size: var(--xl-type-caption); letter-spacing: 0.1em; color: var(--xl-accent); }
+.paper-detail-head button { color: var(--xl-faint); font-size: var(--xl-type-title); line-height: 1; }
+.paper-detail-head button:hover { color: var(--xl-text); }
+.paper-detail h2 { font-size: var(--xl-type-lead); font-weight: 650; line-height: var(--xl-leading-ui); }
+.paper-abstract { font-size: var(--xl-type-small); line-height: var(--xl-leading-cjk); color: var(--xl-muted); }
+.paper-evidence-semantics { display: grid; gap: var(--xl-space-2); font-size: var(--xl-type-small); }
+.paper-annotation { padding: var(--xl-space-3); border-radius: var(--xl-radius-md); background: var(--xl-bg-secondary); border: 1px solid var(--xl-border); display: grid; gap: 6px; }
+.paper-annotation.compact { padding: var(--xl-space-2); }
+.paper-annotation textarea { min-height: 72px; padding: var(--xl-space-2); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-sm); background: var(--xl-surface); color: var(--xl-text); font-size: var(--xl-type-small); line-height: var(--xl-leading-cjk); resize: vertical; outline: none; }
+.paper-annotation select, .paper-annotation input { padding: 5px var(--xl-space-2); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-sm); background: var(--xl-surface); color: var(--xl-text); font-size: var(--xl-type-small); }
+.paper-detail-reopen { justify-self: start; font-size: var(--xl-type-caption); color: var(--xl-accent); }
+
+
+
+/* —— 第 3 层：迁移兼容补丁 ——
+   旧 views.css 的 .paper-graph-canvas .paper-graph-bottom（后代选择器）与组件实际
+   结构（bottom 是 canvas 的兄弟节点）不匹配；显式补上工具条布局。 */
+.literature-workbench-root .paper-graph-main { display: flex; flex-direction: column; }
+.literature-workbench-root .paper-graph-canvas { flex: 1; min-height: 0; position: relative; }
+.literature-workbench-root .paper-graph-bottom { position: static; display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-top: 1px solid var(--xl-border); font-size: var(--xl-type-caption); color: var(--xl-faint); pointer-events: auto; }
+.literature-workbench-root .paper-relation-legend,
+.literature-workbench-root .year-legend { display: flex; flex-wrap: wrap; gap: 12px; }
+.literature-workbench-root .paper-relation-legend span,
+.literature-workbench-root .year-legend span { display: inline-flex; align-items: center; gap: 5px; pointer-events: auto; }
+.literature-workbench-root .paper-relation-legend i,
+.literature-workbench-root .year-legend i { width: 9px; height: 9px; border-radius: var(--xl-radius-full); display: inline-block; }
+.literature-workbench-root .graph-utility { position: absolute; top: 12px; right: 16px; }

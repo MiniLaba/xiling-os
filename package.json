@@ -8,18 +8,20 @@
     "node": ">=22.19.0"
   },
   "scripts": {
-    "build": "pnpm --filter @xiling/desktop build",
+    "build": "pnpm --filter '@xiling/desktop...' build",
     "dev": "pnpm --filter @xiling/desktop start",
     "start": "pnpm --filter @xiling/desktop start",
-    "typecheck": "pnpm --filter @xiling/desktop typecheck",
-    "test": "pnpm --filter @xiling/desktop smoke",
+    "typecheck": "pnpm --filter '@xiling/desktop...' build && pnpm --filter '@xiling/desktop...' typecheck",
+    "test": "pnpm --filter '@xiling/desktop...' build && pnpm --filter @xiling/a2a-adapter-standard build && pnpm --filter @xiling/credentials test && pnpm --filter @xiling/pi-runtime test && pnpm --filter @xiling/os-runtime test && pnpm --filter @xiling/os-kernel test && pnpm --filter @xiling/a2a-adapter-standard test && pnpm --filter @xiling/desktop smoke",
     "smoke": "pnpm --filter @xiling/desktop smoke",
+    "boundary": "node scripts/check-product-boundary.mjs",
     "compliance": "node scripts/compliance.mjs",
     "sbom:generate": "node scripts/compliance.mjs --write-sbom",
-    "check": "pnpm typecheck && pnpm smoke && pnpm compliance"
+    "check": "pnpm boundary && pnpm typecheck && pnpm test && pnpm compliance"
   },
   "devDependencies": {
     "@types/node": "22.19.19",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.11"
   }
 }

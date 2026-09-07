@@ -13,9 +13,9 @@ export default defineConfig({
   build: {
     emptyOutDir: true,
     lib: {
-      entry: path.join(packageRoot, "renderer-src/window-runtime.tsx"),
+      entry: { "window-runtime": path.join(packageRoot, "renderer-src/window-runtime.tsx"), companion: path.join(packageRoot, "renderer-src/apps/companion.tsx") },
       formats: ["es"],
-      fileName: () => "window-runtime.js",
+      fileName: (_format, entryName) => `${entryName}.js`,
     },
     outDir: path.join(packageRoot, "renderer/generated"),
     minify: "esbuild",

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { open as openFile, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -86,7 +87,7 @@ function assertTrustedSender(event: IpcMainInvokeEvent): void {
 }
 
 function registerDesktopProtocol(): void {
-  protocol.handle("xiling", (request) => {
+  protocol.handle("xiling", async (request) => {
     const url = new URL(request.url);
     const requestedPath = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
     const candidate = path.resolve(rendererDirectory, `.${requestedPath}`);
@@ -95,7 +96,11 @@ function registerDesktopProtocol(): void {
       return new Response("Not found", { status: 404 });
     }
 
-    return net.fetch(pathToFileURL(candidate).toString());
+    const response = await net.fetch(pathToFileURL(candidate).toString());
+    // 本地源文件直接服务：禁启发式缓存，避免迭代时渲染器拿到旧资源
+    const headers = new Headers(response.headers);
+    headers.set("cache-control", "no-cache");
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   });
 }
 
@@ -109,6 +114,7 @@ const coreResource = new LazyResource<UtilityProcess>(
           env: {
             ...process.env,
             XILING_SYSTEM_DB_PATH: path.join(app.getPath("userData"), "system.sqlite"),
+            XILING_OS_DATA_DIR: path.join(app.getPath("userData"), "os-data"),
           },
         });
         coreProcess = child;
@@ -194,6 +200,175 @@ function registerIpc(): void {
       coreReady,
       coreState: coreResource.state,
     };
+  });
+
+  ipcMain.handle("desktop:os-status", async (event) => {
+    assertTrustedSender(event);
+    return requestCore("os.status", {});
+  });
+
+  ipcMain.handle("desktop:os-snapshot", async (event) => {
+    assertTrustedSender(event);
+    return requestCore("os.snapshot", {});
+  });
+
+  ipcMain.handle("desktop:os-apps-manage", async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload) || JSON.stringify(payload).length > 70_000) throw new Error("Invalid App command");
+    return requestCore("os.apps.manage", payload);
+  });
+
+  ipcMain.handle("desktop:os-submit-goal", async (event, goal: unknown, sessionId: unknown, artifactIds: unknown = []) => {
+    assertTrustedSender(event);
+    if (typeof goal !== "string" || goal.trim() === "") throw new Error("请输入目标");
+    if (goal.length > 12000 || (sessionId !== undefined && (typeof sessionId !== "string" || sessionId.length > 200))) throw new Error("Invalid goal or session");
+    if (!Array.isArray(artifactIds) || artifactIds.length > 20 || artifactIds.some((id) => typeof id !== "string" || id.length > 200)) throw new Error("Invalid artifact selection");
+    return requestCore("os.goal.submit", { goal, sessionId, artifactIds });
+  });
+
+  ipcMain.handle("desktop:os-task-cancel", async (event, taskId: unknown) => {
+    assertTrustedSender(event);
+    if (typeof taskId !== "string") throw new Error("Invalid task id");
+    return requestCore("os.task.cancel", { taskId });
+  });
+
+  ipcMain.handle("desktop:os-task-retry", async (event, taskId: unknown) => {
+    assertTrustedSender(event);
+    if (typeof taskId !== "string") throw new Error("Invalid task id");
+    return requestCore("os.task.retry", { taskId });
+  });
+
+  ipcMain.handle("desktop:os-task-priority", async (event, taskId: unknown, priority: unknown) => {
+    assertTrustedSender(event);
+    if (typeof taskId !== "string" || typeof priority !== "number") throw new Error("Invalid task priority");
+    return requestCore("os.task.priority.set", { taskId, priority });
+  });
+
+  ipcMain.handle("desktop:os-artifact-get", async (event, artifactId: unknown) => {
+    assertTrustedSender(event);
+    if (typeof artifactId !== "string") throw new Error("Invalid artifact id");
+    return requestCore("os.artifact.get", { artifactId });
+  });
+  ipcMain.handle("desktop:os-artifact-save-answer", async (event, messageId: unknown) => {
+    assertTrustedSender(event);
+    if (typeof messageId !== "string" || messageId.length > 200) throw new Error("Invalid message id");
+    return requestCore("os.artifact.saveAnswer", { messageId });
+  });
+  ipcMain.handle("desktop:os-memory-manage", async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    if (!payload || typeof payload !== "object" || JSON.stringify(payload).length > 10_000) throw new Error("Invalid memory request");
+    return requestCore("os.memory.manage", payload);
+  });
+  ipcMain.handle("desktop:os-runtime-enable", async (event) => {
+    assertTrustedSender(event);
+    return requestCore("os.runtime.enable", {});
+  });
+  ipcMain.handle("desktop:os-artifact-import", async (event) => {
+    assertTrustedSender(event);
+    const choice = await dialog.showOpenDialog({ title: "导入文本作为显式任务材料", properties: ["openFile"], filters: [{ name: "文本", extensions: ["txt", "md", "csv", "json"] }] });
+    const file = choice.filePaths[0];
+    if (choice.canceled || !file) return {};
+    if (!/\.(txt|md|csv|json)$/i.test(file)) throw new Error("当前仅支持 UTF-8 文本文件");
+    const handle = await openFile(file, "r");
+    try {
+      const stat = await handle.stat();
+      if (!stat.isFile() || stat.size > 200_000) throw new Error("请选择不超过 200 KB 的普通文本文件");
+      const buffer = Buffer.alloc(200_001);
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+      if (bytesRead > 200_000) throw new Error("文件已变大，请重新选择");
+      const content = new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, bytesRead));
+      if (content.includes("\0")) throw new Error("不支持二进制内容");
+      return requestCore("os.artifact.import", { name: path.basename(file), content });
+    } finally { await handle.close(); }
+  });
+  ipcMain.handle("desktop:os-artifact-export", async (event, id: unknown) => {
+    assertTrustedSender(event);
+    if (typeof id !== "string") throw new Error("Invalid artifact id");
+    const { artifact } = await requestCore("os.artifact.get", { artifactId: id });
+    if (artifact.truncated) throw new Error("产物过大，不能将截断预览作为完整文件导出");
+    const safeName = artifact.name.replace(/[\\/<>:"|?*\x00-\x1f]/g, "_").replace(/[. ]+$/, "");
+    const choice = await dialog.showSaveDialog({ title: "导出产物", defaultPath: /\.(md|txt|csv|json)$/i.test(safeName) ? safeName : `${safeName || "artifact"}.txt` });
+    if (choice.canceled || !choice.filePath) return { exported: false };
+    if (!/\.(md|txt|csv|json)$/i.test(choice.filePath)) throw new Error("请使用文本文件扩展名");
+    // Exclusive creation prevents symlink races and accidental replacement of user files.
+    await writeFile(choice.filePath, artifact.content, { encoding: "utf8", flag: "wx" }).catch((error: NodeJS.ErrnoException) => { if (error.code === "EEXIST") throw new Error("目标已存在，请选择新的文件名；不会覆盖原文件"); throw error; });
+    return { exported: true };
+  });
+
+  ipcMain.handle("desktop:os-decide-approval", async (event, approvalId: unknown, decision: unknown) => {
+    assertTrustedSender(event);
+    if (typeof approvalId !== "string") throw new Error("Invalid approval id");
+    return requestCore("os.approval.decide", { approvalId, decision });
+  });
+
+  ipcMain.handle("desktop:os-models-list", async (event) => {
+    assertTrustedSender(event);
+    return requestCore("os.models.list", {});
+  });
+
+  ipcMain.handle("desktop:os-model-register", async (event, model: unknown) => {
+    assertTrustedSender(event);
+    if (!model || typeof model !== "object") throw new Error("Invalid model declaration");
+    return requestCore("os.models.register", model);
+  });
+
+  ipcMain.handle("desktop:os-agent-model-set", async (event, assignment: unknown) => {
+    assertTrustedSender(event);
+    if (!assignment || typeof assignment !== "object") throw new Error("Invalid model assignment");
+    return requestCore("os.agent.model.set", assignment);
+  });
+
+  ipcMain.handle("desktop:os-ui-action", async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    if (!payload || typeof payload !== "object") throw new Error("Invalid UI action");
+    return requestCore("os.ui.action", payload);
+  });
+
+  ipcMain.handle("desktop:os-credentials-list", async (event) => {
+    assertTrustedSender(event);
+    return requestCore("os.credentials.list", {});
+  });
+  ipcMain.handle("desktop:voice", async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    if (!payload || typeof payload !== "object" || JSON.stringify(payload).length > 8_100_000) throw new Error("无效语音请求");
+    return requestCore("os.voice", payload);
+  });
+  ipcMain.handle("desktop:os-credentials-set", async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    if (!payload || typeof payload !== "object") throw new Error("Invalid credential payload");
+    return requestCore("os.credentials.set", payload);
+  });
+  ipcMain.handle("desktop:os-credentials-clear", async (event, providerId: unknown) => {
+    assertTrustedSender(event);
+    if (typeof providerId !== "string") throw new Error("Invalid provider id");
+    return requestCore("os.credentials.clear", { providerId });
+  });
+  ipcMain.handle("desktop:os-credentials-test", async (event, providerId: unknown, modelId: unknown) => {
+    assertTrustedSender(event);
+    if (typeof providerId !== "string" || typeof modelId !== "string") throw new Error("Invalid connection test");
+    return requestCore("os.credentials.test", { providerId, modelId });
+  });
+
+  // 插件 APP 的受控出网：核心网关校验 network.access 能力后，主进程代为 fetch。
+  // 渲染器 CSP connect-src 'self' 保持不放行外网。
+  ipcMain.handle("desktop:net-fetch", async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    if (!payload || typeof payload !== "object") throw new Error("Invalid net-fetch payload");
+    const { appId, url, method, headers } = payload as { appId?: unknown; url?: unknown; method?: unknown; headers?: unknown };
+    if (typeof appId !== "string" || typeof url !== "string") throw new Error("net-fetch requires appId and url");
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("Only http(s) URLs are fetchable");
+    await requestCore("network.authorize", { appId, capability: "network.access" });
+    const fetchInit: RequestInit = { method: typeof method === "string" && method ? method : "GET" };
+    if (headers && typeof headers === "object") fetchInit.headers = headers as Record<string, string>;
+    const response = await net.fetch(url, fetchInit);
+    const responseHeaders: Record<string, string> = {};
+    for (const header of ["content-type", "retry-after"]) {
+      const value = response.headers.get(header);
+      if (value) responseHeaders[header] = value;
+    }
+    const bodyText = await response.text();
+    return { status: response.status, headers: responseHeaders, bodyText };
   });
 
   ipcMain.handle("desktop:apps-list", async (event) => {
@@ -364,7 +539,7 @@ function createMainWindow(): void {
     show: false,
     title: "汐灵科研桌面",
     webPreferences: {
-      preload: path.join(runtimeDirectory, "preload.js"),
+      preload: path.join(runtimeDirectory, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -373,6 +548,10 @@ function createMainWindow(): void {
   });
 
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  mainWindow.webContents.session.setPermissionRequestHandler((contents, permission, callback, details) => {
+    const audioOnly = permission === "media" && "mediaTypes" in details && details.mediaTypes?.length === 1 && details.mediaTypes[0] === "audio";
+    callback(contents === mainWindow?.webContents && contents.getURL().startsWith("xiling://app/") && audioOnly === true);
+  });
   mainWindow.webContents.once("did-finish-load", () => {
     rendererReady = true;
     if (launchSmoke) {

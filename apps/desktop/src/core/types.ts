@@ -15,6 +15,12 @@ export interface AppManifest {
   entry: string;
   capabilities: readonly AppCapability[];
   builtIn: boolean;
+  /** dock 图标键（由插件 ui 描述符派生，渲染器解析） */
+  icon?: string;
+  /** 窗口题眉 */
+  eyebrow?: string;
+  /** 一句话描述 */
+  description?: string;
 }
 
 export interface WorkspaceRoot {
