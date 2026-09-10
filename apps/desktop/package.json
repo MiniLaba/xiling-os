@@ -1,0 +1,41 @@
+{
+  "name": "@xiling/desktop",
+  "version": "2.0.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && vite build --config vite.renderer.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
+    "start": "pnpm build && electron dist/main.js",
+    "test:foundation": "pnpm build && node --test dist/core/*.test.js dist/windowing/*.test.js",
+    "smoke": "pnpm test:foundation && node scripts/smoke.mjs && node scripts/container-independence.mjs"
+  },
+  "dependencies": {
+    "@pixi/unsafe-eval": "catalog:",
+    "@xiling/credentials": "workspace:*",
+    "@xiling/os-domain": "workspace:*",
+    "@xiling/os-kernel": "workspace:*",
+    "@xiling/os-runtime": "workspace:*",
+    "@xiling/pi-runtime": "workspace:*",
+    "cytoscape": "3.34.1",
+    "pixi-live2d-display": "catalog:",
+    "pixi.js": "catalog:",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "@xiling/knowledge": "workspace:*",
+    "@xiling/api-contracts": "workspace:*",
+    "@xiling/contracts": "workspace:*",
+    "@xiling/research-graph": "workspace:*",
+    "@xiling/ui-tokens": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.1.0",
+    "electron": "44.0.0",
+    "typescript": "5.9.3",
+    "vite": "8.2.2"
+  }
+}

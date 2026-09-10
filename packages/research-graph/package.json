@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@ladybugdb/core": "0.19.1",
-    "@xiling/contracts": "workspace:*"
+    "@xiling/contracts": "workspace:*",
+    "@xiling/knowledge": "workspace:*"
   }
 }

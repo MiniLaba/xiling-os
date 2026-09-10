@@ -45,81 +45,8 @@ function addArtifact(builder: ChangeSetBuilder, uri: string, createdAt: string):
   return version;
 }
 
-export function knowledgeRecordToChangeSet(record: ResearchProjectionOutboxRecord, currentProject?: ResearchProject): ResearchGraphChangeSet {
-  const builder = new ChangeSetBuilder(record.projectId);
-  if (record.eventType === "knowledge.project.upserted") {
-    addProject(builder, record.payload as ResearchProject);
-    return builder.build();
-  }
-  if (!currentProject) throw new Error(`Knowledge projection requires project ${record.projectId}`);
-  addProject(builder, currentProject);
-  if (record.eventType === "knowledge.wiki.revision.created") {
-    const payload = record.payload as { page: { id: string; projectId: string; slug: string; title: string; createdAt: string; updatedAt: string }; revision: WikiPageRevision };
-    const wiki = builder.node({
-      id: `wiki-revision:${payload.revision.id}`,
-      kind: "WikiRevisionRef",
-      title: `${payload.page.title} · v${payload.revision.version}`,
-      summary: compact(payload.revision.markdown),
-      revision: payload.revision.version,
-      sourceLocator: `wiki://${payload.page.id}/revisions/${payload.revision.version}`,
-      properties: { pageId: payload.page.id, slug: payload.page.slug, markdownHash: digest(payload.revision.markdown) },
-      createdAt: payload.revision.createdAt,
-      updatedAt: payload.revision.createdAt,
-    });
-    builder.relation("CONTAINS", record.projectId, wiki);
-    builder.relation("DOCUMENTS", wiki, questionId(record.projectId));
-    for (const uri of payload.revision.artifactUris) builder.relation("REFERENCES", wiki, addArtifact(builder, uri, payload.revision.createdAt));
-    return builder.build();
-  }
-  const evidence = record.payload as EvidenceRecord;
-  const paper = builder.node({
-    id: `paper:${evidence.paper.id}`,
-    kind: "Paper",
-    title: evidence.paper.title,
-    summary: `${evidence.paper.authors.join(", ")} · ${evidence.paper.year}`,
-    ...(evidence.paper.url ? { sourceLocator: evidence.paper.url } : {}),
-    properties: { paperId: evidence.paper.id, year: evidence.paper.year, authors: evidence.paper.authors, citationCount: evidence.paper.citationCount, provider: evidence.paper.source, abstract: evidence.paper.abstract },
-    createdAt: evidence.createdAt,
-    updatedAt: evidence.createdAt,
-  });
-  const fragment = builder.node({
-    id: `source-fragment:${evidence.id}`,
-    kind: "SourceFragment",
-    title: `证据摘录 · ${evidence.paper.title}`,
-    summary: compact(evidence.sourceQuote || evidence.note || "已固定到项目证据库，尚未添加阅读标注。"),
-    ...(evidence.sourceLocator || evidence.paper.url ? { sourceLocator: evidence.sourceLocator ?? evidence.paper.url } : {}),
-    properties: { evidenceRecordId: evidence.id, note: evidence.note, sourceQuote: evidence.sourceQuote, limitations: evidence.limitations },
-    createdAt: evidence.createdAt,
-    updatedAt: evidence.createdAt,
-  });
-  const assertion = builder.node({
-    id: `evidence-assertion:${evidence.id}`,
-    kind: "EvidenceAssertion",
-    title: `${evidenceStanceLabel(evidence.stance)} · ${evidence.paper.title}`,
-    summary: compact(evidence.note || "尚未添加阅读标注。"),
-    stance: evidence.stance,
-    confidence: evidence.confidence,
-    properties: { evidenceRecordId: evidence.id, paperId: evidence.paper.id, limitations: evidence.limitations },
-    createdAt: evidence.createdAt,
-    updatedAt: evidence.createdAt,
-  });
-  builder.relation("CONTAINS", record.projectId, paper);
-  builder.relation("CONTAINS", record.projectId, assertion);
-  builder.relation("HAS_FRAGMENT", paper, fragment);
-  builder.relation("BASED_ON", assertion, fragment);
-  if (evidence.claimRevisionId) builder.relation("ASSERTS", assertion, evidence.claimRevisionId);
-  builder.relation("EVALUATES", assertion, questionId(record.projectId));
-  return builder.build();
-}
-
-function evidenceStanceLabel(stance: EvidenceRecord["stance"]): string {
-  switch (stance) {
-    case "supports": return "支持";
-    case "refutes": return "反驳";
-    case "qualifies": return "限定";
-    case "insufficient": return "证据尚不充分";
-  }
-}
+export { knowledgeRecordToChangeSet } from "@xiling/research-graph";
+import { knowledgeRecordToChangeSet } from "@xiling/research-graph";
 
 function workflowStatus(status: ProjectResearchWorkflow["status"]): ResearchEntityStatus {
   switch (status) {

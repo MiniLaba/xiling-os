@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+export { knowledgeRecordToChangeSet } from "./knowledge-projection.js";
 import { Connection, Database, type LbugValue, type QueryResult } from "@ladybugdb/core";
 import type {
   EvidenceStance,

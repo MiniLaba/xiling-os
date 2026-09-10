@@ -1,0 +1,45 @@
+{
+  "activeProduct": "research-os",
+  "generation": "research-desktop-integration",
+  "entrypoint": "apps/desktop",
+  "canonicalDocs": [
+    "docs/research-desktop/INTEGRATION.md",
+    "DESIGN.md"
+  ],
+  "activeWorkspacePaths": [
+    "apps/desktop",
+    "apps/server",
+    "apps/web",
+    "packages/a2a-adapter-standard",
+    "packages/contracts",
+    "packages/credentials",
+    "packages/os-domain",
+    "packages/os-kernel",
+    "packages/os-runtime",
+    "packages/pi-runtime",
+    "packages/ui-tokens",
+    "packages/agent-harness",
+    "packages/api-contracts",
+    "packages/artifacts",
+    "packages/connectors",
+    "packages/context",
+    "packages/domain-ocean",
+    "packages/domain-tabular",
+    "packages/execution",
+    "packages/knowledge",
+    "packages/literature",
+    "packages/multi-agent",
+    "packages/platform",
+    "packages/research-graph",
+    "packages/science-domains"
+  ],
+  "frozenLegacyPaths": [],
+  "legacyRefs": [
+    "v1-legacy-freeze",
+    "codex/legacy-v1"
+  ],
+  "supersededProductDocs": [
+    "docs/ai-native-os/PRODUCT_SPEC.md",
+    "docs/ai-native-os/FINISH_PLAN.md"
+  ]
+}

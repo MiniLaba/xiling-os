@@ -1,0 +1,74 @@
+export type ResourceUri = `workspace://${string}/${string}`;
+
+export type AppCapability =
+  | "workspace.read"
+  | "workspace.write"
+  | "artifact.read"
+  | "artifact.write"
+  | "agent.invoke"
+  | "network.access";
+
+export interface AppManifest {
+  id: string;
+  name: string;
+  version: string;
+  entry: string;
+  capabilities: readonly AppCapability[];
+  builtIn: boolean;
+  /** dock 图标键（由插件 ui 描述符派生，渲染器解析） */
+  icon?: string;
+  /** 窗口题眉 */
+  eyebrow?: string;
+  /** 一句话描述 */
+  description?: string;
+}
+
+export interface WorkspaceRoot {
+  id: string;
+  label: string;
+  nativePath: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DesktopWindowState {
+  id: string;
+  appId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
+  state: "open" | "minimized" | "maximized";
+  payload: Record<string, unknown>;
+  updatedAt: string;
+}
+
+export interface DesktopPreferences {
+  dockScale: number;
+}
+
+export interface WorkspaceEntry {
+  uri: ResourceUri;
+  name: string;
+  kind: "file" | "directory";
+  size: number | null;
+  modifiedAt: string;
+}
+
+export interface WorkspacePage {
+  entries: WorkspaceEntry[];
+  nextOffset: number;
+  hasMore: boolean;
+}
+
+export interface WorkspacePreview {
+  uri: ResourceUri;
+  name: string;
+  kind: "text" | "image" | "unsupported";
+  size: number;
+  modifiedAt: string;
+  text?: string;
+  dataUrl?: string;
+  truncated: boolean;
+}

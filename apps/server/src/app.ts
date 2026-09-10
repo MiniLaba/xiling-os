@@ -91,7 +91,8 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
   const executionRepository = new SqliteExecutionRepository(resolve(workspaceRoot, "executions.sqlite"));
   const executionRecovered = executionRepository.recoverInterrupted();
   if (executionRecovered > 0) console.warn(`[xiling] marked ${executionRecovered} interrupted execution(s) from a previous session as failed`);
-  void reapOrphanSandboxes()
+  // Optional legacy adapter only: installation/startup must not contact Docker.
+  if (process.env.XILING_ENABLE_DOCKER_ADAPTER === "1") void reapOrphanSandboxes()
     .then((removed) => { if (removed > 0) console.warn(`[xiling] removed ${removed} orphaned sandbox container(s) from a previous session`); })
     .catch(() => undefined);
   const executionCoordinator = new ExecutionCoordinator(executionRepository, createTabularExecutionRunner(artifactStore));

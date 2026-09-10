@@ -1,6 +1,7 @@
 node_modules/
 .pnpm-store/
 dist/
+apps/desktop/renderer/generated/
 .vite/
 .coverage/
 *.tsbuildinfo
@@ -39,3 +40,7 @@ services/runner/venv/
 services/runner/.venv/
 __pycache__/
 *.pyc
+
+# Local-only Live2D assets: obtain separately under upstream terms.
+apps/desktop/renderer/assets/companion/hiyori_pro_zh/
+apps/desktop/renderer/assets/companion/CubismSdkForWeb-5-r.3/

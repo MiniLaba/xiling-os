@@ -1,0 +1,44 @@
+{
+  "name": "@xiling/os-runtime",
+  "version": "2.0.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./cordis-plugin-host": {
+      "types": "./dist/cordis-plugin-host.d.ts",
+      "default": "./dist/cordis-plugin-host.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test dist/dsh-adapter.test.js dist/cordis-plugin-host.test.js dist/harness-history.smoke.test.js"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-compaction": "catalog:",
+    "@deepseek-ai/dsh-compaction-basic": "catalog:",
+    "@deepseek-ai/dsh-token-meter": "catalog:",
+    "@deepseek-ai/dsh-tools": "catalog:",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "catalog:",
+    "@deepseek-ai/dsh-agent": "catalog:",
+    "@deepseek-ai/dsh-session": "catalog:",
+    "@deepseek-ai/dsh-llm": "catalog:",
+    "@deepseek-ai/dsh-sdk-jsonrpc-server": "catalog:",
+    "@deepseek-ai/dsh-agent-spine-demo": "catalog:",
+    "@deepseek-ai/dsh-llm-pi-ai": "catalog:",
+    "@deepseek-ai/cordis": "catalog:",
+    "@deepseek-ai/dsh-sdk-client": "catalog:",
+    "@deepseek-ai/dsh-sdk-protocol": "catalog:",
+    "@xiling/os-domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "typescript": "5.9.3"
+  }
+}
