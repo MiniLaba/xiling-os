@@ -26,7 +26,8 @@
 
 <p align="center">
   <strong>🎬 汐灵 · 一问起潮，万象成章。</strong><br />
-  <a href="docs/media/Tide-Mind-90s-1080p.mp4">观看 / 下载 90 秒演示短片</a> ·
+  <a href="https://minilaba.github.io/xiling-os/film/">在线播放（GitHub Pages）</a> ·
+  <a href="docs/media/Tide-Mind-90s-1080p.mp4">下载 MP4</a> ·
   <a href="docs/media/Tide-Mind.zh-CN.srt">下载中文字幕</a>
 </p>
 

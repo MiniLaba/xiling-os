@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="汐灵 Tide Mind：一问起潮，万象成章。90 秒演示与概念短片。" />
+    <title>汐灵 · 一问起潮，万象成章。</title>
+    <style>
+      :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif; background: #040a12; color: #e4f0f8; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; overflow-x: hidden; background: radial-gradient(ellipse at 50% 100%, #0d334b 0, #06121e 42%, #040a12 76%); }
+      body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .35; background: repeating-linear-gradient(90deg, transparent 0 104px, rgba(58, 174, 209, .08) 105px, transparent 106px); }
+      main { position: relative; width: min(1320px, calc(100% - 48px)); margin: 0 auto; padding: 46px 0 72px; }
+      header { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+      .brand { letter-spacing: .18em; color: #61d7f2; font-size: 15px; font-weight: 600; }
+      .meta { color: #91a9bc; font-size: 14px; }
+      h1 { margin: 0 0 12px; font-family: Songti SC, STSong, serif; font-size: clamp(38px, 6vw, 74px); font-weight: 300; letter-spacing: .04em; }
+      .lead { margin: 0 0 32px; color: #a9c0cf; font-size: clamp(17px, 2vw, 22px); }
+      .video-shell { position: relative; overflow: hidden; padding: 1px; border: 1px solid rgba(109, 192, 222, .38); border-radius: 24px; background: linear-gradient(135deg, rgba(79, 175, 209, .18), rgba(9, 28, 43, .82)); box-shadow: 0 30px 90px rgba(0, 0, 0, .38); }
+      video { display: block; width: 100%; border-radius: 23px; background: #02060b; }
+      .footer { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; margin-top: 22px; color: #91a9bc; font-size: 14px; }
+      a { color: #6edcf3; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .download { padding: 10px 16px; border: 1px solid rgba(110, 220, 243, .38); border-radius: 999px; background: rgba(25, 87, 111, .25); }
+      .note { margin-top: 44px; color: #6f899b; font-size: 13px; line-height: 1.8; }
+      @media (max-width: 640px) { main { width: min(100% - 28px, 1320px); padding-top: 28px; } header { display: block; } .meta { display: block; margin-top: 10px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header><span class="brand">TIDE MIND</span><span class="meta">90 秒 · 1920 × 1080 · 中文旁白</span></header>
+      <h1>一问起潮，万象成章。</h1>
+      <p class="lead">汐灵 Tide Mind：面向探索者的 AI 原生科研操作系统。</p>
+      <section class="video-shell" aria-label="汐灵演示短片">
+        <video controls playsinline preload="metadata" poster="../media/tide-mind-film-poster.jpg">
+          <source src="../media/Tide-Mind-90s-1080p.mp4" type="video/mp4" />
+          <track kind="subtitles" srclang="zh" label="中文字幕" src="../media/Tide-Mind.zh-CN.srt" default />
+          当前浏览器不支持视频播放，请<a href="../media/Tide-Mind-90s-1080p.mp4">下载 MP4</a>观看。
+        </video>
+      </section>
+      <div class="footer"><a class="download" href="../media/Tide-Mind-90s-1080p.mp4" download>下载成片</a><a href="../media/Tide-Mind.zh-CN.srt" download>下载字幕</a><a href="https://github.com/MiniLaba/xiling-os">返回项目主页</a></div>
+      <p class="note">本片由汐灵实机界面、原创潮汐动效、中文旁白与氛围配乐合成。实机镜头展示已有研究对话、运行图、科研画布、文献工作台与项目百科；概念展望段已在片中标识。</p>
+    </main>
+  </body>
+</html>

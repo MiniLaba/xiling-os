@@ -1,0 +1,47 @@
+name: Deploy Tide Mind film page
+
+on:
+  push:
+    branches:
+      - main
+      - codex-liquid-glass-settings-canvas
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Assemble film site
+        run: |
+          mkdir -p _site/film _site/media
+          cp docs/film/index.html _site/film/index.html
+          cp docs/media/Tide-Mind-90s-1080p.mp4 _site/media/Tide-Mind-90s-1080p.mp4
+          cp docs/media/Tide-Mind.zh-CN.srt _site/media/Tide-Mind.zh-CN.srt
+          cp docs/media/tide-mind-film-poster.jpg _site/media/tide-mind-film-poster.jpg
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
