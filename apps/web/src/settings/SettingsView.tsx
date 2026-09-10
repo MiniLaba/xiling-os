@@ -121,7 +121,7 @@ export function SettingsView() {
     <div className="skills-toolbar"><label><span>⌕</span><input aria-label="搜索已安装 Skills" value={skillQuery} placeholder="搜索能力或工具…" onChange={(event) => setSkillQuery(event.target.value)} /></label><button className="secondary" onClick={() => void refresh()}>{t("刷新目录")}</button></div>
     <div className="skills-grid">{visibleSkills.map((skill: InstalledSkillSummary) => {
       const presentation = skillPresentation[skill.name] ?? { title: skill.name, glyph: "技" };
-      return <article className="skill-card" key={skill.name}><header><span className="skill-glyph">{presentation.glyph}</span><div><h3>{locale === "en" ? skill.name : presentation.title}</h3></div><b>v{skill.version}</b></header><p>{skill.description}</p><section><small>{t("关联能力")}</small><div>{skill.capabilities.map((capability) => <span className="skill-capability" key={capability.id} title={capability.description}><b>{capability.id}</b><em>{capability.toolName}</em></span>)}</div></section></article>;
+      return <article className="skill-card" key={skill.name}><header><h3>{locale === "en" ? skill.name : presentation.title}</h3></header><p>{skill.description}</p><section><small>{t("关联能力")}</small><div>{skill.capabilities.map((capability) => <span className="skill-capability" key={capability.id} title={capability.description}><b>{capability.id}</b><em>{capability.toolName}</em></span>)}</div></section></article>;
     })}</div>
     {visibleSkills.length === 0 ? <div className="skills-empty">{locale === "en" ? "No matching skills." : "没有匹配的技能。"}</div> : null}
   </section>;
@@ -144,7 +144,7 @@ export function SettingsView() {
   const renderAgents = () => <section className="agent-role-settings">
     <div className="agent-role-grid">{agentRoles.map((role) => {
       const route = runtime?.roleRoutes[role.id];
-      return <article key={role.id}><header><span>{(locale === "en" ? role.id : role.title).slice(0, 1)}</span><div><h3>{locale === "en" ? role.id : role.title}</h3></div><b>{role.defaultIsolation === "blind" ? "盲审隔离" : role.defaultIsolation === "execution" ? "执行隔离" : "任务切片"}</b></header><div className="agent-role-capsule"><ModelCapsule compact allowInherit inheritLabel="继承主模型" value={route ? { providerId: route.providerId, modelId: route.modelId, reasoning: route.reasoning } : undefined} catalog={catalog} configuredProviders={modelProviders} disabled={!runtime?.primary} disabledHint="请先在对话发送按钮左侧设置主模型" onCommit={(next) => void commitRoleRoute(role.id, next)} /></div><section><small>{t("允许能力")}</small><div>{role.allowedCapabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></section></article>;
+      return <article key={role.id}><header><h3>{locale === "en" ? role.id : role.title}</h3></header><div className="agent-role-capsule"><ModelCapsule compact allowInherit inheritLabel="继承主模型" value={route ? { providerId: route.providerId, modelId: route.modelId, reasoning: route.reasoning } : undefined} catalog={catalog} configuredProviders={modelProviders} disabled={!runtime?.primary} disabledHint="请先在对话发送按钮左侧设置主模型" onCommit={(next) => void commitRoleRoute(role.id, next)} /></div><section><small>{t("允许能力")}</small><div>{role.allowedCapabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></section></article>;
     })}</div>
   </section>;
 

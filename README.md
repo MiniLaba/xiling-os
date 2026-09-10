@@ -188,13 +188,13 @@ flowchart TB
 在尚不存在 `xiling-os` 目录的位置运行下面这一行。它会浅克隆仓库、按锁文件安装 pnpm 依赖、完整构建汐灵 OS，等待健康检查通过后自动打开浏览器：
 
 ```sh
-git clone --depth 1 https://github.com/MiniLaba/xiling-os.git && cd xiling-os && corepack pnpm install --frozen-lockfile && corepack pnpm start
+git clone --depth 1 --branch codex-liquid-glass-settings-canvas https://github.com/MiniLaba/xiling-os.git && cd xiling-os && corepack pnpm install --frozen-lockfile && corepack pnpm start
 ```
 
 Windows 11 可在 PowerShell 中通过系统自带的 `cmd` 执行同一条可靠的失败即停链路：
 
 ```powershell
-cmd /d /s /c "git clone --depth 1 https://github.com/MiniLaba/xiling-os.git && cd xiling-os && corepack pnpm install --frozen-lockfile && corepack pnpm start"
+cmd /d /s /c "git clone --depth 1 --branch codex-liquid-glass-settings-canvas https://github.com/MiniLaba/xiling-os.git && cd xiling-os && corepack pnpm install --frozen-lockfile && corepack pnpm start"
 ```
 
 该快捷方式不会绕过环境要求或科研执行审批。首次启动会下载 JavaScript 依赖；运行隔离科研任务前仍需 Docker Desktop 或 Docker Engine。若需要逐项诊断 Windows 环境，请使用下方正式 Windows 启动流程。

@@ -211,7 +211,7 @@ export function HomeView({ onEnter }: { onEnter: (view: "chat" | "canvas" | "wik
       <div className="home-gl" ref={hostRef} aria-hidden="true" />
       <div className="home-ui">
         <header className="home-nav">
-          <div className="home-brand"><img src="/brand/xiling-mark.png" alt="" /><b>汐灵</b><small>SCIENCE OS</small></div>
+          <div className="home-brand"><img src="/brand/xiling-mark.png" alt="" /><b>{locale === "en" ? "Tide Mind" : "汐灵"}</b><small>RESEARCH OS</small></div>
           <nav aria-label="进入各工作面">
             {([["chat", "对话"], ["canvas", "科研画布"], ["wiki", "Wiki"], ["papers", "文献工作台"]] as const).map(([view, label]) => (
               <button key={view} onClick={() => onEnter(view)}>{t(label)}</button>
@@ -220,9 +220,9 @@ export function HomeView({ onEnter }: { onEnter: (view: "chat" | "canvas" | "wik
           </nav>
         </header>
         <div className="home-title">
-          <small>XI LING · SCIENCE OS</small>
-          <h1>{locale === "en" ? "A space for discovery" : "汐语灵境"}</h1>
-          <p>{locale === "en" ? "Your local-first AI operating system for research." : "潮汐的语言，灵境之中。本地优先的 AI 科研操作系统。"}</p>
+          <h1>{locale === "en" ? "Tide Mind" : "汐语灵境"}</h1>
+          <p className="home-slogan">{locale === "en" ? "One question sets the tide in motion. A world takes shape." : "一问起潮，万象成章。"}</p>
+          <p className="home-description">{locale === "en" ? "An AI-native research operating system for curious minds." : "面向探索者的 AI 原生科研操作系统。"}</p>
           <div className="home-cta">
             <button className="home-cta-primary" onClick={() => onEnter("chat")}>{t("进入工作区")}</button>
             <button className="home-cta-ghost" onClick={() => onEnter("canvas")}>{locale === "en" ? "Explore the canvas" : "先看看科研画布"}</button>

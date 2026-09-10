@@ -32,7 +32,7 @@ for (const behavior of ["waitUntilHealthy", "browserCommand", "XILING_NO_BROWSER
 }
 
 const readme = readFileSync("README.md", "utf8");
-const quickStart = "git clone --depth 1 https://github.com/MiniLaba/xiling-os.git && cd xiling-os && corepack pnpm install --frozen-lockfile && corepack pnpm start";
+const quickStart = "git clone --depth 1 --branch codex-liquid-glass-settings-canvas https://github.com/MiniLaba/xiling-os.git && cd xiling-os && corepack pnpm install --frozen-lockfile && corepack pnpm start";
 if (!readme.includes(quickStart)) throw new Error("README must keep the verified one-line clone/install/start command");
 const packageManifest = JSON.parse(readFileSync("package.json", "utf8"));
 if (packageManifest.scripts?.start !== "pnpm build && node scripts/start.mjs") throw new Error("One-line quick start must terminate in the health-checked cross-platform launcher");
