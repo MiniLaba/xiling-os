@@ -26,7 +26,16 @@ export interface OsKernelHost {
   databaseFile: string;
   mainAgentId: string | undefined;
   recovery: { eventsReplayed: number; resumableTaskIds: string[] };
+  /** 科研 Harness 的真实状态：请求的路线、实际生效的运行时、以及降级原因。 */
+  researchHarness: ResearchHarnessStatus;
   shutdown(): Promise<void>;
+}
+
+export interface ResearchHarnessStatus {
+  requested: "pi" | "dsh";
+  active: string | undefined;
+  piAvailable: boolean;
+  reason?: string;
 }
 
 export async function startOsKernel(dataDirectory: string, options: OsKernelHostOptions = {}): Promise<OsKernelHost> {
@@ -43,7 +52,30 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
   await voice.initialize();
   kernel.runtimes.register(new NativeVoiceRuntime(kernel, voice));
 
+  // 科研 Harness 主路径（INTEGRATION.md）：Pi 是目标默认科研路线，DSH 是并列适配器，
+  // 不是第二个产品后端。两者都通过同一 AgentRuntime 端口注册；实际生效的运行时如实上报，
+  // 缺少任何一路都不静默替换、也不声称已接通。
   // 产品只注册真实运行时；确定性脚本适配器仅由测试独立注册。
+  const requestedHarness: "pi" | "dsh" = process.env.XILING_RESEARCH_HARNESS === "dsh" ? "dsh" : "pi";
+  let activeRuntimeName: string | undefined;
+  let piAvailable = false;
+  let harnessReason: string | undefined;
+
+  if (requestedHarness === "pi") {
+    const { createPiResearchRuntime } = await import("./core/pi-research-runtime.js");
+    const piBoot = await createPiResearchRuntime({
+      readModelKey: options.readModelKey ?? (() => undefined),
+      inputModalities: parsePiInputModalities(process.env.XILING_PI_INPUT_MODALITIES),
+    });
+    piAvailable = piBoot.available;
+    if (piBoot.runtime) {
+      kernel.runtimes.register(piBoot.runtime);
+      activeRuntimeName = piBoot.runtime.name;
+    } else {
+      harnessReason = piBoot.reason ?? "Pi 运行时装配失败";
+    }
+  }
+
   // 默认按需启动内置无执行器的官方 DSH 组合；XILING_DSH_ENABLED=0 禁用。
   // 外部运行程序仍可通过 XILING_DSH_BIN / JSON XILING_DSH_ARGS 显式覆盖。
   // 产品进程禁止注册模拟成功；旧 scripted 身份显式不可运行，不能静默切换引擎。
@@ -83,6 +115,9 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
       turnTimeoutMs: 15 * 60_000,
     });
     kernel.runtimes.register(realRuntime);
+    activeRuntimeName ??= realRuntime.name;
+  } else if (activeRuntimeName === undefined) {
+    harnessReason ??= "XILING_DSH_ENABLED=0 且 Pi 运行时不可用：没有已注册的科研运行时";
   }
   kernel.scheduler.setRunner({
     run: async (taskId, ctx) => { await kernel.runner.executeTask(taskId, ctx); },
@@ -117,7 +152,7 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
     const main = await kernel.agents.create({
       name: "Main Agent",
       isMainAgent: true,
-      runtimeName: "deepseek-harness-sdk",
+      runtimeName: activeRuntimeName ?? "deepseek-harness-sdk",
       pluginBindings: [],
       allowedActions: ["task.create", "task.delegate", "memory.write", "ui.present", "agent.message", ...new Set(pluginPermissions)],
       systemInstructions: "你是用户与汐灵 OS 交互的主要入口。",
@@ -127,6 +162,15 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
   } else if (configuredModel !== undefined && existingMain !== undefined && existingMain.modelPolicy.preferred === undefined && existingMain.modelPolicy.primary === undefined) {
     // 一次性兼容旧事件：旧 Main Agent 曾把模型固定在进程环境里，没有领域策略记录。
     kernel.agents.updateModelPolicy(existingMain.id, { ...existingMain.modelPolicy, preferred: configuredModel });
+  }
+  // 已存在的 Main 指向本次生效的科研运行时。仍有未完成任务时拒绝切换：不把运行中的任务
+  // 换到另一个引擎继续，也不假装切换成功。
+  if (mainAgentId !== undefined && activeRuntimeName !== undefined && existingMain !== undefined && existingMain.runtimeName !== activeRuntimeName) {
+    try {
+      kernel.agents.setRuntime(mainAgentId, activeRuntimeName, { actor: "system" });
+    } catch (error) {
+      harnessReason ??= `Main 仍绑定 ${existingMain.runtimeName}：${error instanceof Error ? error.message : String(error)}`;
+    }
   }
 
   // 插件注册：能力目录（Agent 可发现"谁拥有 literature.search"）+ 绑定 Main Agent。
@@ -146,6 +190,12 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
     databaseFile,
     mainAgentId,
     recovery,
+    researchHarness: {
+      requested: requestedHarness,
+      active: activeRuntimeName,
+      piAvailable,
+      ...(harnessReason === undefined ? {} : { reason: harnessReason }),
+    },
     shutdown: async () => {
       try { await realRuntime?.close(); } finally { persistence.close(); }
     },
@@ -173,4 +223,10 @@ function parseOutputModalities(raw: string | undefined): NativeOutputModality[] 
 function positiveInteger(raw: string | undefined): number | undefined {
   const value = Number(raw);
   return Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+/** Pi 的输入模态声明：默认仅 text；未显式声明时不得声称能送图像。 */
+function parsePiInputModalities(raw: string | undefined): Array<"text" | "image"> {
+  const parsed = raw?.split(",").map((item) => item.trim()).filter((item): item is "text" | "image" => item === "text" || item === "image") ?? [];
+  return [...new Set<"text" | "image">(["text", ...parsed])];
 }

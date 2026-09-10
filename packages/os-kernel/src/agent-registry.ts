@@ -4,7 +4,7 @@
 
 import {
   SYSTEM_CONTEXT, activationId, agentId as makeAgentId, newId, OsError, entityNotFound,
-  assertTransition, correlationFor,
+  assertTransition, correlationFor, isTerminalTaskState,
 } from "@xiling/os-domain";
 import type { ActivationId, AgentActivation, AgentDefinition, AgentId, AgentState, ModelPolicy, OSOperationContext, PluginBinding } from "@xiling/os-domain";
 import type { AgentRuntime, ActivationSpec } from "@xiling/os-runtime";
@@ -84,6 +84,26 @@ export class AgentRegistry {
   updateModelPolicy(agentId: AgentId, modelPolicy: ModelPolicy, ctx?: OSOperationContext | undefined): AgentDefinition {
     this.get(agentId);
     this.kernel.emit("agent.model_policy_updated", { agentId, modelPolicy: structuredClone(modelPolicy) }, correlationFor({ agentId }), ctx);
+    return this.get(agentId);
+  }
+
+  /**
+   * 把长期 Agent 指向一个已注册的真实运行时（Pi 科研路线为默认目标）。
+   * 运行时未注册、或该 Agent 仍有未完成任务时拒绝：运行中切换引擎等于用另一套引擎
+   * 冒充原有运行，必须由调用方先收敛任务。
+   */
+  setRuntime(agentId: AgentId, runtimeName: string, ctx: OSOperationContext): AgentDefinition {
+    const definition = this.get(agentId);
+    if (!this.services.runtimes.get(runtimeName)) {
+      throw new OsError("runtime_not_found", `运行时 ${runtimeName} 未注册`);
+    }
+    const busy = [...this.services.projection.tasks.values()].some(
+      (task) => (task.ownerAgentId === agentId || task.assignedAgentId === agentId) && !isTerminalTaskState(task.state),
+    );
+    if (busy) throw new OsError("illegal_transition", "请先结束该 Agent 的未完成任务再切换运行时");
+    if (definition.runtimeName !== runtimeName) {
+      this.kernel.emit("agent.runtime_updated", { agentId, runtimeName }, correlationFor({ agentId }), ctx);
+    }
     return this.get(agentId);
   }
 

@@ -18,7 +18,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/dsh-adapter.test.js dist/cordis-plugin-host.test.js dist/harness-history.smoke.test.js"
+    "test": "node --test dist/dsh-adapter.test.js dist/pi-research-adapter.test.js dist/cordis-plugin-host.test.js dist/harness-history.smoke.test.js"
   },
   "dependencies": {
     "@deepseek-ai/dsh-compaction": "catalog:",
