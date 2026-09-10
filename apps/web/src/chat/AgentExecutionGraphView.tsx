@@ -280,7 +280,6 @@ export function arrangeConversationCanvas(nodes: ConversationNode[], edges: Conv
 export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey = 0, onReturnToChat }: { projectId: string; activeSessionId: string; refreshKey?: number; onReturnToChat?: () => void }) {
   const [scope, setScope] = useState<AgentExecutionGraphScope>(() => activeSessionId ? "session" : "project");
   const [projection, setProjection] = useState<AgentExecutionGraphProjection>();
-  const [foldedDetails, setFoldedDetails] = useState(0);
   const [error, setError] = useState("");
   const [interactionMode, setInteractionMode] = useState<InteractionMode>("follow-up");
   const interactionModeRef = useRef<InteractionMode>("follow-up");
@@ -318,7 +317,6 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
       if (cancelled) return;
       const canvas = buildConversationCanvas(graph);
       setProjection(graph);
-      setFoldedDetails(canvas.foldedDetails);
       setEdges(canvas.edges);
       setNodes(arrangeConversationCanvas(canvas.nodes, canvas.edges));
       setActiveNodeId("");
@@ -393,33 +391,21 @@ export function AgentExecutionGraphView({ projectId, activeSessionId, refreshKey
     return nodes.map((node) => ({ ...node, data: { ...node.data, dimmed: searching ? !matched.has(node.id) : node.data.dimmed, expanded: expandedNodeIds.has(node.data.sourceNode.id), onToggleExpand: toggleExpand, onRetry: retryNode } }));
   }, [nodes, searchMatches, searchQuery, expandedNodeIds, toggleExpand, retryNode]);
 
-  const turns = nodes.filter((node) => node.data.displayKind === "prompt").length;
   return (
     <section className="agent-execution-graph" aria-label="Agent 对话运行画布">
-      <header className="execution-graph-head">
-        <div><b>{scope === "project" ? "项目对话全景" : "当前对话脉络"}</b></div>
-        <div className="execution-graph-actions">
-          <div className="execution-scope-switch"><button className={scope === "session" ? "active" : ""} disabled={!activeSessionId} onClick={() => setScope("session")}>当前对话</button><button className={scope === "project" ? "active" : ""} onClick={() => setScope("project")}>项目全景</button></div>
-          <button onClick={autoArrange}>整理</button>
-        </div>
-      </header>
-      <div className="execution-graph-meta">
-        <span>{projection ? `${turns} 轮 · ${nodes.length} 个可见节点` : "正在读取 Agent Store…"}</span>
-        <span>{foldedDetails ? `${foldedDetails} 条执行细节已折叠` : "没有额外执行细节"}</span>
-        <div className="execution-interaction-switch" aria-label="节点交互方式"><button className={interactionMode === "follow-up" ? "active" : ""} onClick={() => { interactionModeRef.current = "follow-up"; setInteractionMode("follow-up"); clearSelection(); }}>沿节点继续</button><button className={interactionMode === "quote" ? "active" : ""} onClick={() => { interactionModeRef.current = "quote"; setInteractionMode("quote"); clearSelection(); }}>组合引用</button></div>
-        {projection?.truncated ? <em>当前为有界投影</em> : null}
-      </div>
-      <div className="execution-search">
-        <Search size={13} aria-hidden="true" />
-        <input value={searchQuery} placeholder="搜索节点内容…" onChange={(event) => setSearchQuery(event.target.value)} />
-        {searchQuery ? <button aria-label="清除搜索" onClick={() => setSearchQuery("")}><X size={12} /></button> : null}
-        {searchMatches.length ? (
-          <div className="execution-search-results">
-            {searchMatches.slice(0, 8).map((node) => <button key={node.id} onClick={() => jumpToNode(node.id)}><span>{displayLabel[node.data.displayKind]}</span>{compactText(node.data.summary, 60)}</button>)}
-          </div>
-        ) : null}
-      </div>
       <div className="execution-flow">
+        <div className="execution-canvas-toolbar" aria-label="运行图工具">
+          <div className="chat-primary-switch execution-primary-switch" role="tablist" aria-label="Chat 工作区模式"><button role="tab" aria-selected={false} onClick={onReturnToChat}>对话</button><button role="tab" aria-selected className="active">运行图</button></div>
+          <div className="execution-scope-switch"><button className={scope === "session" ? "active" : ""} disabled={!activeSessionId} onClick={() => setScope("session")}>当前对话</button><button className={scope === "project" ? "active" : ""} onClick={() => setScope("project")}>项目全景</button></div>
+          <div className="execution-interaction-switch" aria-label="节点交互方式"><button className={interactionMode === "follow-up" ? "active" : ""} onClick={() => { interactionModeRef.current = "follow-up"; setInteractionMode("follow-up"); clearSelection(); }}>沿节点继续</button><button className={interactionMode === "quote" ? "active" : ""} onClick={() => { interactionModeRef.current = "quote"; setInteractionMode("quote"); clearSelection(); }}>组合引用</button></div>
+          <button className="execution-arrange" onClick={autoArrange}>整理</button>
+          <div className="execution-search">
+            <Search size={13} aria-hidden="true" />
+            <input aria-label="搜索节点内容" value={searchQuery} placeholder="搜索节点内容…" onChange={(event) => setSearchQuery(event.target.value)} />
+            {searchQuery ? <button aria-label="清除搜索" onClick={() => setSearchQuery("")}><X size={12} /></button> : null}
+            {searchMatches.length ? <div className="execution-search-results">{searchMatches.slice(0, 8).map((node) => <button key={node.id} onClick={() => jumpToNode(node.id)}><span>{displayLabel[node.data.displayKind]}</span>{compactText(node.data.summary, 60)}</button>)}</div> : null}
+          </div>
+        </div>
         {error ? <div className="execution-graph-empty"><b>暂无对话脉络</b><span>{error}</span></div> : nodes.length ? <ReactFlow<ConversationNode, ConversationEdge>
           nodes={displayNodes}
           edges={edges}

@@ -22,7 +22,7 @@
 .chat-heading h1 { font-size: var(--xl-type-title); font-weight: 650; letter-spacing: 0.01em; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chat-heading-actions { display: flex; align-items: center; gap: var(--xl-space-3); flex: none; }
 
-.execution-scope-switch, .execution-interaction-switch {
+.chat-primary-switch, .execution-scope-switch, .execution-interaction-switch {
   display: inline-flex;
   flex-wrap: nowrap;
   white-space: nowrap;
@@ -31,14 +31,14 @@
   background: var(--xl-bg-secondary);
   border: 1px solid var(--xl-border);
 }
-.execution-scope-switch button, .execution-interaction-switch button {
+.chat-primary-switch button, .execution-scope-switch button, .execution-interaction-switch button {
   padding: 4px var(--xl-space-3);
   border-radius: var(--xl-radius-sm);
   font-size: var(--xl-type-small);
   color: var(--xl-muted);
   transition: background var(--xl-motion-fast) var(--xl-ease-tide), color var(--xl-motion-fast) var(--xl-ease-tide);
 }
-.execution-scope-switch button.active, .execution-interaction-switch button.active {
+.chat-primary-switch button.active, .execution-scope-switch button.active, .execution-interaction-switch button.active {
   background: var(--xl-surface);
   color: var(--xl-text);
   font-weight: 600;
@@ -417,7 +417,15 @@ body.resizing-split { cursor: col-resize; user-select: none; }
 .execution-search-results button:hover { background: var(--xl-hover); }
 .execution-search-results button span { flex: none; font-size: var(--xl-type-caption); color: var(--xl-accent); }
 
-.execution-flow { position: relative; flex: 1; min-height: 0; margin: 0 var(--xl-space-5) var(--xl-space-3); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-lg); background: var(--xl-bg-secondary); overflow: hidden; }
+.execution-flow { position: relative; flex: 1; min-height: 0; margin: 0; border: 1px solid var(--xl-border); border-radius: var(--xl-radius-lg); background: var(--xl-bg-secondary); overflow: hidden; }
+.chat-view-execution .agent-execution-graph { height: 100%; }
+.chat-view-execution .execution-flow { border: 0; border-radius: 0 0 27px 27px; overflow: hidden; }
+.execution-canvas-toolbar { position: absolute; top: var(--xl-space-4); left: var(--xl-space-4); right: var(--xl-space-4); z-index: 10; display: flex; align-items: center; gap: var(--xl-space-2); pointer-events: none; }
+.execution-canvas-toolbar > * { pointer-events: auto; }
+.execution-canvas-toolbar .execution-search { margin: 0 0 0 auto; width: min(320px, 36vw); max-width: none; }
+.execution-primary-switch { flex: none; }
+.execution-arrange { display: inline-flex; align-items: center; padding: 6px var(--xl-space-3); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-full); background: color-mix(in srgb, var(--xl-surface) 88%, transparent); color: var(--xl-muted); font-size: var(--xl-type-small); backdrop-filter: blur(12px); }
+.execution-arrange:hover { background: var(--xl-hover); color: var(--xl-text); }
 .execution-background { stroke: var(--xl-border); }
 .execution-graph-empty { height: 100%; display: grid; place-content: center; gap: var(--xl-space-2); text-align: center; color: var(--xl-muted); }
 .execution-graph-empty b { font-size: var(--xl-type-lead); color: var(--xl-text); }

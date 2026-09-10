@@ -1,0 +1,113 @@
+/* Appearance adapter after the preserved 27ebdf7 layout cascade.
+ * Scope excludes Project and Chat. Do not add geometry, spacing, overflow,
+ * positioning or breakpoint rules here: the legacy sheet owns those.
+ */
+:is(.workspace-wiki, .workspace-papers) :is(.knowledge-wiki, .literature-start, .paper-graph-view) {
+  --ink: var(--xl-text);
+  --line: var(--xl-border);
+  --line-strong: var(--xl-border-strong);
+  --wash: var(--xl-bg);
+  --hf-line: var(--xl-border);
+  --hf-muted: var(--xl-muted);
+  --hf-accent: var(--xl-accent);
+  --hf-caption: var(--xl-type-caption);
+  --hf-control: var(--xl-type-control);
+  --hf-body: var(--xl-type-body);
+  --type-caption: var(--xl-type-caption);
+  --type-meta: var(--xl-type-small);
+  --type-control: var(--xl-type-control);
+  --type-body: var(--xl-type-body);
+  color: var(--xl-text);
+  background: var(--xl-bg);
+  font-family: var(--xl-font-ui);
+}
+
+/* One theme palette for reading surfaces, drawers and navigation. */
+:is(.workspace-wiki, .workspace-papers) :is(.wiki-main, .wiki-article, .wiki-editor-shell, .wiki-history-panel, .wiki-history-panel > header, .wiki-search-results, .wiki-search-results button, .wiki-page-grid > button, .paper-graph-main, .paper-detail, .paper-list) {
+  background: var(--xl-surface);
+  color: var(--xl-text);
+}
+:is(.workspace-wiki, .workspace-papers) :is(.knowledge-wiki > .wiki-library, .wiki-history-content > nav, .wiki-infobox, .algorithm-note, .wiki-edit-note, .wiki-nav-label span) {
+  background: var(--xl-bg-secondary);
+  color: var(--xl-muted);
+}
+:is(.workspace-wiki, .workspace-papers) :is(.knowledge-wiki, .literature-start, .paper-graph-view) :is(header, footer, aside, article, nav, section, dl > div, .wiki-search, .wiki-search-results, .wiki-page-grid, .wiki-artifact-grid, .wiki-section-title, .wiki-evidence-list, .wiki-related > h2, .wiki-toc, .paper-open-row, .paper-relation-legend) {
+  border-color: var(--xl-border);
+}
+:is(.workspace-wiki, .workspace-papers) :is(.wiki-article-body, .wiki-lead > p, .wiki-infobox dd, .wiki-infobox > strong, .wiki-library-title b, .wiki-evidence-list h3, .wiki-revision-preview p, .paper-abstract p) { color: var(--xl-text); }
+:is(.workspace-wiki, .workspace-papers) :is(.knowledge-wiki, .literature-start, .paper-graph-view) :is(h1, h2, h3) {
+  font-family: var(--xl-font-ui);
+  color: var(--xl-text);
+  font-weight: 650;
+  letter-spacing: normal;
+}
+.workspace-wiki :is(.wiki-lead > p, .wiki-infobox > strong, .wiki-revision-preview p) { font-family: var(--xl-font-ui); }
+:is(.workspace-wiki, .workspace-papers) :is(.knowledge-wiki, .literature-start, .paper-graph-view) :is(small, dt, .wiki-empty, .wiki-nav-label, .wiki-article-head p, .wiki-article-head > div > span, .wiki-infobox p, .wiki-related p, .paper-detail > p, .paper-list-scroll > button span, .paper-annotation, .paper-evidence-semantics label, .paper-open-row) { color: var(--xl-muted); }
+
+/* Legacy !important declarations are limited to these labels and icon control. */
+.workspace-wiki .knowledge-wiki :is(.wiki-library-title small, .wiki-toc small) { color: var(--xl-muted) !important; }
+.workspace-wiki .knowledge-wiki .wiki-library-title > button {
+  color: var(--xl-text) !important;
+  background: var(--xl-surface) !important;
+  border-color: var(--xl-border) !important;
+  border-radius: var(--xl-radius-sm) !important;
+}
+
+:is(.workspace-wiki, .workspace-papers) :is(.knowledge-wiki, .literature-start, .paper-graph-view) :is(button, input, textarea, select) {
+  font-family: var(--xl-font-ui);
+  color: var(--xl-text);
+  border-color: var(--xl-border);
+  box-shadow: none;
+}
+:is(.workspace-wiki, .workspace-papers) :is(.knowledge-wiki, .literature-start, .paper-graph-view) :is(input, textarea, select) {
+  background: var(--xl-surface);
+  border-radius: var(--xl-radius-sm);
+  accent-color: var(--xl-accent);
+}
+:is(.workspace-wiki, .workspace-papers) :is(.knowledge-wiki, .literature-start, .paper-graph-view) :is(input, textarea)::placeholder { color: var(--xl-faint); }
+:is(.workspace-wiki, .workspace-papers) :is(.knowledge-wiki, .literature-start, .paper-graph-view) :is(button, input, textarea, select, a):focus-visible {
+  outline: 2px solid var(--xl-accent);
+  outline-offset: 2px;
+}
+:is(.workspace-wiki, .workspace-papers) :is(.wiki-search, .wiki-article-actions button, .wiki-section-title button, .wiki-create button, .paper-graph-actions button, .paper-detail > button, .paper-detail-reopen, .graph-utility button, .paper-relation-legend) {
+  background: var(--xl-surface);
+  color: var(--xl-muted);
+  border-color: var(--xl-border);
+  box-shadow: none;
+}
+.workspace-wiki .knowledge-wiki .wiki-search > input { background: transparent; }
+:is(.workspace-wiki, .workspace-papers) :is(.wiki-library nav > button, .wiki-history-content > nav button, .paper-list-scroll > button, .paper-list-tabs button, .wiki-article-actions button.quiet) { background: transparent; }
+:is(.workspace-wiki, .workspace-papers) :is(.wiki-library nav > button, .wiki-history-content > nav button, .wiki-page-grid > button, .wiki-search-results button, .paper-list-scroll > button, .paper-graph-actions button, .wiki-article-actions button):hover:not(:disabled) { background: var(--xl-hover); }
+.workspace-wiki .knowledge-wiki .wiki-library nav > button.active,
+.workspace-wiki .wiki-history-content > nav button.active,
+.workspace-papers .paper-list-scroll > button.active {
+  background: var(--xl-accent-soft);
+  color: var(--xl-accent);
+  box-shadow: none;
+}
+/* Keep the existing border's dimensions so selection does not move text. */
+.workspace-papers .paper-list-scroll > button.active { border-color: var(--xl-border); border-left-color: transparent; }
+.workspace-papers .paper-list-tabs button.active { color: var(--xl-accent); border-bottom-color: var(--xl-accent); }
+:is(.workspace-wiki, .workspace-papers) :is(.wiki-article-actions button.primary, .wiki-article-head button.primary, .wiki-create button, .literature-start button, .paper-detail > .paper-promote) {
+  background: var(--xl-accent-strong);
+  color: var(--xl-on-accent);
+  border-color: var(--xl-accent-strong);
+}
+:is(.workspace-wiki, .workspace-papers) :is(.wiki-article-actions button.primary, .wiki-create button, .literature-start button, .paper-detail > .paper-promote):hover:not(:disabled) { background: var(--xl-accent); }
+.workspace-papers .paper-detail > .paper-promote:disabled { background: var(--xl-bg-secondary); color: var(--xl-faint); border-color: var(--xl-border); }
+:is(.workspace-wiki, .workspace-papers) :is(.wiki-toc a, .wiki-related button, .wiki-artifact-grid a, .wiki-artifact-grid button, .paper-open-row a) { color: var(--xl-accent); }
+.workspace-papers .paper-action-status { color: var(--xl-accent) !important; }
+.workspace-wiki .wiki-error { background: var(--xl-bg-secondary); color: var(--xl-danger); border-color: var(--xl-danger); }
+
+.workspace-wiki .wiki-milkdown .milkdown { --crepe-font-default: var(--xl-font-ui); --crepe-color-primary: var(--xl-accent); }
+.workspace-wiki .wiki-milkdown .ProseMirror { color: var(--xl-text); font-family: var(--xl-font-ui); }
+.workspace-wiki .wiki-milkdown .ProseMirror a { color: var(--xl-accent); }
+.workspace-wiki .wiki-milkdown .ProseMirror code { color: var(--xl-text); background: var(--xl-bg-secondary); font-family: var(--xl-font-mono); }
+.workspace-wiki .wiki-milkdown .ProseMirror blockquote { color: var(--xl-muted); border-color: var(--xl-border-strong); }
+.workspace-wiki .wiki-artifact-grid article > span { background: var(--xl-accent-soft); color: var(--xl-accent); border-color: var(--xl-border); }
+.workspace-papers .year-legend > div, .workspace-papers .year-legend small { color: var(--xl-muted); }
+.workspace-wiki .knowledge-wiki :is(.wiki-library-title small, .wiki-toc small) { font-size: var(--xl-type-caption) !important; }
+.workspace-wiki .knowledge-wiki :is(.wiki-library nav b, .wiki-page-grid h3, .wiki-evidence-list h3, .wiki-infobox dl > div, .wiki-article-actions button, .wiki-section-title button) { font-size: var(--xl-type-control); }
+.workspace-wiki .knowledge-wiki :is(.wiki-library nav small, .wiki-search-results span, .wiki-nav-label, .wiki-article-actions small, .wiki-section-title small) { font-size: var(--xl-type-caption); }
+.workspace-wiki .knowledge-wiki :is(.wiki-search input, .wiki-create input, .wiki-create button, .wiki-search-results b) { font-size: var(--xl-type-small); }
+.workspace-papers :is(.paper-list-head, .paper-list-head button, .paper-history-panel, .paper-annotation textarea:disabled) { background: var(--xl-bg-secondary); color: var(--xl-muted); }

@@ -3,6 +3,7 @@ import type { CredentialProviderId, CredentialProviderStatus, InstalledSkillSumm
 import { Moon, Sun } from "lucide-react";
 import { ApiError, apiJson, jsonInit } from "../lib/api-client.js";
 import { useTheme } from "../lib/theme.js";
+import { useLocale } from "../lib/locale.js";
 import { McpSettingsPanel } from "./McpSettingsPanel.js";
 import { ModelCapsule, type CapsuleReasoning, type CapsuleRoute } from "../components/ModelCapsule.js";
 
@@ -13,12 +14,12 @@ type RouteDraft = { providerId?: ModelProviderId; modelId: string; reasoning: Mo
 
 const sections: Array<{ label: string; items: Array<{ id: SettingsSection; label: string; icon: string }> }> = [
   { label: "常规", items: [{ id: "appearance", label: "主题", icon: "◐" }] },
-  { label: "智能体", items: [{ id: "agents", label: "子智能体", icon: "⑂" }, { id: "skills", label: "Skills", icon: "✦" }, { id: "mcp", label: "MCP", icon: "⌘" }] },
+  { label: "智能体", items: [{ id: "agents", label: "子智能体", icon: "⑂" }, { id: "skills", label: "技能", icon: "✦" }, { id: "mcp", label: "MCP", icon: "⌘" }] },
   { label: "连接", items: [{ id: "model-apis", label: "模型 API 连接", icon: "⌁" }, { id: "literature", label: "文献服务", icon: "⌕" }, { id: "data", label: "科研数据账户", icon: "≈" }] },
 ];
 
 const sectionTitle: Record<SettingsSection, string> = {
-  appearance: "主题", agents: "子智能体", skills: "Skills", mcp: "MCP", "model-apis": "模型 API 连接", literature: "文献服务", data: "科研数据账户",
+  appearance: "主题", agents: "子智能体", skills: "技能", mcp: "MCP", "model-apis": "模型 API 连接", literature: "文献服务", data: "科研数据账户",
 };
 
 const skillPresentation: Record<string, { title: string; glyph: string }> = {
@@ -29,6 +30,7 @@ const skillPresentation: Record<string, { title: string; glyph: string }> = {
 };
 
 export function SettingsView() {
+  const { locale, setLocale, t } = useLocale();
   const theme = useTheme();
   const [section, setSection] = useState<SettingsSection>("appearance");
   const [providers, setProviders] = useState<CredentialProviderStatus[]>([]);
@@ -109,19 +111,19 @@ export function SettingsView() {
     const targetSection: SettingsSection = category === "model" ? "model-apis" : category;
     return <section className="provider-section settings-provider-page"><header><div><small>{category.toUpperCase()}</small><h2>{sectionTitle[targetSection]}</h2></div><span>{items.filter((provider) => provider.configured).length}/{items.length} 已配置</span></header><div className="provider-grid">{items.map((provider) => <article className={provider.configured ? "configured" : ""} key={provider.id}>
       <div className="provider-title"><div><i /><h3>{provider.title}</h3></div><span>{provider.configured ? provider.source === "environment" ? "环境变量" : "已加密保存" : "未配置"}</span></div>
-      <div className="credential-fields">{provider.fields.map((item) => <label key={item.id}><span>{item.label}{provider.configuredFields.includes(item.id) ? <em> 已配置</em> : null}</span>{item.id === "apiStyle" ? <select aria-label={`${provider.title} ${item.label}`} value={values[provider.id]?.[item.id] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [provider.id]: { ...(current[provider.id] ?? {}), [item.id]: event.target.value } }))}><option value="">选择兼容协议</option><option value="openai-completions">OpenAI Chat Completions</option><option value="openai-responses">OpenAI Responses</option></select> : <input aria-label={`${provider.title} ${item.label}`} type={item.secret ? "password" : "text"} autoComplete="off" value={values[provider.id]?.[item.id] ?? ""} placeholder={provider.configuredFields.includes(item.id) ? item.secret ? "••••••••（留空则保持）" : "已保存（留空则保持）" : item.placeholder} onChange={(event) => setValues((current) => ({ ...current, [provider.id]: { ...(current[provider.id] ?? {}), [item.id]: event.target.value } }))} />}</label>)}</div>
+      <div className="credential-fields">{provider.fields.map((item) => <label key={item.id}><span>{item.label}{provider.configuredFields.includes(item.id) ? <em> 已配置</em> : null}</span>{item.id === "apiStyle" ? <select aria-label={`${provider.title} ${item.label}`} value={values[provider.id]?.[item.id] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [provider.id]: { ...(current[provider.id] ?? {}), [item.id]: event.target.value } }))}><option value="">{t("选择兼容协议")}</option><option value="openai-completions">OpenAI Chat Completions</option><option value="openai-responses">OpenAI Responses</option></select> : <input aria-label={`${provider.title} ${item.label}`} type={item.secret ? "password" : "text"} autoComplete="off" value={values[provider.id]?.[item.id] ?? ""} placeholder={provider.configuredFields.includes(item.id) ? item.secret ? "••••••••（留空则保持）" : "已保存（留空则保持）" : item.placeholder} onChange={(event) => setValues((current) => ({ ...current, [provider.id]: { ...(current[provider.id] ?? {}), [item.id]: event.target.value } }))} />}</label>)}</div>
       {testResults[provider.id] ? <div className={`connection-result ${testResults[provider.id]!.ok ? "ok" : "failed"}`}><b>{testResults[provider.id]!.ok ? "连接正常" : "连接失败"}</b><span>{testResults[provider.id]!.modelId} · {testResults[provider.id]!.latencyMs} ms</span></div> : null}
       <div className="provider-actions"><a href={provider.documentationUrl} target="_blank" rel="noreferrer">官方文档 ↗</a><div>{provider.category === "model" ? <button className="secondary" disabled={!provider.configured || busy === provider.id} onClick={() => void testConnection(provider)}>{busy === provider.id ? "测试中…" : "测试连接"}</button> : null}{provider.configured && provider.source !== "environment" ? <button className="clear" disabled={busy === provider.id} onClick={() => void clear(provider)}>{confirmClear === provider.id ? "确认清除" : "清除本地凭据"}</button> : null}<button disabled={busy === provider.id} onClick={() => void save(provider)}>{busy === provider.id ? "保存中…" : "保存"}</button></div></div>
     </article>)}</div></section>;
   };
 
   const renderSkills = () => <section className="skills-settings">
-    <div className="skills-toolbar"><label><span>⌕</span><input aria-label="搜索已安装 Skills" value={skillQuery} placeholder="搜索能力或工具…" onChange={(event) => setSkillQuery(event.target.value)} /></label><button className="secondary" onClick={() => void refresh()}>刷新目录</button></div>
+    <div className="skills-toolbar"><label><span>⌕</span><input aria-label="搜索已安装 Skills" value={skillQuery} placeholder="搜索能力或工具…" onChange={(event) => setSkillQuery(event.target.value)} /></label><button className="secondary" onClick={() => void refresh()}>{t("刷新目录")}</button></div>
     <div className="skills-grid">{visibleSkills.map((skill: InstalledSkillSummary) => {
       const presentation = skillPresentation[skill.name] ?? { title: skill.name, glyph: "技" };
-      return <article className="skill-card" key={skill.name}><header><span className="skill-glyph">{presentation.glyph}</span><div><h3>{presentation.title}</h3><code>{skill.name}</code></div><b>v{skill.version}</b></header><p>{skill.description}</p><section><small>关联能力</small><div>{skill.capabilities.map((capability) => <span className="skill-capability" key={capability.id} title={capability.description}><b>{capability.id}</b><em>{capability.toolName}</em></span>)}</div></section></article>;
+      return <article className="skill-card" key={skill.name}><header><span className="skill-glyph">{presentation.glyph}</span><div><h3>{locale === "en" ? skill.name : presentation.title}</h3></div><b>v{skill.version}</b></header><p>{skill.description}</p><section><small>{t("关联能力")}</small><div>{skill.capabilities.map((capability) => <span className="skill-capability" key={capability.id} title={capability.description}><b>{capability.id}</b><em>{capability.toolName}</em></span>)}</div></section></article>;
     })}</div>
-    {visibleSkills.length === 0 ? <div className="skills-empty">没有匹配的 Skill。</div> : null}
+    {visibleSkills.length === 0 ? <div className="skills-empty">{locale === "en" ? "No matching skills." : "没有匹配的技能。"}</div> : null}
   </section>;
 
   const modelProviders = providers.filter((provider) => provider.category === "model" && provider.configured).map((provider) => ({ id: provider.id as ModelProviderId, title: provider.title }));
@@ -142,22 +144,26 @@ export function SettingsView() {
   const renderAgents = () => <section className="agent-role-settings">
     <div className="agent-role-grid">{agentRoles.map((role) => {
       const route = runtime?.roleRoutes[role.id];
-      return <article key={role.id}><header><span>{role.title.slice(0, 1)}</span><div><h3>{role.title}</h3><code>{role.id}</code></div><b>{role.defaultIsolation === "blind" ? "盲审隔离" : role.defaultIsolation === "execution" ? "执行隔离" : "任务切片"}</b></header><div className="agent-role-capsule"><ModelCapsule compact allowInherit inheritLabel="继承主模型" value={route ? { providerId: route.providerId, modelId: route.modelId, reasoning: route.reasoning } : undefined} catalog={catalog} configuredProviders={modelProviders} disabled={!runtime?.primary} disabledHint="请先在对话发送按钮左侧设置主模型" onCommit={(next) => void commitRoleRoute(role.id, next)} /></div><section><small>允许能力</small><div>{role.allowedCapabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></section></article>;
+      return <article key={role.id}><header><span>{(locale === "en" ? role.id : role.title).slice(0, 1)}</span><div><h3>{locale === "en" ? role.id : role.title}</h3></div><b>{role.defaultIsolation === "blind" ? "盲审隔离" : role.defaultIsolation === "execution" ? "执行隔离" : "任务切片"}</b></header><div className="agent-role-capsule"><ModelCapsule compact allowInherit inheritLabel="继承主模型" value={route ? { providerId: route.providerId, modelId: route.modelId, reasoning: route.reasoning } : undefined} catalog={catalog} configuredProviders={modelProviders} disabled={!runtime?.primary} disabledHint="请先在对话发送按钮左侧设置主模型" onCommit={(next) => void commitRoleRoute(role.id, next)} /></div><section><small>{t("允许能力")}</small><div>{role.allowedCapabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></section></article>;
     })}</div>
   </section>;
 
   const renderAppearance = () => <div className="settings-appearance">
+    <section className="appearance-capsule-card language-card">
+      <label htmlFor="interface-language">{t("界面语言")}</label>
+      <select id="interface-language" value={locale} onChange={(event) => setLocale(event.target.value as "en" | "zh-CN")}><option value="zh-CN">{t("简体中文")}</option><option value="en">English</option></select>
+    </section>
     <section className="appearance-capsule-card">
       <div className="theme-capsule" role="radiogroup" aria-label="界面主题">
-        <button role="radio" aria-checked={theme.resolved === "lingjing"} className={theme.resolved === "lingjing" ? "active" : ""} onClick={() => theme.setPreference("lingjing")}><Moon size={13} aria-hidden="true" />灵境</button>
-        <button role="radio" aria-checked={theme.resolved === "poxiao"} className={theme.resolved === "poxiao" ? "active" : ""} onClick={() => theme.setPreference("poxiao")}><Sun size={13} aria-hidden="true" />破晓</button>
+        <button role="radio" aria-checked={theme.resolved === "lingjing"} className={theme.resolved === "lingjing" ? "active" : ""} onClick={() => theme.setPreference("lingjing")}><Moon size={13} aria-hidden="true" />{t("灵境")}</button>
+        <button role="radio" aria-checked={theme.resolved === "poxiao"} className={theme.resolved === "poxiao" ? "active" : ""} onClick={() => theme.setPreference("poxiao")}><Sun size={13} aria-hidden="true" />{t("破晓")}</button>
       </div>
     </section>
   </div>;
 
   return <div className="settings-view settings-shell">
-    <aside className="settings-local-nav"><div><small>SETTINGS</small><strong>汐灵设置</strong></div>{sections.map((group) => <section key={group.label}><span>{group.label}</span>{group.items.map((item) => <button className={section === item.id ? "active" : ""} key={item.id} onClick={() => { setSection(item.id); setMessage(""); }}><i>{item.icon}</i>{item.label}</button>)}</section>)}</aside>
-    <main className="settings-content"><header className="settings-head"><h1>{sectionTitle[section]}</h1>{section === "skills" ? <span>{skills?.skills.length ?? 0} 已安装</span> : null}</header>{message ? <div className="settings-message" role="status">{message}</div> : null}
+    <aside className="settings-local-nav"><div><small>SETTINGS</small><strong>{t("汐灵设置")}</strong></div>{sections.map((group) => <section key={group.label}><span>{t(group.label)}</span>{group.items.map((item) => <button className={section === item.id ? "active" : ""} key={item.id} onClick={() => { setSection(item.id); setMessage(""); }}><i>{item.icon}</i>{t(item.label)}</button>)}</section>)}</aside>
+    <main className="settings-content"><header className="settings-head"><h1>{t(sectionTitle[section])}</h1>{section === "skills" ? <span>{skills?.skills.length ?? 0} {t("已安装")}</span> : null}</header>{message ? <div className="settings-message" role="status">{message}</div> : null}
       {section === "appearance" ? renderAppearance() : section === "agents" ? renderAgents() : section === "skills" ? renderSkills() : section === "mcp" ? <McpSettingsPanel value={mcp} onChanged={setMcp} onMessage={setMessage} /> : section === "model-apis" ? renderProviderCategory("model") : section === "literature" ? renderProviderCategory("literature") : renderProviderCategory("data")}
     </main>
   </div>;
