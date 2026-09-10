@@ -133,24 +133,19 @@ async function ensureWorkspaceWatcher(): Promise<void> {
   watchedWorkspacePath = root.nativePath;
 }
 
-let researchKnowledge: import("./core/research-knowledge.js").ResearchKnowledgeHost | undefined;
-let researchProjection: import("./core/research-projections.js").ResearchProjectionHost | undefined;
+let research: import("./core/research-service.js").ResearchApplicationService | undefined;
 let researchBoot: Promise<void> | undefined;
 async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown> {
   const params = record(rawParams ?? {});
   if (method === "research.knowledge") {
     researchBoot ??= (async () => {
-      const { ResearchKnowledgeHost } = await import("./core/research-knowledge.js");
+      const { ResearchApplicationService } = await import("./core/research-service.js");
       const root = path.join(path.dirname(databasePath!), "research", "workspace");
-      researchKnowledge = new ResearchKnowledgeHost(root);
-      const { ResearchProjectionHost } = await import("./core/research-projections.js");
-      researchProjection = new ResearchProjectionHost(root, researchKnowledge.knowledge);
+      research = new ResearchApplicationService(root);
     })();
     await researchBoot;
-    const result = researchKnowledge!.handle(params);
-    // Durable save remains successful if a projection is temporarily unavailable.
-    void researchProjection!.flush().catch(() => console.warn("Research graph projection pending; durable outbox retained"));
-    return result;
+    // 唯一科研入口：项目/事项/Wiki/证据/图谱投影都经由同一个服务，作用域由核心进程决定。
+    return research!.handle(params);
   }
   if (method === "system.ping") return { schemaVersion: store.getSchemaVersion() };
   if (method === "os.voice") {
@@ -624,8 +619,7 @@ parentPort.on("message", (event) => {
     store.close();
     void (osKernelPromise ? osKernelPromise.then((host) => host.shutdown()).catch(() => undefined) : Promise.resolve())
       .then(async () => {
-        await researchProjection?.close();
-        researchKnowledge?.close();
+        await research?.closeAll();
         parentPort.postMessage({ type: "core-stopped" });
         process.exit(0);
       });

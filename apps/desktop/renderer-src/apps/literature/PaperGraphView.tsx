@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Core } from "cytoscape";
 import type { EvidenceRecord, LiteratureGraph, LiteratureGraphNode, LiteratureSearchResponse } from "./contracts.js";
 import { buildLiteratureGraph, literatureService, offlineFallbackGraph } from "./literature-core.js";
-import { listEvidence, saveEvidence } from "./evidence-store.js";
+import { bindProject, listEvidence, saveEvidence } from "./evidence-store.js";
 
 const edgeColors = {
   citation: "#4f7d88",
@@ -21,6 +21,8 @@ export function LiteratureWorkbenchApp({ onNavigate }: { onNavigate?: (app: "res
   const [projectId, setProjectId] = useState("");
   const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
   const [newProjectName, setNewProjectName] = useState("");
+  // 科研项目必须声明研究问题：图谱会为它建立"研究问题"节点，空问题会让投影失败。
+  const [newProjectQuestion, setNewProjectQuestion] = useState("");
   const projectRef = useRef(projectId); projectRef.current = projectId;
   useEffect(() => { let live = true; void window.xilingDesktop?.researchKnowledge({ action: "projects.list" }).then(result => { if (live) setProjects(result.projects ?? []); }); return () => { live = false; }; }, []);
   const container = useRef<HTMLDivElement>(null);
@@ -175,10 +177,29 @@ export function LiteratureWorkbenchApp({ onNavigate }: { onNavigate?: (app: "res
     return () => { disposed = true; cyRef.current = null; cy?.destroy(); };
   }, [graph, edgeFilter]);
 
+  /**
+   * 切换项目必须先显式绑定本项目窗口的作用域：核心进程按注册表判定归属，
+   * 绑定成功后才允许读写。绑定失败就不切换，避免界面显示一个实际无权访问的项目。
+   */
+  const selectProject = async (next: string) => {
+    if (!next) { setProjectId(""); return; }
+    setActionStatus("正在切换项目作用域…");
+    try { await bindProject(next, true); setProjectId(next); setActionStatus(""); }
+    catch (error) { setActionStatus(error instanceof Error ? error.message : String(error)); }
+  };
+
   const projectPicker = <div className="research-project-picker">
-    <label>所属项目 <select aria-label="文献窗口所属项目" value={projectId} onChange={e => setProjectId(e.target.value)}><option value="">选择项目</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-    <form onSubmit={e => { e.preventDefault(); if (!newProjectName.trim()) return; void window.xilingDesktop?.researchKnowledge({ action: "projects.create", name: newProjectName }).then(result => { setProjects(result.projects ?? []); setNewProjectName(""); }).catch(error => setActionStatus(String(error))); }}>
-      <input aria-label="新建项目名称" placeholder="新项目名称" maxLength={200} value={newProjectName} onChange={e => setNewProjectName(e.target.value)} /><button disabled={!newProjectName.trim()}>新建项目</button>
+    <label>所属项目 <select aria-label="文献窗口所属项目" value={projectId} onChange={e => void selectProject(e.target.value)}><option value="">选择项目</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+    <form onSubmit={e => { e.preventDefault(); if (!newProjectName.trim() || !newProjectQuestion.trim()) return; void window.xilingDesktop?.researchKnowledge({ action: "projects.create", name: newProjectName, researchQuestion: newProjectQuestion }).then(result => {
+      const created = (result.projects ?? []).find(project => project.name === newProjectName.trim());
+      setProjects(result.projects ?? []); setNewProjectName(""); setNewProjectQuestion("");
+      // 新建后立刻绑定本项目窗口的作用域，用户不用再手动选一次。
+      if (created) return selectProject(created.id);
+      return undefined;
+    }).catch(error => setActionStatus(String(error))); }}>
+      <input aria-label="新建项目名称" placeholder="新项目名称" maxLength={200} value={newProjectName} onChange={e => setNewProjectName(e.target.value)} />
+      <input aria-label="核心研究问题" placeholder="核心研究问题（必填）" maxLength={2000} value={newProjectQuestion} onChange={e => setNewProjectQuestion(e.target.value)} />
+      <button disabled={!newProjectName.trim() || !newProjectQuestion.trim()}>新建项目</button>
     </form><span role="status">{actionStatus}</span>
   </div>;
   if (!graph) return <div className="literature-workbench-root">{projectPicker}<div className="literature-start">

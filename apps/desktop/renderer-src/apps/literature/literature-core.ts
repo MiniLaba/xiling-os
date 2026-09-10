@@ -1,6 +1,6 @@
 // 文献检索与构图核心：自旧版 @xiling/literature 包（providers.ts + index.ts）原样移植。
-// 差异只有两处：fetch 经桌面网络代理 IPC（network.access 能力），缓存用 localStorage
-// 替代文件缓存（保留 hit/stale 语义与 24h TTL）。构图算法逐行未动。
+// 差异：fetch 经桌面网络代理 IPC（network.access 能力）；检索缓存改用会话内存缓存
+// （不写 localStorage —— 渲染器的持久存储只留给 UI 偏好）。构图算法逐行未动。
 // 沙箱渲染器无 node:crypto：哈希用确定性 FNV-1a（仅作缓存键/内容指纹，非安全用途）。
 
 import type { LiteratureGraph, LiteratureGraphEdge, LiteratureGraphNode, LiteratureSearchResponse, PaperRecord } from "./contracts.js";
@@ -142,23 +142,27 @@ export async function withLiteratureRetry<T>(operation: () => Promise<T>, policy
 }
 
 type CacheFile = { version: 1; expiresAt: string; response: LiteratureSearchResponse };
-const CACHE_KEY = "xiling:app.literature-workbench/search-cache/v1";
 
-/** localStorage 版文件缓存（旧 FileLiteratureCache 的渲染器形态，语义一致） */
-export class LocalLiteratureCache {
-  private readAll(): Record<string, CacheFile> {
-    try { return JSON.parse(localStorage.getItem(CACHE_KEY) ?? "{}") as Record<string, CacheFile>; } catch { return {}; }
-  }
-  private writeAll(all: Record<string, CacheFile>): void {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify(all)); } catch { /* 容量满时放弃缓存 */ }
-  }
+/**
+ * 会话内检索缓存（旧 FileLiteratureCache 的渲染器形态，语义一致：hit / stale / 24h TTL）。
+ *
+ * 刻意不写 localStorage：文献检索结果是科研数据，权威副本属于科研服务的项目库；
+ * 渲染器里的 localStorage 只允许保存 UI 偏好（主题、程序坞缩放、伴侣开关等）。
+ * 因此这里是进程内、有上限、可随时丢弃的缓存，重启即失效，不会成为第二份事实。
+ */
+export class SessionLiteratureCache {
+  private readonly entries = new Map<string, CacheFile>();
+  constructor(private readonly limit = 32) {}
   key(query: string, limit: number): string { return shaLikeHash(`${query.trim().toLowerCase()}\n${limit}`); }
-  read(key: string): CacheFile | undefined { return this.readAll()[key]; }
+  read(key: string): CacheFile | undefined { return this.entries.get(key); }
   write(key: string, file: CacheFile): void {
-    const all = this.readAll();
-    all[key] = file;
-    this.writeAll(all);
+    if (this.entries.size >= this.limit) {
+      const oldest = this.entries.keys().next().value;
+      if (oldest !== undefined) this.entries.delete(oldest);
+    }
+    this.entries.set(key, file);
   }
+  clear(): void { this.entries.clear(); }
 }
 
 export class LiteratureSearchService {
@@ -166,7 +170,7 @@ export class LiteratureSearchService {
   constructor(
     private readonly primary: LiteratureProvider,
     private readonly fallback: LiteratureProvider,
-    private readonly cache: LocalLiteratureCache,
+    private readonly cache: SessionLiteratureCache,
     private readonly options: { ttlMs?: number; now?: () => Date; retry?: RetryPolicy } = {},
   ) {}
   async search(query: string, limit = 20, signal?: AbortSignal): Promise<LiteratureSearchResponse> {
@@ -281,9 +285,9 @@ export function offlineFallbackGraph(): LiteratureSearchResponse & { graph: Lite
   };
 }
 
-/** 共享服务实例（组件直接使用） */
+/** 共享服务实例（组件直接使用）。缓存在进程内：不落 localStorage，重启即失效。 */
 export const literatureService = new LiteratureSearchService(
   new SemanticScholarProvider(),
   new OpenAlexProvider(),
-  new LocalLiteratureCache(),
+  new SessionLiteratureCache(),
 );
