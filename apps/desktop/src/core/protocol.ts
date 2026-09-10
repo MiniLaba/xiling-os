@@ -46,6 +46,9 @@ export type CoreMethod =
   | "os.status"
   | "os.snapshot"
   | "os.goal.submit"
+  | "os.science.plan"
+  | "os.science.approval.request"
+  | "os.science.execute"
   | "os.task.cancel"
   | "os.task.retry"
   | "os.task.priority.set"
@@ -169,6 +172,21 @@ export interface CoreResultMap {
   };
   "os.snapshot": OsSnapshot;
   "os.goal.submit": { task: OsTaskView };
+  /** 计划登记：返回用户可见任务与计划哈希；不执行计算。 */
+  "os.science.plan": { task: OsTaskView; planHash: string; replayed: boolean };
+  /** 请求执行审批：资源是计划哈希，计划改动即失效。 */
+  "os.science.approval.request": { approvalId: string; state: string; taskId: string };
+  /** 沙箱执行：返回执行摘要（含适配器、产物、失败原因）。 */
+  "os.science.execute": {
+    taskId: string;
+    executionId: string;
+    projectId: string;
+    planHash: string;
+    adapterId: string;
+    status: "cancelled" | "succeeded" | "failed";
+    artifacts: Array<{ artifactId: string; version: number }>;
+    error?: string | undefined;
+  };
   "os.task.cancel": { task: OsTaskView };
   "os.task.retry": { task: OsTaskView };
   "os.task.priority.set": { task: OsTaskView };

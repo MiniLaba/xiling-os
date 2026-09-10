@@ -68,6 +68,9 @@ importers:
       '@xiling/credentials':
         specifier: workspace:*
         version: link:../../packages/credentials
+      '@xiling/execution':
+        specifier: workspace:*
+        version: link:../../packages/execution
       '@xiling/knowledge':
         specifier: workspace:*
         version: link:../../packages/knowledge

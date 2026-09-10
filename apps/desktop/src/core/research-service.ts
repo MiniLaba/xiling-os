@@ -41,6 +41,24 @@ export class ResearchApplicationService {
   }
 
   /**
+   * 科研执行完成后把产物登记进科研图谱投影（与其它投影同一条 outbox）。
+   * 只入队，不直接写图：图里出现的产物一定来自已登记的事实。
+   */
+  projectScienceArtifacts(input: {
+    projectId: string;
+    executionId: string;
+    adapterId: string;
+    planHash: string;
+    recipe: { id: string; version: string };
+    artifacts: Array<{ name: string; uri: string; sha256: string; kind: string; mimeType: string }>;
+  }): void {
+    if (this.knowledge.getProject(input.projectId) === undefined) {
+      throw new ProjectScopeError("scope_unknown_project", `项目 ${input.projectId} 不存在`);
+    }
+    this.knowledge.registerScienceArtifacts(input);
+  }
+
+  /**
    * 宿主其它入口（语音/伴侣/对话）提交科研工作时用它校验项目出处。
    * 必须已绑定、与绑定一致、且项目真实存在——渲染器不能自己声明一个项目。
    * 与科研窗口共用同一个作用域注册表，所以权限衰减和跨项目拒绝是同一套规则。

@@ -28,6 +28,12 @@ const desktopApi = Object.freeze({
   enableNativeMain: () => ipcRenderer.invoke("desktop:os-runtime-enable") as Promise<{ runtimeName: string }>,
   manageAgentApps: (payload: { action: "list" | "install" | "open" | "view" | "enable" | "disable" | "remove" | "submit"; id?: string; sessionId?: string; goal?: string; manifest?: unknown; approvedActions?: string[] }) => ipcRenderer.invoke("desktop:os-apps-manage", payload),
   submitGoal: (goal: string, sessionId?: string, artifactIds?: string[], projectScope?: { projectId: string; windowId: string }) => ipcRenderer.invoke("desktop:os-submit-goal", goal, sessionId, artifactIds, projectScope?.projectId, projectScope?.windowId) as Promise<{ task: OsTaskView }>,
+  science: Object.freeze({
+    /** 登记一次科研计算（计划 → 任务 + 计划哈希绑定）。不执行计算。 */
+    plan: (payload: { goal: string; plan: unknown; projectId: string; windowId: string; sessionId?: string }) => ipcRenderer.invoke("desktop:os-science-plan", payload) as Promise<{ task: OsTaskView; planHash: string; replayed: boolean }>,
+    requestApproval: (taskId: string, reason: string) => ipcRenderer.invoke("desktop:os-science-request-approval", taskId, reason) as Promise<{ approvalId: string; state: string; taskId: string }>,
+    execute: (taskId: string) => ipcRenderer.invoke("desktop:os-science-execute", taskId) as Promise<unknown>,
+  }),
   tasks: Object.freeze({
     cancel: (taskId: string) => ipcRenderer.invoke("desktop:os-task-cancel", taskId) as Promise<{ task: OsTaskView }>,
     retry: (taskId: string) => ipcRenderer.invoke("desktop:os-task-retry", taskId) as Promise<{ task: OsTaskView }>,

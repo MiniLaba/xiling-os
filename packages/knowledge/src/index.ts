@@ -334,6 +334,29 @@ export class KnowledgeService implements KnowledgeStore {
     return revision;
   }
 
+  /**
+   * 把一次科研计算产出的产物登记进科研图谱投影。
+   *
+   * 与其它投影走同一条耐久 outbox：这里只入队，不直接写图。
+   * 因此"计算跑完"和"图里看得见"之间没有双写，也不会出现图先有、事实后无的半截状态。
+   */
+  registerScienceArtifacts(input: {
+    projectId: string;
+    executionId: string;
+    adapterId: string;
+    planHash: string;
+    recipe: { id: string; version: string };
+    artifacts: Array<{ name: string; uri: string; sha256: string; kind: string; mimeType: string }>;
+    createdAt?: string | undefined;
+  }): void {
+    const timestamp = input.createdAt ?? now();
+    this.sqlite.exec("BEGIN IMMEDIATE");
+    try {
+      this.enqueueProjection(input.projectId, input.executionId, "knowledge.science.artifacts.registered", { ...input, createdAt: timestamp }, timestamp);
+      this.sqlite.exec("COMMIT");
+    } catch (error) { this.sqlite.exec("ROLLBACK"); throw error; }
+  }
+
   private enqueueProjection(projectId: string, sourceId: string, eventType: ResearchProjectionOutboxRecord["eventType"], payload: unknown, createdAt: string): void {
     const id = randomUUID();
     this.sqlite.prepare(`

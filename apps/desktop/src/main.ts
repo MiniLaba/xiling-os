@@ -229,6 +229,23 @@ function registerIpc(): void {
     return requestCore("os.goal.submit", { goal, sessionId, artifactIds, ...(projectId === undefined ? {} : { projectId }), ...(windowId === undefined ? {} : { windowId }) });
   });
 
+  ipcMain.handle("desktop:os-science-plan", async (event, payload: unknown) => {
+    assertTrustedSender(event);
+    if (!payload || typeof payload !== "object" || JSON.stringify(payload).length > 60_000) throw new Error("Invalid science plan request");
+    return requestCore("os.science.plan", payload);
+  });
+  ipcMain.handle("desktop:os-science-request-approval", async (event, taskId: unknown, reason: unknown) => {
+    assertTrustedSender(event);
+    if (typeof taskId !== "string" || taskId.length > 200) throw new Error("Invalid task id");
+    if (typeof reason !== "string" || reason.length > 2000) throw new Error("Invalid approval reason");
+    return requestCore("os.science.approval.request", { taskId, reason });
+  });
+  ipcMain.handle("desktop:os-science-execute", async (event, taskId: unknown) => {
+    assertTrustedSender(event);
+    if (typeof taskId !== "string" || taskId.length > 200) throw new Error("Invalid task id");
+    return requestCore("os.science.execute", { taskId });
+  });
+
   ipcMain.handle("desktop:os-task-cancel", async (event, taskId: unknown) => {
     assertTrustedSender(event);
     if (typeof taskId !== "string") throw new Error("Invalid task id");

@@ -67,6 +67,16 @@ export interface ScienceExecutionAdapterDeclaration {
     network: "none" | "allowlist";
     resourceLimits: boolean;
     processLimit: boolean;
+    /**
+     * 真正被强制执行的限制，逐条列出。界面直接展示，
+     * 使"有隔离"这句话可以被读者逐项核对，而不是只能整体相信。
+     */
+    enforced: string[];
+    /**
+     * 明确**不**覆盖的项。存在的理由是防止把"有超时"读成"有内存上限"：
+     * 隔离声明一旦含糊，就等于没有声明。
+     */
+    notEnforced: string[];
   };
   implementationVersion: string;
 }
@@ -95,7 +105,14 @@ export function unavailableScienceExecutionPort(reason = "本机尚未接入通�
       label: "安全执行后端未安装",
       available: false,
       reason,
-      isolation: { filesystem: "none", network: "none", resourceLimits: false, processLimit: false },
+      isolation: {
+        filesystem: "none",
+        network: "none",
+        resourceLimits: false,
+        processLimit: false,
+        enforced: [],
+        notEnforced: ["文件系统隔离", "网络隔离", "资源上限", "进程限制", "可执行文件白名单"],
+      },
       implementationVersion: "0.0.0",
     }],
     run: async () => { throw new OsError("invalid_command", reason); },

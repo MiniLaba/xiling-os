@@ -48,9 +48,11 @@ packages/ui-tokens 是主题变量权威。桌面外壳允许轻量透明效果�
      伴侣面板按 `system.companion` 绑定项目；提交携带项目出处，由 `scopedProject` 校验
      （必须已绑定、与绑定一致、项目存在），写入 `TaskConstraints.projectId`。音频仍只是适配器。
 - [x] 无 Docker 安装启动；执行适配器安全能力真实声明。
-- [ ] 小型真实科研闭环和窗口交互验收（缺少通过验收的系统级执行沙箱与真实凭据）。
-     窗口交互验收已完成（CDP 驱动真实界面）；**真实科研闭环仍未完成**。
-- [ ] 新整合 PR；明确替代旧 PR #17，但不自动合并。
+- [x] 小型真实科研闭环和窗口交互验收。
+     窗口交互验收：CDP 驱动真实界面（三窗口、作用域门、看板写入、Wiki 建页、画布投影）。
+     真实科研闭环：macOS seatbelt 沙箱内跑通旋转分解 → 内容寻址产物 → 科研图谱 →
+     Wiki 引用产物，全程未用 fixture 成功。执行适配器 `available: true`（见 ADR 0059）。
+- [ ] 新整合 PR；明确替代旧 PR #17，但不自动合并。已开 PR #18，待本轮回合推送。
 
 ## 验收
 
@@ -76,7 +78,19 @@ packages/ui-tokens 是主题变量权威。桌面外壳允许轻量透明效果�
 
 期间修正：新增测试的首版断言把"绑定后传未知项目"的预期错误码写错——该路径先撞上跨项目校验而非"项目不存在"。改为断言 `ProjectScopeError` 并单独验证绑定路径拒绝未知项目。这是测试写错，不是实现缺陷。
 
-待完成的关键项：真实科研闭环与执行沙箱验收、新整合 PR。语音/伴侣的产物仅到任务归属层，未做项目级产物索引。这些不能因构建成功勾选。
+2026-09-10 第六轮（真实科研闭环 + 系统级执行沙箱）：
+
+- **执行沙箱落地**：macOS seatbelt（`/usr/bin/sandbox-exec`）接入 `ScienceExecutionPort`，`scienceAdapters` 由 `available: false` 变为 `available: true`。隔离由内核执行，无 Docker/WSL 依赖，无宿主裸跑回退。隔离能力逐项声明（`enforced` / `notEnforced`），并明确三项未覆盖：内存硬上限、按主机名网络 allowlist（计划要求时**拒绝执行**）、敏感区之外的一般性读取。
+- **沙箱验收 12 项**（`packages/execution/src/macos-seatbelt.test.ts`）：真实数值计算产出内容寻址产物（哈希与落盘内容复核一致）；网络连接被拒；`~/.zshrc`、`/etc/hosts`、`/Volumes` 读取被拒；scratch 外写入被拒并核实文件不存在；派生 `/bin/ls` 被拒；`while True` 被 wall-clock 终止；取消生效；声明输入落在被拒区时仍可读、同级未声明文件读不到。
+- **端口验收 7 项**（`apps/desktop/src/core/science-execution.test.ts`）：哈希不符拒绝、网络 allowlist 拒绝、未知适配器拒绝、非零退出失败、无产物失败、真实计算端到端。
+- **真实闭环跑通**（经应用自身 IPC，非进程内直调）：计划 → 审批（计划哈希绑定）→ `execution-4d6df532… @ macos-seatbelt` `succeeded` → 任务 `completed` → 2 个产物（`niw-report.md` 473B、`niw-rotary.json` 852B，内容为真实的近惯性振幅表与第 1 垂向模态系数 0.017107 / 残差 0.004988）→ 科研图谱 8 节点 13 关系、pending 0 → Wiki 页面 `REFERENCES` 两条指向产物版本。
+- 投影链路补全：新增 `knowledge.science.artifacts.registered` 事件，产物经同一条耐久 outbox 入图（不双写）。图谱新增 4 项验收测试。
+
+**期间发现并修复的真实整合缺陷**：Wiki 引用产物时投影整批失败、outbox 永久 pending。根因是同一份产物被两个投影各写一次不可变 `ArtifactVersion` 节点，第二写因内容哈希不同被不可变守卫拒绝。修法确立所有权规则：产物节点唯一所有者是产物登记投影，**引用方只建引用边**，不重定义事实。重启后该 pending 记录自动重试成功，同时验证了耐久 outbox。
+
+**同时修掉一个可读性缺陷**：产物节点标题原取 URI 末段，对 `artifact://<id>/version/<n>` 得到 `"1"`，图里会显示一堆叫 "1" 的节点；改为由调用方传入产物名。
+
+待完成的关键项：语音/伴侣的产物仅到任务归属层（未做项目级产物索引）；`recoverInterrupted()` 未接执行仓库；资源 URI 只支持 `file://`；执行适配器只支持 python3。这些不能因构建成功勾选。
 
 同一项目：论文搜索/阅读 → 证据提升 → 数据/执行计划 → 授权 → 安全计算 → Artifact → 科研关系 → Wiki 引用。还必须验证跨项目拒绝、取消、重启恢复、产物哈希、图谱幂等和权限衰减。
 

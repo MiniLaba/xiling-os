@@ -279,6 +279,65 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
     void host.kernel.scheduler.tick({ actor: "system" }).catch(() => console.warn("Main task scheduling failed; inspect task status"));
     return { task: host.kernel.tasks.get(task.id) };
   }
+  // ---- 科研计算主路径：计划 → 审批（绑定计划哈希）→ 沙箱执行 → 产物登记 ----
+  // 项目出处与语音/伴侣同一条规则：由核心进程按窗口作用域校验，渲染器不能自己声明项目。
+  if (method === "os.science.plan") {
+    const host = await bootOsKernel();
+    if (host.mainAgentId === undefined) throw new Error("Main Agent is unavailable");
+    if (params.plan === null || typeof params.plan !== "object" || Array.isArray(params.plan)) throw new Error("无效的执行计划");
+    const plan = params.plan as Record<string, unknown>;
+    const planProjectId = typeof plan.projectId === "string" ? plan.projectId : "";
+    if (planProjectId === "") throw new Error("执行计划必须声明所属项目");
+    const scopedProjectId = await resolveSubmitProject({ ...params, projectId: planProjectId });
+    if (scopedProjectId !== planProjectId) throw new Error("执行计划的项目与窗口绑定不一致");
+    const sessionId = typeof params.sessionId === "string" ? params.sessionId : undefined;
+    return host.kernel.science.plan({
+      goal: stringField(params, "goal").trim(),
+      plan: plan as never,
+      ownerAgentId: host.mainAgentId as never,
+      projectId: planProjectId,
+      ...(sessionId === undefined ? {} : { sessionId: sessionId as never }),
+      ctx: { actor: "user" },
+    });
+  }
+  if (method === "os.science.approval.request") {
+    const host = await bootOsKernel();
+    return host.kernel.science.requestApproval(
+      stringField(params, "taskId") as never,
+      stringField(params, "reason"),
+      { actor: "user" },
+    );
+  }
+  if (method === "os.science.execute") {
+    const host = await bootOsKernel();
+    const taskId = stringField(params, "taskId");
+    const summary = await host.kernel.science.execute(taskId as never, { actor: "user" });
+    // 成功的执行把产物登记进科研图谱投影：闭环的最后一段链（安全计算 → 产物 → 科研关系）。
+    // 入队而非直接写图：图里出现的产物一定来自已登记的事实。
+    if (summary.status === "succeeded" && summary.artifacts.length > 0) {
+      const { artifactUri } = await import("@xiling/os-domain");
+      const service = await ensureResearch();
+      const plan = host.kernel.tasks.get(taskId as never).constraints.science?.plan as { recipe?: { id: string; version: string } } | undefined;
+      service.projectScienceArtifacts({
+        projectId: summary.projectId,
+        executionId: summary.executionId,
+        adapterId: summary.adapterId,
+        planHash: summary.planHash,
+        recipe: plan?.recipe ?? { id: "unknown", version: "0" },
+        artifacts: summary.artifacts.map((ref) => {
+          const artifact = host.kernel.artifacts.get(ref.artifactId);
+          return {
+            name: artifact.name,
+            uri: artifactUri(artifact.artifactId, artifact.version),
+            sha256: artifact.storageRef.replace(/^blob:\/\//, ""),
+            kind: artifact.type,
+            mimeType: artifact.mimeType,
+          };
+        }),
+      });
+    }
+    return summary;
+  }
   if (method === "os.apps.manage") {
     const host = await bootOsKernel();
     const action = stringField(params, "action");

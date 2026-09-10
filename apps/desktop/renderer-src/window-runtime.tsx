@@ -98,6 +98,12 @@ interface DesktopBridge {
   manageAgentApps(payload: Record<string, unknown>): Promise<unknown>;
   getOsSnapshot(): Promise<OsSnapshot>;
   submitGoal(goal: string, sessionId?: string, artifactIds?: string[], projectScope?: { projectId: string; windowId: string }): Promise<{ task: OsSnapshot["tasks"][number] }>;
+  /** 科研计算主路径：计划 → 审批 → 沙箱执行。项目出处由核心进程按窗口作用域校验。 */
+  science: {
+    plan(payload: { goal: string; plan: unknown; projectId: string; windowId: string; sessionId?: string }): Promise<{ task: OsSnapshot["tasks"][number]; planHash: string; replayed: boolean }>;
+    requestApproval(taskId: string, reason: string): Promise<{ approvalId: string; state: string; taskId: string }>;
+    execute(taskId: string): Promise<{ executionId: string; adapterId: string; status: "cancelled" | "succeeded" | "failed"; artifacts: Array<{ artifactId: string; version: number }>; error?: string | undefined }>;
+  };
   tasks: {
     cancel(taskId: string): Promise<{ task: OsSnapshot["tasks"][number] }>;
     retry(taskId: string): Promise<{ task: OsSnapshot["tasks"][number] }>;

@@ -32,13 +32,31 @@ function addProject(builder: ChangeSetBuilder, project: ResearchProject): void {
   builder.relation("CONTAINS", project.id, rq);
 }
 
-function addArtifact(builder: ChangeSetBuilder, uri: string, createdAt: string): string {
+function addArtifact(
+  builder: ChangeSetBuilder,
+  uri: string,
+  createdAt: string,
+  extra: { title?: string; summary?: string; properties?: Record<string, unknown> } = {},
+): string {
   const artifact = artifactId(uri);
   const version = artifactVersionId(uri);
-  builder.node({ id: artifact, kind: "Artifact", title: uri.split("/").at(-1) ?? "Artifact", summary: "受管科研产物", status: "available", uri, properties: { uri }, createdAt, updatedAt: createdAt });
-  builder.node({ id: version, kind: "ArtifactVersion", title: uri.split("/").at(-1) ?? "Artifact version", summary: "可复现的产物版本", status: "available", uri, sourceLocator: uri, properties: { uri }, createdAt, updatedAt: createdAt });
+  // 标题默认取 URI 末段：对 artifact://<id>/version/<n> 来说是版本号，几乎不可读。
+  // 调用方知道真实名字时必须传 title，否则图里会出现一堆叫 "1" 的节点。
+  const fallback = uri.split("/").at(-1) ?? "Artifact";
+  const title = extra.title ?? fallback;
+  builder.node({ id: artifact, kind: "Artifact", title, summary: extra.summary ?? "受管科研产物", status: "available", uri, properties: { uri }, createdAt, updatedAt: createdAt });
+  builder.node({ id: version, kind: "ArtifactVersion", title: title === fallback ? `${fallback}（版本）` : title, summary: extra.summary ?? "可复现的产物版本", status: "available", uri, sourceLocator: uri, properties: { uri, ...(extra.properties ?? {}) }, createdAt, updatedAt: createdAt });
   builder.relation("HAS_VERSION", artifact, version);
   return version;
+}
+
+export interface ScienceArtifactsPayload {
+  executionId: string;
+  adapterId: string;
+  planHash: string;
+  recipe: { id: string; version: string };
+  artifacts: Array<{ name: string; uri: string; sha256: string; kind: string; mimeType: string }>;
+  createdAt?: string;
 }
 
 export function knowledgeRecordToChangeSet(record: ResearchProjectionOutboxRecord, currentProject?: ResearchProject): ResearchGraphChangeSet {
@@ -64,7 +82,37 @@ export function knowledgeRecordToChangeSet(record: ResearchProjectionOutboxRecor
     });
     builder.relation("CONTAINS", record.projectId, wiki);
     builder.relation("DOCUMENTS", wiki, questionId(record.projectId));
-    for (const uri of payload.revision.artifactUris) builder.relation("REFERENCES", wiki, addArtifact(builder, uri, payload.revision.createdAt));
+    // 只建立引用边，**不**在这里重建产物节点。
+    //
+    // 产物节点的唯一所有者是"产物登记"投影（knowledge.science.artifacts.registered）。
+    // 早先这里调用 addArtifact 重建节点，于是同一份产物被两个投影各写一次不可变
+    // ArtifactVersion：第二个投影因内容哈希不同被不可变守卫拒绝，整批变更回滚，
+    // wiki 页面永远进不了图、outbox 永久 pending。引用方不该重定义事实。
+    for (const uri of payload.revision.artifactUris) builder.relation("REFERENCES", wiki, artifactVersionId(uri));
+    return builder.build();
+  }
+  // 科研计算产出：让"哪次执行、用哪个计划哈希、在哪种隔离里跑出来"在图里可追溯。
+  if (record.eventType === "knowledge.science.artifacts.registered") {
+    const payload = record.payload as ScienceArtifactsPayload;
+    const createdAt = payload.createdAt ?? record.createdAt;
+    for (const artifact of payload.artifacts) {
+      const version = addArtifact(builder, artifact.uri, createdAt, {
+        title: artifact.name,
+        summary: `${payload.recipe.id}@${payload.recipe.version} 由 ${payload.adapterId} 隔离执行产出`,
+        properties: {
+          executionId: payload.executionId,
+          adapterId: payload.adapterId,
+          planHash: payload.planHash,
+          recipe: `${payload.recipe.id}@${payload.recipe.version}`,
+          sha256: artifact.sha256,
+          kind: artifact.kind,
+          mimeType: artifact.mimeType,
+        },
+      });
+      builder.relation("CONTAINS", record.projectId, artifactId(artifact.uri));
+      // 这次计算是针对本项目研究问题的：与证据断言一样指向研究问题，便于从问题追到计算
+      builder.relation("EVALUATES", version, questionId(record.projectId));
+    }
     return builder.build();
   }
   const evidence = record.payload as EvidenceRecord;

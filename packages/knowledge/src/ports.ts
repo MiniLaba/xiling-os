@@ -47,7 +47,7 @@ export interface ResearchProjectionOutboxRecord {
   projectionKey: string;
   projectId: string;
   sourceId: string;
-  eventType: "knowledge.project.upserted" | "knowledge.wiki.revision.created" | "knowledge.evidence.saved";
+  eventType: "knowledge.project.upserted" | "knowledge.wiki.revision.created" | "knowledge.evidence.saved" | "knowledge.science.artifacts.registered";
   payload: unknown;
   createdAt: string;
   appliedAt?: string;

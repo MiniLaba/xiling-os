@@ -16,7 +16,14 @@ const AVAILABLE: ScienceExecutionAdapterDeclaration = {
   id: "sandbox-stub",
   label: "测试隔离适配器",
   available: true,
-  isolation: { filesystem: "workspace", network: "none", resourceLimits: true, processLimit: true },
+  isolation: {
+    filesystem: "workspace",
+    network: "none",
+    resourceLimits: true,
+    processLimit: true,
+    enforced: ["写入仅限 scratch", "网络拒绝"],
+    notEnforced: ["内存上限"],
+  },
   implementationVersion: "test-1",
 };
 
@@ -25,7 +32,14 @@ const UNAVAILABLE: ScienceExecutionAdapterDeclaration = {
   label: "宿主裸跑",
   available: false,
   reason: "未通过系统级沙箱验收",
-  isolation: { filesystem: "none", network: "none", resourceLimits: false, processLimit: false },
+  isolation: {
+    filesystem: "none",
+    network: "none",
+    resourceLimits: false,
+    processLimit: false,
+    enforced: [],
+    notEnforced: ["文件系统隔离", "网络隔离", "资源上限", "进程限制"],
+  },
   implementationVersion: "test-0",
 };
 

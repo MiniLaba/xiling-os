@@ -31,6 +31,8 @@ export interface ExecutionRepository {
   recoverInterrupted(): number;
 }
 
+export * from "./macos-seatbelt.js";
+
 export interface DockerSandboxPolicy {
   network: "none" | "egress";
   cpu: number;

@@ -44,9 +44,16 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
   const databaseFile = path.join(dataDirectory, "os-state.sqlite");
   const persistence = new OsPersistence(databaseFile, eventsFile);
   const persisted: OSEvent[] = persistence.loadEvents();
+  // 科研执行：macOS seatbelt 沙箱。装不上就如实报"不可执行"（端口自身会报告原因），
+  // 绝不回退到宿主裸跑 —— 见 AGENTS.md 与 docs/adr/0059。
+  const { createScienceExecutionPort } = await import("./core/science-execution.js");
+  const scienceExecution = createScienceExecutionPort({
+    runRoot: path.join(dataDirectory, "science-runs"),
+  });
   const kernel = new OSKernel({
     eventHooks: { append: (event) => persistence.appendEvent(event) },
     artifactContentStore: persistence,
+    scienceExecution,
   });
   const voice = new VoiceService(dataDirectory, options.readModelKey ?? (() => undefined));
   await voice.initialize();

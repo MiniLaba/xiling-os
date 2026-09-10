@@ -14,6 +14,7 @@
   "dependencies": {
     "@pixi/unsafe-eval": "catalog:",
     "@xiling/credentials": "workspace:*",
+    "@xiling/execution": "workspace:*",
     "@xiling/os-domain": "workspace:*",
     "@xiling/os-kernel": "workspace:*",
     "@xiling/os-runtime": "workspace:*",
