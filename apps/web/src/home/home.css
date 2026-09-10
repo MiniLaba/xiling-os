@@ -54,6 +54,8 @@
   animation: home-fade 0.8s var(--xl-ease-tide) 0.3s both;
 }
 .home-title p { font-size: var(--xl-type-body); line-height: var(--xl-leading-cjk); color: rgba(165, 182, 204, 0.92); animation: home-fade 0.8s var(--xl-ease-tide) 0.45s both; }
+.home-title .home-slogan { margin: 0; font-size: var(--xl-type-section); font-weight: 500; letter-spacing: 0.08em; color: rgba(232, 238, 246, 0.96); }
+.home-title .home-description { margin: 0; font-size: var(--xl-type-small); color: rgba(165, 182, 204, 0.72); }
 
 .home-cta { display: flex; gap: var(--xl-space-3); margin-top: var(--xl-space-3); animation: home-fade 0.8s var(--xl-ease-tide) 0.6s both; }
 .home-cta button {

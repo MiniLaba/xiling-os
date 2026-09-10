@@ -352,6 +352,7 @@
 .agent-role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--xl-space-3); }
 .agent-role-grid > article { padding: var(--xl-space-4); border-radius: var(--xl-radius-lg); background: var(--xl-surface); border: 1px solid var(--xl-border); display: grid; gap: var(--xl-space-2); }
 .agent-role-grid > article > header { display: flex; justify-content: space-between; align-items: center; }
+.agent-role-grid > article > header h3, .skill-card > header h3 { font-size: var(--xl-type-lead); font-weight: 650; }
 .agent-role-grid > article > header b { font-size: var(--xl-type-control); font-weight: 650; }
 .agent-role-grid > article p { font-size: var(--xl-type-small); color: var(--xl-muted); line-height: var(--xl-leading-ui); }
 .agent-role-grid .role-route-list { margin-top: var(--xl-space-2); }
@@ -360,7 +361,7 @@
 .skills-toolbar input { flex: 1; max-width: 320px; padding: 7px var(--xl-space-3); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-md); background: var(--xl-surface); color: var(--xl-text); font-size: var(--xl-type-control); outline: none; }
 .skills-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--xl-space-3); }
 .skill-card { padding: var(--xl-space-4); border-radius: var(--xl-radius-lg); background: var(--xl-surface); border: 1px solid var(--xl-border); display: grid; gap: var(--xl-space-2); }
-.skill-card > header { display: flex; gap: var(--xl-space-3); align-items: center; }
+.skill-card > header { display: flex; align-items: flex-start; }
 .skill-glyph { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: var(--xl-radius-md); background: var(--xl-accent-soft); color: var(--xl-accent); font-size: var(--xl-type-lead); }
 .skill-card > header b { font-size: var(--xl-type-control); font-weight: 650; }
 .skill-card > header small { display: block; font-size: var(--xl-type-caption); color: var(--xl-faint); }

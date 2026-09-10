@@ -197,6 +197,8 @@ Windows 11 可在 PowerShell 中通过系统自带的 `cmd` 执行同一条可�
 cmd /d /s /c "git clone --depth 1 https://github.com/MiniLaba/xiling-os.git && cd xiling-os && corepack pnpm install --frozen-lockfile && corepack pnpm start"
 ```
 
+合并前若要预览当前候选分支，可将克隆命令中的 `git clone --depth 1` 替换为 `git clone --depth 1 --branch codex-liquid-glass-settings-canvas`；正式入口始终跟随默认主支。
+
 该快捷方式不会绕过环境要求或科研执行审批。首次启动会下载 JavaScript 依赖；运行隔离科研任务前仍需 Docker Desktop 或 Docker Engine。若需要逐项诊断 Windows 环境，请使用下方正式 Windows 启动流程。
 
 ### 开发模式
