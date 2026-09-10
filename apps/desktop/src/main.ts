@@ -218,12 +218,15 @@ function registerIpc(): void {
     return requestCore("os.apps.manage", payload);
   });
 
-  ipcMain.handle("desktop:os-submit-goal", async (event, goal: unknown, sessionId: unknown, artifactIds: unknown = []) => {
+  ipcMain.handle("desktop:os-submit-goal", async (event, goal: unknown, sessionId: unknown, artifactIds: unknown = [], projectId: unknown = undefined, windowId: unknown = undefined) => {
     assertTrustedSender(event);
     if (typeof goal !== "string" || goal.trim() === "") throw new Error("请输入目标");
     if (goal.length > 12000 || (sessionId !== undefined && (typeof sessionId !== "string" || sessionId.length > 200))) throw new Error("Invalid goal or session");
     if (!Array.isArray(artifactIds) || artifactIds.length > 20 || artifactIds.some((id) => typeof id !== "string" || id.length > 200)) throw new Error("Invalid artifact selection");
-    return requestCore("os.goal.submit", { goal, sessionId, artifactIds });
+    // 项目出处是可选的；给了就必须是合法标识，真正的授权判断在核心进程的作用域注册表里
+    if (projectId !== undefined && (typeof projectId !== "string" || projectId.length > 200)) throw new Error("Invalid project scope");
+    if (windowId !== undefined && (typeof windowId !== "string" || windowId.length > 200)) throw new Error("Invalid window scope");
+    return requestCore("os.goal.submit", { goal, sessionId, artifactIds, ...(projectId === undefined ? {} : { projectId }), ...(windowId === undefined ? {} : { windowId }) });
   });
 
   ipcMain.handle("desktop:os-task-cancel", async (event, taskId: unknown) => {

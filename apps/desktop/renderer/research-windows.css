@@ -1,0 +1,91 @@
+/* 科研窗口（项目 / Wiki / 科研画布）样式。
+   只用 @xiling/ui-tokens 生成的语义令牌，不引入第二套调色板；
+   颜色来自 --xl-* 与 --xl-entity-* / --xl-rel-*（图元与关系类型），与桌面主题同源。 */
+
+.research-window { display:flex; flex-direction:column; gap:var(--xl-space-4); height:100%; min-height:0; padding:var(--xl-space-5); overflow:auto; }
+.research-window h2 { margin:0; font-size:var(--xl-type-section); }
+.research-window h3 { margin:0; font-size:var(--xl-type-body); }
+.research-window h4 { margin:var(--xl-space-4) 0 var(--xl-space-2); font-size:var(--xl-type-small); color:var(--xl-muted); }
+.research-window p { margin:0; }
+.research-window .eyebrow { margin:0 0 var(--xl-space-1); font-size:var(--xl-type-caption); letter-spacing:.08em; text-transform:uppercase; color:var(--xl-accent); }
+.research-window-head { display:flex; flex-wrap:wrap; gap:var(--xl-space-4); align-items:flex-start; justify-content:space-between; }
+.research-window-head p { color:var(--xl-muted); font-size:var(--xl-type-small); }
+.research-window-metrics { display:flex; gap:var(--xl-space-4); flex-wrap:wrap; }
+.research-window-metrics span { display:flex; flex-direction:column; font-size:var(--xl-type-caption); color:var(--xl-muted); }
+.research-window-metrics strong { font-size:var(--xl-type-lead); color:var(--xl-text); }
+.research-window-error { color:var(--xl-danger); font-size:var(--xl-type-small); }
+.research-window-status { color:var(--xl-muted); font-size:var(--xl-type-small); }
+.research-window-empty { padding:var(--xl-space-6); text-align:center; color:var(--xl-muted); }
+.research-window-hint { font-size:var(--xl-type-caption); color:var(--xl-faint); }
+
+/* 作用域门：未绑定项目时的入口 */
+.research-window-gate { display:flex; flex-direction:column; gap:var(--xl-space-4); max-width:640px; }
+.research-window-gate form { display:flex; flex-direction:column; gap:var(--xl-space-3); padding:var(--xl-space-4); border:1px solid var(--xl-border); border-radius:var(--xl-radius-md); background:var(--xl-elevated); }
+.research-window-gate label { display:flex; flex-direction:column; gap:var(--xl-space-1); font-size:var(--xl-type-small); color:var(--xl-muted); }
+.research-window-scope { display:flex; flex-wrap:wrap; gap:var(--xl-space-3); align-items:center; padding:var(--xl-space-2) var(--xl-space-3); border:1px solid var(--xl-border); border-radius:var(--xl-radius-md); background:var(--xl-bg-secondary); }
+.research-window-scope label { display:flex; gap:var(--xl-space-2); align-items:center; font-size:var(--xl-type-small); color:var(--xl-muted); }
+.research-window-question { font-size:var(--xl-type-caption); color:var(--xl-muted); }
+
+/* 项目看板 */
+.research-window-create { display:flex; gap:var(--xl-space-2); }
+.research-window-create input { flex:1; }
+.research-board { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:var(--xl-space-3); align-items:start; }
+.research-board-column { display:flex; flex-direction:column; gap:var(--xl-space-2); padding:var(--xl-space-3); border:1px solid var(--xl-border); border-radius:var(--xl-radius-md); background:var(--xl-bg-secondary); min-height:120px; }
+.research-board-column>header { display:flex; justify-content:space-between; font-size:var(--xl-type-caption); color:var(--xl-muted); }
+.research-board-column article { display:flex; flex-direction:column; gap:var(--xl-space-1); padding:var(--xl-space-2) var(--xl-space-3); border:1px solid var(--xl-border); border-radius:var(--xl-radius-sm); background:var(--xl-surface); }
+.research-board-column article small { font-size:var(--xl-type-caption); color:var(--xl-entity-project); }
+.research-board-column article p { font-size:var(--xl-type-small); color:var(--xl-muted); }
+.research-board-column article select { font-size:var(--xl-type-caption); }
+
+/* Wiki */
+.wiki-layout { display:grid; grid-template-columns:minmax(240px,320px) 1fr; gap:var(--xl-space-4); min-height:0; flex:1; }
+.wiki-list { display:flex; flex-direction:column; gap:var(--xl-space-3); min-height:0; }
+.wiki-search { display:flex; gap:var(--xl-space-2); }
+.wiki-search input { flex:1; min-width:0; }
+.wiki-pages,.wiki-hits { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--xl-space-1); overflow:auto; max-height:46vh; }
+.wiki-pages button,.wiki-hits button { display:flex; flex-direction:column; gap:2px; width:100%; text-align:left; padding:var(--xl-space-2) var(--xl-space-3); border:1px solid transparent; border-radius:var(--xl-radius-sm); background:transparent; cursor:pointer; }
+.wiki-pages button.active { border-color:var(--xl-accent); background:var(--xl-accent-soft); }
+.wiki-pages small,.wiki-hits small { font-size:var(--xl-type-caption); color:var(--xl-muted); }
+.wiki-hits { border-bottom:1px solid var(--xl-border); padding-bottom:var(--xl-space-2); }
+.wiki-create { display:flex; gap:var(--xl-space-2); margin-top:auto; }
+.wiki-create input { flex:1; min-width:0; }
+.wiki-detail { display:flex; flex-direction:column; gap:var(--xl-space-3); min-height:0; }
+.wiki-detail>header { display:flex; justify-content:space-between; align-items:flex-start; gap:var(--xl-space-3); }
+.wiki-detail>header span { font-size:var(--xl-type-caption); color:var(--xl-muted); }
+.wiki-editor { display:flex; flex-direction:column; gap:var(--xl-space-1); font-size:var(--xl-type-small); color:var(--xl-muted); }
+.wiki-editor textarea { font-family:var(--xl-font-mono); font-size:var(--xl-type-small); resize:vertical; }
+.wiki-actions { display:flex; gap:var(--xl-space-2); }
+.wiki-artifacts { font-size:var(--xl-type-caption); color:var(--xl-muted); }
+.wiki-history summary { cursor:pointer; font-size:var(--xl-type-small); color:var(--xl-muted); }
+.wiki-history ol { list-style:none; margin:var(--xl-space-2) 0 0; padding:0; display:flex; flex-direction:column; gap:var(--xl-space-1); }
+.wiki-history li { display:flex; gap:var(--xl-space-3); align-items:center; font-size:var(--xl-type-caption); color:var(--xl-muted); }
+
+/* 科研画布 */
+.canvas-filters { display:flex; flex-wrap:wrap; gap:var(--xl-space-1); }
+.canvas-filters button { font-size:var(--xl-type-caption); padding:2px var(--xl-space-2); border-radius:var(--xl-radius-full); cursor:pointer; }
+.canvas-filters button[aria-pressed="false"] { opacity:.45; }
+.canvas-refresh { margin-left:auto; }
+.canvas-body { display:grid; grid-template-columns:1fr minmax(240px,300px); gap:var(--xl-space-4); flex:1; min-height:0; }
+.canvas-scroll { overflow:auto; border:1px solid var(--xl-border); border-radius:var(--xl-radius-md); background:var(--xl-bg-secondary); }
+.canvas-svg { display:block; }
+.canvas-edge path { stroke:var(--xl-border-strong); stroke-width:1.2; }
+.canvas-edge.is-focus path { stroke:var(--xl-accent); stroke-width:2; }
+.canvas-node rect { fill:var(--xl-surface); stroke:var(--xl-border); }
+.canvas-node text { font-family:var(--xl-font-ui); font-size:11px; fill:var(--xl-text); }
+.canvas-node { cursor:pointer; }
+.canvas-node.is-selected rect { stroke:var(--xl-accent); stroke-width:2; }
+.canvas-node:focus-visible rect { outline:2px solid var(--xl-accent); }
+.canvas-detail { display:flex; flex-direction:column; gap:var(--xl-space-2); overflow:auto; }
+.canvas-detail dl { display:flex; flex-direction:column; gap:var(--xl-space-1); margin:0; font-size:var(--xl-type-small); }
+.canvas-detail dl div { display:flex; gap:var(--xl-space-2); }
+.canvas-detail dt { color:var(--xl-muted); min-width:64px; }
+.canvas-detail dd { margin:0; }
+.canvas-mono { font-family:var(--xl-font-mono); font-size:var(--xl-type-caption); }
+.canvas-locator { font-size:var(--xl-type-caption); color:var(--xl-muted); }
+.canvas-relations { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--xl-space-1); font-size:var(--xl-type-caption); }
+.canvas-relations li { display:flex; flex-direction:column; }
+.canvas-relations b { color:var(--xl-rel-derived-from); }
+
+@media (max-width: 900px) {
+  .wiki-layout, .canvas-body { grid-template-columns:1fr; }
+}

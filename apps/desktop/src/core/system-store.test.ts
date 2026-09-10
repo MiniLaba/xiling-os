@@ -24,7 +24,7 @@ test("system store initializes the unified schema and restores desktop state", (
 
   store.saveWindow({
     id: "window-1",
-    appId: "system.files",
+    appId: "system.workspace",
     x: 80,
     y: 64,
     width: 720,

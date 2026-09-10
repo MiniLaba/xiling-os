@@ -40,6 +40,12 @@ export interface ArtifactRef {
 export interface TaskConstraints {
   /** Host-selected per-task runtime; never changes the persistent Agent's default. */
   runtimeBinding?: { name: string; providerId: string; modelId: string } | undefined;
+  /**
+   * 出处科研项目。提交时由宿主按逐窗口作用域确定，用于把用户任务归属到项目，
+   * 使语音/伴侣/对话入口与科研窗口遵守同一套权限与产物登记。
+   * 它与 `science.projectId` 不同：这类任务仍是模型路线的用户工作单元，不是科学执行。
+   */
+  projectId?: string | undefined;
   deadline?: string | undefined;
   priority?: number | undefined;
   budgetTokens?: number | undefined;

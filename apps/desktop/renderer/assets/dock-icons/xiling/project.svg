@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="项目">
+  <rect x="1.2" y="3" width="21.6" height="18" rx="3" fill="#f4f1e8" stroke="#6b6255" stroke-width="1.2"/>
+  <rect x="4" y="6.4" width="6.2" height="3" rx="1" fill="#7fa9c4"/>
+  <rect x="4" y="11" width="6.2" height="3" rx="1" fill="#9dbe8f"/>
+  <rect x="4" y="15.6" width="6.2" height="3" rx="1" fill="#c9c09a"/>
+  <rect x="12.4" y="6.4" width="7.6" height="3" rx="1" fill="#c9a86b"/>
+  <rect x="12.4" y="11" width="7.6" height="3" rx="1" fill="#c98686"/>
+</svg>

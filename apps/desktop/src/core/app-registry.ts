@@ -18,14 +18,9 @@ export const BUILT_IN_APPS: readonly AppManifest[] = [
     capabilities: ["workspace.read", "workspace.write", "artifact.read"],
     builtIn: true,
   },
-  {
-    id: "system.files",
-    name: "文件",
-    version: "1.0.0",
-    entry: "builtin://files",
-    capabilities: ["workspace.read", "workspace.write"],
-    builtIn: true,
-  },
+  // 曾经的 system.files（"文件"）已移除：它没有窗口运行时 key，也没有 icon，
+  // 因此既打不开也没有程序坞入口——一个不存在的应用不该在注册表里声明能力。
+  // 真实文件夹浏览由 system.workspace（工作台）承担，它持有 workspace.read/write。
   {
     id: "system.tasks",
     name: "任务中心",
@@ -43,6 +38,40 @@ export const BUILT_IN_APPS: readonly AppManifest[] = [
     builtIn: true,
   },
   // system.literature（文献工作台）由标准插件清单注册：见 src/plugins/literature-workbench.ts
+  // 科研主界面窗口：项目 / Wiki / 科研画布。它们各自从程序坞打开，作用域按窗口绑定。
+  {
+    id: "system.project",
+    name: "项目",
+    version: "1.0.0",
+    entry: "builtin://project",
+    capabilities: ["workspace.read", "artifact.read", "artifact.write"],
+    builtIn: true,
+    icon: "xiling-project",
+    eyebrow: "科研项目",
+    description: "项目事项看板：任务、里程碑与实验",
+  },
+  {
+    id: "system.wiki",
+    name: "Wiki",
+    version: "1.0.0",
+    entry: "builtin://wiki",
+    capabilities: ["workspace.read", "artifact.read"],
+    builtIn: true,
+    icon: "xiling-wiki",
+    eyebrow: "科研知识",
+    description: "项目 Wiki：阅读、引用与版本历史",
+  },
+  {
+    id: "system.canvas",
+    name: "科研画布",
+    version: "1.0.0",
+    entry: "builtin://canvas",
+    capabilities: ["workspace.read", "artifact.read"],
+    builtIn: true,
+    icon: "xiling-canvas",
+    eyebrow: "科研关系",
+    description: "科研图谱：来源、证据与结论版本的关系",
+  },
   {
     id: "system.settings",
     name: "设置",

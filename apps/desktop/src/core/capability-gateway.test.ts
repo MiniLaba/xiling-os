@@ -10,7 +10,7 @@ test("capability gateway defaults local built-ins safely and requires consent fo
   for (const app of BUILT_IN_APPS) store.upsertApp(app);
   const gateway = new CapabilityGateway(store);
 
-  assert.equal(gateway.authorize("system.files", "workspace.read").id, "system.files");
+  assert.equal(gateway.authorize("system.workspace", "workspace.read").id, "system.workspace");
   assert.throws(() => gateway.authorize("system.tasks", "agent.invoke"), /explicit/);
   gateway.decide("system.tasks", "agent.invoke", "allow");
   assert.equal(gateway.authorize("system.tasks", "agent.invoke").id, "system.tasks");

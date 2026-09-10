@@ -6,9 +6,13 @@ import { ArtifactInputs, ArtifactResult } from "./artifact-inputs.js";
 import { VoiceControls } from "./voice.js";
 
 const Hiyori = lazy(() => import("./hiyori.js"));
+/** 伴侣面板的科研作用域：与科研窗口共用同一个注册表，所以权限衰减与跨项目拒绝同规则。 */
+const COMPANION_WINDOW = "system.companion";
 /** Shared OS task/session; the character is AIRI's default Hiyori (Pro). */
 export function Companion() {
   const [artifactIds, setArtifactIds] = useState<string[]>([]);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
+  const [projectId, setProjectId] = useState("");
   const [open, setOpen] = useState(true);
   const [snapshot, setSnapshot] = useState<OsSnapshot>();
   const [sessionId, setSessionId] = useState(selectedSession);
@@ -39,6 +43,21 @@ export function Companion() {
     window.addEventListener("keydown", escape);
     return () => { live = false; unsubscribe(); window.removeEventListener("keydown", escape); };
   }, [bridge, open]);
+  // 科研作用域：伴侣面板与科研窗口读同一个注册表，绑定事实在核心进程
+  useEffect(() => {
+    if (!open || !bridge) return;
+    let live = true;
+    void (async () => {
+      try {
+        const listed = await bridge.researchKnowledge({ action: "projects.list" });
+        const status = await bridge.researchKnowledge({ action: "scope.status", windowId: COMPANION_WINDOW });
+        if (!live) return;
+        setProjects(listed.projects ?? []);
+        setProjectId(status.binding?.projectId ?? "");
+      } catch (error) { if (live) setError(error instanceof Error ? error.message : String(error)); }
+    })();
+    return () => { live = false; };
+  }, [bridge, open]);
   const sessions = snapshot?.sessions.filter((session) => session.agentId === snapshot.mainAgentId && session.state === "active") ?? [];
   const tasks = snapshot?.tasks.filter((task) => sessionId && task.sessionId === sessionId) ?? [];
   const active = tasks.find((task) => !["completed", "failed", "cancelled"].includes(task.state));
@@ -52,6 +71,7 @@ export function Companion() {
       <header><div><small>HIYORI · 汐灵伴侣</small><strong>{status}</strong></div><button aria-label="收起伴侣面板" onClick={() => setOpen(false)}>−</button><button aria-label="关闭虚拟伴侣" onClick={() => setCompanionEnabled(false)}>×</button></header>
       {!bridge && <p role="alert">请在原生桌面应用中使用，浏览器预览不能运行任务。</p>}
       <label>工作会话<select value={sessionId ?? ""} disabled={busy} onChange={(event) => selectSession(event.target.value || undefined)}><option value="">新会话</option>{sessions.map((session) => <option key={session.id} value={session.id}>{session.title || "会话"} · {new Date(session.startedAt).toLocaleString()}</option>)}</select></label>
+      <label>科研项目<select aria-label="伴侣的科研项目" value={projectId} disabled={busy || projects.length === 0} onChange={(event) => { const next = event.target.value; if (!next || !bridge) return; void perform(async () => { const bound = await bridge.researchKnowledge({ action: "scope.bind", windowId: COMPANION_WINDOW, projectId: next, confirm: true }); setProjectId(bound.binding?.projectId ?? ""); }); }}><option value="">{projects.length ? "不归属项目" : "还没有科研项目"}</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
       {latest && <article className="companion-task" aria-live="polite"><strong>{latest.goal}</strong><p>{latest.statusReason || (latest.state === "completed" ? "已完成" : latest.state === "cancelled" ? "已取消" : status)}</p>{message && <details><summary>{message.text.slice(0, 130)}{message.text.length > 130 ? "… 展开回答" : ""}</summary><p className="companion-text">{message.text}</p></details>}
         {active && (active.state !== "running" || active.canCancelRunning) && <button disabled={busy} onClick={() => void perform(() => bridge!.tasks.cancel(active.id))}>取消此任务</button>}
         {latest.outputArtifacts.map((ref) => <ArtifactResult key={ref.artifactId} id={ref.artifactId} />)}
@@ -60,7 +80,7 @@ export function Companion() {
       {snapshot?.surfaces.filter((surface) => surface.taskId === latest?.id).map((surface) => <TrustedSurface key={surface.id} surface={surface} busy={busy} onAction={(id, action, input) => perform(async () => { await bridge!.submitUiAction(id, action, input); setSnapshot(await bridge!.getOsSnapshot()); })} />)}
       {error && <p role="alert">{error}</p>}
       <VoiceControls onText={setGoal} response={message?.text ?? ""} />
-      <form onSubmit={(event) => { event.preventDefault(); const text = goal.trim(); if (!text || !bridge) return; void perform(async () => { const result = await bridge.submitGoal(text, sessionId, artifactIds); selectSession(result.task.sessionId); setGoal(""); setArtifactIds([]); }); }}>
+      <form onSubmit={(event) => { event.preventDefault(); const text = goal.trim(); if (!text || !bridge) return; void perform(async () => { const result = await bridge.submitGoal(text, sessionId, artifactIds, projectId ? { projectId, windowId: COMPANION_WINDOW } : undefined); selectSession(result.task.sessionId); setGoal(""); setArtifactIds([]); }); }}>
         <ArtifactInputs value={artifactIds} onChange={setArtifactIds} />
         <label>告诉汐灵你的目标<textarea rows={3} maxLength={12000} value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="例如：整理一份旅行准备清单，保存为产物" /></label>
         <button disabled={busy || !bridge || !goal.trim()} type="submit">{busy ? "处理中…" : "交给汐灵"}</button>

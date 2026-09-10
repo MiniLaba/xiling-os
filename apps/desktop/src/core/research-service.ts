@@ -40,6 +40,22 @@ export class ResearchApplicationService {
     this.close();
   }
 
+  /**
+   * 宿主其它入口（语音/伴侣/对话）提交科研工作时用它校验项目出处。
+   * 必须已绑定、与绑定一致、且项目真实存在——渲染器不能自己声明一个项目。
+   * 与科研窗口共用同一个作用域注册表，所以权限衰减和跨项目拒绝是同一套规则。
+   */
+  scopedProject(windowId: string, requestedProjectId: string): string {
+    if (this.scopes.bindingOf(windowId) === undefined) {
+      throw new ProjectScopeError("scope_unbound", `窗口 ${windowId} 尚未绑定科研项目，不能以项目出处提交工作`);
+    }
+    const projectId = this.scopes.resolve({ windowId, requestedProjectId: projectIdSchema.parse(requestedProjectId) });
+    if (this.knowledge.getProject(projectId) === undefined) {
+      throw new ProjectScopeError("scope_unknown_project", `项目 ${projectId} 不存在`);
+    }
+    return projectId;
+  }
+
   async handle(raw: unknown): Promise<ResearchApplicationResult> {
     if (!raw || typeof raw !== "object") throw new Error("Invalid research request");
     const request = raw as Record<string, unknown>;

@@ -253,3 +253,27 @@ test("作用域注册表：项目删除时清理绑定", async () => {
     assert.equal(registry.unbind("win-3"), false);
   } finally { registry.close(); await rm(directory, { recursive: true, force: true }); }
 });
+
+// 语音/伴侣/对话入口：项目出处不是渲染器说了算，必须与该窗口的绑定一致。
+test("入口提交的项目出处必须与窗口绑定一致", async () => {
+  await withService(async (service) => {
+    const alpha = await createProject(service, "Beaufort NIW");
+    const beta = await createProject(service, "Chukchi 内波");
+
+    // 未绑定就带项目出处 → 拒绝（不能凭一句话把自己的工作挂到某个项目上）
+    assert.throws(() => service.scopedProject("system.companion", alpha.id), /尚未绑定科研项目/);
+
+    await service.handle({ action: "scope.bind", windowId: "system.companion", projectId: alpha.id });
+    assert.equal(service.scopedProject("system.companion", alpha.id), alpha.id);
+
+    // 绑了 A 却声称出处是 B → 按跨项目拒绝处理
+    assert.throws(() => service.scopedProject("system.companion", beta.id), ProjectScopeError);
+
+    // 不存在的项目被拒绝（这里先撞上跨项目校验；而绑定本身也拒绝不存在的项目）
+    assert.throws(() => service.scopedProject("system.companion", "project-does-not-exist"), ProjectScopeError);
+    await assert.rejects(
+      service.handle({ action: "scope.bind", windowId: "system.voice", projectId: "project-does-not-exist" }),
+      ProjectScopeError,
+    );
+  });
+});

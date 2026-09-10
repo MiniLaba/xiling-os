@@ -136,17 +136,37 @@ async function ensureWorkspaceWatcher(): Promise<void> {
 
 let research: import("./core/research-service.js").ResearchApplicationService | undefined;
 let researchBoot: Promise<void> | undefined;
-async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown> {
-  const params = record(rawParams ?? {});
-  if (method === "research.knowledge") {
+
+/** 唯一科研服务实例：渲染器与宿主其它入口（语音/伴侣/对话）共用，权威在核心进程。 */
+async function ensureResearch(): Promise<import("./core/research-service.js").ResearchApplicationService> {
+  if (!research) {
     researchBoot ??= (async () => {
       const { ResearchApplicationService } = await import("./core/research-service.js");
       const root = path.join(path.dirname(databasePath!), "research", "workspace");
       research = new ResearchApplicationService(root);
     })();
     await researchBoot;
+  }
+  return research!;
+}
+
+/**
+ * 入口提交的项目出处：必须与该窗口已绑定的项目一致，且项目真实存在。
+ * 不传项目就按普通工作提交，行为不变。
+ */
+async function resolveSubmitProject(params: Record<string, unknown>): Promise<string | undefined> {
+  const requested = params.projectId;
+  if (requested === undefined) return undefined;
+  if (typeof requested !== "string" || requested.trim() === "") throw new Error("无效的项目出处");
+  const windowId = typeof params.windowId === "string" && params.windowId.trim() !== "" ? params.windowId : "system.chat";
+  return (await ensureResearch()).scopedProject(windowId, requested);
+}
+
+async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown> {
+  const params = record(rawParams ?? {});
+  if (method === "research.knowledge") {
     // 唯一科研入口：项目/事项/Wiki/证据/图谱投影都经由同一个服务，作用域由核心进程决定。
-    return research!.handle(params);
+    return (await ensureResearch()).handle(params);
   }
   if (method === "system.ping") return { schemaVersion: store.getSchemaVersion() };
   if (method === "os.voice") {
@@ -245,12 +265,15 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
       ctx: { actor: "user" },
     });
     if (session.agentId !== host.mainAgentId || session.state !== "active") throw new Error("会话不属于 Main 或已关闭");
+    // 科研出处（语音/伴侣/对话）：走同一个逐窗口作用域注册表，渲染器不能自己声明一个项目。
+    const submitProjectId = await resolveSubmitProject(params);
     const task = await host.kernel.tasks.create({
       goal,
       sessionId: session.id,
       inputArtifacts,
       ownerAgentId: host.mainAgentId as never,
       assignedAgentId: host.mainAgentId as never,
+      ...(submitProjectId === undefined ? {} : { constraints: { projectId: submitProjectId } }),
       ctx: { actor: "user" },
     });
     void host.kernel.scheduler.tick({ actor: "system" }).catch(() => console.warn("Main task scheduling failed; inspect task status"));

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="科研画布">
+  <path d="M6.2 7.4 17.8 16.6M17.8 7.4 6.2 16.6" stroke="#9aa39a" stroke-width="1.2"/>
+  <circle cx="6" cy="6.8" r="3.3" fill="#9dbe8f" stroke="#5d6b58" stroke-width="1.1"/>
+  <circle cx="18" cy="6.8" r="3.3" fill="#c9a86b" stroke="#7a6640" stroke-width="1.1"/>
+  <circle cx="6" cy="17.2" r="3.3" fill="#7fa9c4" stroke="#4f6a7d" stroke-width="1.1"/>
+  <circle cx="18" cy="17.2" r="3.3" fill="#c98686" stroke="#7d5252" stroke-width="1.1"/>
+</svg>

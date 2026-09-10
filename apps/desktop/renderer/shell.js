@@ -409,7 +409,7 @@ for (const item of dockFan?.querySelectorAll(".fan-item") ?? []) {
 }
 
 // 点击/弹跳走事件委托：静态 tile 与插件注入的 tile 行为一致
-const MANAGED_APPS = ["workspace", "chat", "tasks", "literature", "settings"];
+const MANAGED_APPS = ["workspace", "chat", "tasks", "literature", "project", "wiki", "canvas", "settings"];
 
 dock?.addEventListener("click", (event) => {
   const tile = event.target.closest?.(".leopard-dock-tile");
@@ -431,6 +431,8 @@ dock?.addEventListener("animationend", (event) => {
 
 function iconSrcFor(iconKey) {
   const iconKeyName = String(iconKey ?? "").replace(/^system\./, "");
+  // 科研窗口自带图标：放在 xiling/ 下，避免把自研图标混进第三方图标集目录
+  if (iconKeyName.startsWith("xiling-")) return `./assets/dock-icons/xiling/${encodeURIComponent(iconKeyName.slice("xiling-".length))}.svg`;
   const iconName = {
     workspace: "workbench",
     workbench: "workbench",

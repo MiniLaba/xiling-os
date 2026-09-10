@@ -10,6 +10,9 @@ const TaskCenterApp = lazy(async () => ({ default: (await import("./apps/task-ce
 const AgentApps = lazy(async () => ({ default: (await import("./apps/agent-apps.js")).AgentApps }));
 const AgentSessionWindow = lazy(async () => ({ default: (await import("./apps/agent-session.js")).AgentSessionWindow }));
 const MemoryManager = lazy(async () => ({ default: (await import("./apps/memory-manager.js")).MemoryManager }));
+const ProjectWindow = lazy(async () => ({ default: (await import("./apps/research.js")).ProjectWindow }));
+const WikiWindow = lazy(async () => ({ default: (await import("./apps/research.js")).WikiWindow }));
+const CanvasWindow = lazy(async () => ({ default: (await import("./apps/research.js")).CanvasWindow }));
 
 type WindowStatus = "open" | "minimized" | "maximized";
 
@@ -94,7 +97,7 @@ interface DesktopBridge {
   manageMemories(payload: Record<string, unknown>): Promise<{ records: Array<{ id: string; agentId: string; content: unknown; createdAt: string; provenance: unknown }> }>;
   manageAgentApps(payload: Record<string, unknown>): Promise<unknown>;
   getOsSnapshot(): Promise<OsSnapshot>;
-  submitGoal(goal: string, sessionId?: string, artifactIds?: string[]): Promise<{ task: OsSnapshot["tasks"][number] }>;
+  submitGoal(goal: string, sessionId?: string, artifactIds?: string[], projectScope?: { projectId: string; windowId: string }): Promise<{ task: OsSnapshot["tasks"][number] }>;
   tasks: {
     cancel(taskId: string): Promise<{ task: OsSnapshot["tasks"][number] }>;
     retry(taskId: string): Promise<{ task: OsSnapshot["tasks"][number] }>;
@@ -159,6 +162,9 @@ const APP_DEFINITIONS = {
   chat: { appId: "system.chat", title: "对话", eyebrow: "智能体" },
   tasks: { appId: "system.tasks", title: "任务中心", eyebrow: "调度与恢复" },
   literature: { appId: "system.literature", title: "文献工作台", eyebrow: "发现与阅读" },
+  project: { appId: "system.project", title: "项目", eyebrow: "科研项目" },
+  wiki: { appId: "system.wiki", title: "Wiki", eyebrow: "科研知识" },
+  canvas: { appId: "system.canvas", title: "科研画布", eyebrow: "科研关系" },
   settings: { appId: "system.settings", title: "设置", eyebrow: "系统" },
 } as const;
 
@@ -177,17 +183,19 @@ let reactRoot: Root | undefined;
 
 function defaultWindow(appKey: AppKey, index: number): ManagedWindow {
   const definition = APP_DEFINITIONS[appKey];
-  const workspace = appKey === "workspace";
-  const literature = appKey === "literature";
-  const settings = appKey === "settings";
+  const sizes: Partial<Record<AppKey, [number, number]>> = {
+    workspace: [980, 610], literature: [1160, 620], settings: [820, 640], chat: [860, 680],
+    project: [1040, 660], wiki: [1120, 680], canvas: [1200, 700],
+  };
+  const [width, height] = sizes[appKey] ?? [660, 440];
   return {
     id: `managed-${appKey}`,
     appId: definition.appId,
     appKey,
     x: 72 + index * 34,
     y: 54 + index * 26,
-    width: workspace ? 980 : literature ? 1160 : settings ? 820 : appKey === "chat" ? 860 : 660,
-    height: workspace ? 610 : literature ? 620 : settings ? 640 : appKey === "chat" ? 680 : 440,
+    width,
+    height,
     zIndex: 50 + index,
     state: "open",
     payload: {},
@@ -846,6 +854,9 @@ function AppContent({ appKey, payload }: { appKey: AppKey; payload: Record<strin
   if (appKey === "chat") return <ChatApp />;
   if (appKey === "tasks") return <Suspense fallback={<p className="managed-window-ready">正在加载任务中心…</p>}><TaskCenterApp /></Suspense>;
   if (appKey === "literature") return <Suspense fallback={<p className="managed-window-ready">正在加载文献工作台…</p>}><LiteratureWorkbenchApp /></Suspense>;
+  if (appKey === "project") return <Suspense fallback={<p className="managed-window-ready">正在加载项目…</p>}><ProjectWindow /></Suspense>;
+  if (appKey === "wiki") return <Suspense fallback={<p className="managed-window-ready">正在加载 Wiki…</p>}><WikiWindow /></Suspense>;
+  if (appKey === "canvas") return <Suspense fallback={<p className="managed-window-ready">正在加载科研画布…</p>}><CanvasWindow /></Suspense>;
   if (appKey === "settings") return <SettingsApp />;
   return null;
 }

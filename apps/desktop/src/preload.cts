@@ -27,7 +27,7 @@ const desktopApi = Object.freeze({
   getOsSnapshot: () => ipcRenderer.invoke("desktop:os-snapshot") as Promise<OsSnapshot>,
   enableNativeMain: () => ipcRenderer.invoke("desktop:os-runtime-enable") as Promise<{ runtimeName: string }>,
   manageAgentApps: (payload: { action: "list" | "install" | "open" | "view" | "enable" | "disable" | "remove" | "submit"; id?: string; sessionId?: string; goal?: string; manifest?: unknown; approvedActions?: string[] }) => ipcRenderer.invoke("desktop:os-apps-manage", payload),
-  submitGoal: (goal: string, sessionId?: string, artifactIds?: string[]) => ipcRenderer.invoke("desktop:os-submit-goal", goal, sessionId, artifactIds) as Promise<{ task: OsTaskView }>,
+  submitGoal: (goal: string, sessionId?: string, artifactIds?: string[], projectScope?: { projectId: string; windowId: string }) => ipcRenderer.invoke("desktop:os-submit-goal", goal, sessionId, artifactIds, projectScope?.projectId, projectScope?.windowId) as Promise<{ task: OsTaskView }>,
   tasks: Object.freeze({
     cancel: (taskId: string) => ipcRenderer.invoke("desktop:os-task-cancel", taskId) as Promise<{ task: OsTaskView }>,
     retry: (taskId: string) => ipcRenderer.invoke("desktop:os-task-retry", taskId) as Promise<{ task: OsTaskView }>,
