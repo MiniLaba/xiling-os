@@ -5,7 +5,14 @@ import type { OSKernel } from "./kernel.js";
 export const OS_TOOL: RuntimeToolDescriptor = {
   name: "xiling_os",
   description: 'OS operations, input JSON: {op:"artifact.create",name,content,type?:"report"|"plan"|"generic",sourceArtifactId?:string}; {op:"artifact.read",artifactId,offset?:number}; {op:"apps.list"}; {op:"apps.invoke",appId,goal,inputArtifactIds?:string[]}; {op:"ui.ask",question}. Create a real Markdown artifact when asked for a deliverable. sourceArtifactId creates an immutable lineage edge and must be an explicitly accessible artifact. Reads only task inputs/outputs and child outputs. Apps are isolated persistent agents: delegate only a bounded task, then end your turn to let the child run; after resume read returned artifacts rather than delegating again. ui.ask presents a trusted form, then end your turn and wait. No shell, arbitrary filesystem, or network tools.',
-  inputSchema: { type: "object", properties: { input: { type: "string" } }, required: ["input"] },
+  // 声明必须与 taskTools 的真实契约一致：它读 raw.op 与同级的操作字段。
+  // 这里只固定 op，其余按操作不同由执行器校验，不用 schema 假装已经安全。
+  inputSchema: {
+    type: "object",
+    properties: { op: { type: "string" } },
+    required: ["op"],
+    additionalProperties: true,
+  },
 };
 
 /** Task-scoped capability gateway for shipped, non-executable OS operations. */

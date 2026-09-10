@@ -5,7 +5,7 @@
 // 真实声明：没有任何凭据时不构造"看起来能跑"的会话，而是给出明确失败的离线错误路由；
 // 未声明的输入模态不会出现在适配器能力里。
 
-import type { PiResearchRuntimeAdapter, PiStreamEventLike, PiTurnSessionFactory } from "@xiling/os-runtime";
+import type { PiHostToolSpec, PiResearchRuntimeAdapter, PiStreamEventLike, PiTurnSessionFactory } from "@xiling/os-runtime";
 
 export interface PiResearchRuntimeBoot {
   /** 装配成功时的运行时；Pi 包不可用时为 undefined。 */
@@ -46,6 +46,17 @@ export async function createPiResearchRuntime(options: PiResearchRuntimeOptions)
       }),
       prompt: async (text, images) => { await session.prompt(text, images as never); },
       abort: () => { session.abort(); },
+      // 宿主工具桥：内核投递的工具描述 + executeTool 网关 → Pi 工具循环。
+      // 工具的权限、幂等与副作用记录仍全部由内核的 executeTool 负责。
+      setActiveTools: (specs: readonly PiHostToolSpec[]) => {
+        session.setActiveTools(specs.map((spec) => ({
+          name: spec.name,
+          label: spec.name,
+          description: spec.description,
+          parameters: spec.inputSchema ?? PERMISSIVE_TOOL_SCHEMA,
+          execute: async (toolCallId: string, parameters: unknown) => toPiToolResult(await spec.execute(toolCallId, parameters)),
+        })));
+      },
     };
   };
 
@@ -53,14 +64,26 @@ export async function createPiResearchRuntime(options: PiResearchRuntimeOptions)
     available: true,
     runtime: new Adapter({
       sessionFactory,
-      // 工具桥尚未接入 Pi 工具循环：保持 false，任务带工具时明确失败。
-      supportsHostTools: false,
+      // 工具桥已接入：Pi 能兑现带工具的任务契约。
+      supportsHostTools: true,
       ownsSessionHistory: false,
       nativeInputModalities: options.inputModalities ?? ["text"],
       compatibilityBaseline: pi.PI_COMPATIBILITY_BASELINE,
       turnTimeoutMs: 15 * 60_000,
     }),
   };
+}
+
+/**
+ * 工具参数 schema 的兜底：内核未声明 schema 时给一个宽松对象，
+ * 不替模型臆造字段名（真正的校验在 executeTool 里，不在 schema 里假装安全）。
+ */
+const PERMISSIVE_TOOL_SCHEMA = { type: "object", additionalProperties: true } as const;
+
+/** 内核的 executeTool 返回值 → Pi 的工具结果。错误作为结果回传，由模型决定如何继续。 */
+function toPiToolResult(result: unknown): { content: Array<{ type: "text"; text: string }>; details?: unknown; isError?: boolean } {
+  const text = typeof result === "string" ? result : JSON.stringify(result ?? null);
+  return { content: [{ type: "text", text }], details: result };
 }
 
 /**

@@ -669,7 +669,7 @@ function RuntimeSettings() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => { void window.xilingDesktop?.getOsSnapshot().then((state) => setRuntime(state.runtimeName ?? "")).catch((error: unknown) => setError(String(error))); }, []);
-  return <section className="credential-settings"><h3>真实运行引擎</h3><p>{runtime === "deepseek-harness-sdk" ? "内置 Harness 已启用，任务启动时才创建进程。" : `当前身份仍绑定 ${runtime || "未知"}。旧记录保留；切换后新运行使用真实模型，旧模拟历史不会伪装为真实轨迹。`}</p>{runtime !== "deepseek-harness-sdk" && <button disabled={busy} onClick={() => { setBusy(true); void window.xilingDesktop!.enableNativeMain().then((result) => { setRuntime(result.runtimeName); selectSession(undefined); }).catch((error: unknown) => setError(String(error))).finally(() => setBusy(false)); }}>启用真实运行引擎（保留旧记录）</button>}{error && <p role="alert">{error}</p>}</section>;
+  return <section className="credential-settings"><h3>科研执行引擎</h3><p>{runtime === "pi-research" ? "Pi 已作为唯一执行者绑定；带工具的任务与文本轮次走同一条路径。" : `当前身份仍绑定 ${runtime || "未知"}。旧记录保留；切换后新运行使用真实模型，旧模拟历史不会伪装为真实轨迹。`}</p>{runtime !== "pi-research" && <button disabled={busy} onClick={() => { setBusy(true); void window.xilingDesktop!.enableNativeMain().then((result) => { setRuntime(result.runtimeName); selectSession(undefined); }).catch((error: unknown) => setError(String(error))).finally(() => setBusy(false)); }}>绑定 Pi 执行引擎（保留旧记录）</button>}{error && <p role="alert">{error}</p>}</section>;
 }
 function SettingsApp() {
   const [theme, setTheme] = useState(() => localStorage.getItem("xiling-theme") || "lingjing");
@@ -795,7 +795,7 @@ function ChatApp() {
     <div className="agent-console">
       <header className="agent-console-header">
         <div><p className="eyebrow">主要入口</p><h2>告诉汐灵你想完成什么</h2></div>
-        <span className="runtime-badge">{snapshot?.runtimeName === "deepseek-harness-sdk" ? "准备就绪" : "请先连接模型"}</span>
+        <span className="runtime-badge">{snapshot?.runtimeName === "pi-research" ? "准备就绪" : "请先连接模型"}</span>
       </header>
       <label>当前会话 <select aria-label="Main 会话" value={sessionId ?? ""} onChange={(event) => selectSession(event.target.value || undefined)}>
         <option value="">新会话</option>{sessions.map((session) => <option key={session.id} value={session.id}>{session.title ?? "未命名会话"}</option>)}

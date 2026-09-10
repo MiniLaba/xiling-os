@@ -32,7 +32,7 @@ export function AgentApps({ command }: Props) {
       const actions = [...(allowArtifacts ? ["artifact.create", "artifact.read"] : []), ...(allowDelegation ? ["task.delegate"] : []), ...(allowQuestions ? ["ui.present"] : [])];
       await command({ action: "install", approvedActions: actions, manifest: {
         id: `local.${crypto.randomUUID()}`, version: "1.0.0", name: name.trim(), description: name.trim(),
-        runtimeName: "deepseek-harness-sdk", instructions: instructions.trim(), capabilities: [], requestedActions: actions,
+        runtimeName: "pi-research", instructions: instructions.trim(), capabilities: [], requestedActions: actions,
         defaultModel: {}, ui: { kind: "agent-chat" },
       } }); setName(""); setInstructions("");
     }); }}>

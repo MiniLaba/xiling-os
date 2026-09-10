@@ -73,12 +73,10 @@ export class AgentRegistry {
     return this.list().find((definition) => definition.isMainAgent);
   }
 
-  enableNativeMain(ctx: OSOperationContext): AgentDefinition {
+  enableNativeMain(runtimeName: string, ctx: OSOperationContext): AgentDefinition {
     const main = this.findMainAgent();
-    if (ctx.actor !== "user" || !main || !this.services.runtimes.get("deepseek-harness-sdk")) throw new Error("真实 Main 运行时不可用");
-    if ([...this.services.projection.tasks.values()].some((task) => (task.ownerAgentId === main.id || task.assignedAgentId === main.id) && !["completed", "failed", "cancelled"].includes(task.state))) throw new Error("请先结束 Main 的未完成任务再切换运行时");
-    if (main.runtimeName !== "deepseek-harness-sdk") this.kernel.emit("agent.runtime_updated", { agentId: main.id, runtimeName: "deepseek-harness-sdk" }, correlationFor({ agentId: main.id }), ctx);
-    return this.get(main.id);
+    if (ctx.actor !== "user" || !main) throw new Error("真实 Main 运行时不可用");
+    return this.setRuntime(main.id, runtimeName, ctx);
   }
 
   updateModelPolicy(agentId: AgentId, modelPolicy: ModelPolicy, ctx?: OSOperationContext | undefined): AgentDefinition {

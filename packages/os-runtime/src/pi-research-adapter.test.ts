@@ -6,7 +6,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { activationId, agentId, runId, sessionId, taskId } from "@xiling/os-domain";
 import { PiEventQueue, PiResearchRuntimeAdapter, piSessionId } from "./pi-research-adapter.js";
-import type { PiStreamEventLike, PiTurnSession } from "./pi-research-adapter.js";
+import type { PiHostToolSpec, PiStreamEventLike, PiTurnSession } from "./pi-research-adapter.js";
 import type { RunRequest, RuntimeEvent } from "./port.js";
 
 test("Pi 会话 ID 按 Session/Task 隔离，不混用其他 Agent 的轨迹", () => {
@@ -58,6 +58,50 @@ test("工具契约在工具桥未接入时明确失败，不静默剥离工具",
   assert.equal(events.length, 1);
   assert.equal(events[0]?.type, "run.failed");
   assert.match((events[0] as { reason: string }).reason, /工具桥未接入/);
+});
+
+test("会话声明支持工具桥后，工具被装入 Pi 且调用走内核 executeTool", async () => {
+  const calls: Array<{ name: string; callId: string; parameters: unknown }> = [];
+  const installed: Array<{ name: string; description: string; inputSchema?: unknown }> = [];
+  const capture = { specs: [] as readonly PiHostToolSpec[] };
+  const session = stubSessionWithTools(capture, installed, [
+    { type: "session.started", sessionId: "s" },
+    { type: "tool.started", toolName: "xiling_os", callId: "call-1", arguments: { op: "apps.list" } },
+    { type: "tool.finished", toolName: "xiling_os", callId: "call-1", details: { apps: [] } },
+    { type: "message.delta", delta: "已查询应用" },
+    { type: "session.finished", sessionId: "s", stopReason: "stop" },
+  ]);
+  const adapter = new PiResearchRuntimeAdapter({ sessionFactory: () => session, supportsHostTools: true });
+  const events = await collect(adapter, makeRequest({
+    tools: [{ name: "xiling_os", description: "OS 操作", inputSchema: { type: "object" } }],
+    executeTool: async (name, input, callId) => { calls.push({ name, callId, parameters: input }); return { apps: [] }; },
+  }));
+
+  // 工具描述按内核投递的样子进入 Pi（含 schema），执行权仍在 executeTool
+  assert.deepEqual(installed, [{ name: "xiling_os", description: "OS 操作", inputSchema: { type: "object" } }]);
+  assert.deepEqual(events.map((event) => event.type), ["run.started", "tool.requested", "tool.completed", "message", "run.completed"]);
+
+  // Pi 侧真正调用工具时，参数与 callId 原样交给内核网关，返回值原样回传
+  assert.equal(capture.specs.length, 1);
+  assert.deepEqual(await capture.specs[0]!.execute("call-1", { op: "apps.list" }), { apps: [] });
+  assert.deepEqual(calls, [{ name: "xiling_os", callId: "call-1", parameters: { op: "apps.list" } }]);
+});
+
+test("支持工具但会话未实现 setActiveTools 时明确拒绝，不假装装了工具", async () => {
+  const adapter = new PiResearchRuntimeAdapter({ sessionFactory: () => stubSession([]), supportsHostTools: true });
+  const events = await collect(adapter, makeRequest({
+    tools: [{ name: "xiling_os", description: "OS 操作" }],
+    executeTool: async () => ({}),
+  }));
+  assert.equal(events.at(-1)?.type, "run.failed");
+  assert.match((events.at(-1) as { reason: string }).reason, /不支持载入宿主工具/);
+});
+
+test("认领了工具契约却缺少内核执行网关时拒绝执行", async () => {
+  const adapter = new PiResearchRuntimeAdapter({ sessionFactory: () => stubSessionWithTools({ specs: [] }, [], []), supportsHostTools: true });
+  const events = await collect(adapter, makeRequest({ tools: [{ name: "xiling_os", description: "OS 操作" }] }));
+  assert.equal(events.at(-1)?.type, "run.failed");
+  assert.match((events.at(-1) as { reason: string }).reason, /工具桥未接入内核/);
 });
 
 test("模型错误映射为 run.failed，且不冒充完成", async () => {
@@ -154,6 +198,22 @@ function makeRequest(overrides: Partial<RunRequest> = {}): RunRequest {
 }
 
 interface StubSession extends PiTurnSession { readonly aborted: boolean }
+
+/** 会话 stub：可选择实现 setActiveTools，用来验证工具桥的两条分支。 */
+function stubSessionWithTools(
+  capture: { specs: readonly PiHostToolSpec[] },
+  installed: Array<{ name: string; description: string; inputSchema?: unknown }>,
+  script: PiStreamEventLike[],
+): PiTurnSession {
+  const session = stubSession(script);
+  return {
+    ...session,
+    setActiveTools: (specs) => {
+      capture.specs = specs;
+      for (const spec of specs) installed.push({ name: spec.name, description: spec.description, ...(spec.inputSchema === undefined ? {} : { inputSchema: spec.inputSchema }) });
+    },
+  };
+}
 
 function stubSession(script: PiStreamEventLike[], wait: () => Promise<void> = async () => {}): StubSession {
   const listeners = new Set<(event: PiStreamEventLike) => void | Promise<void>>();

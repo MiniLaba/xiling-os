@@ -8,11 +8,11 @@ import { OSKernel, OSKernel as Kernel } from "./index.js";
 
 test("已注册的科研运行时可以成为 Agent 的绑定，并写入可重放事件", async () => {
   const kernel = new Kernel();
-  kernel.runtimes.register(stubRuntime("deepseek-harness-sdk"));
+  kernel.runtimes.register(stubRuntime("stub-runtime"));
   kernel.runtimes.register(stubRuntime("pi-research"));
-  const main = await mainAgent(kernel, "deepseek-harness-sdk");
+  const main = await mainAgent(kernel, "stub-runtime");
 
-  assert.equal(kernel.agents.get(main.id).runtimeName, "deepseek-harness-sdk");
+  assert.equal(kernel.agents.get(main.id).runtimeName, "stub-runtime");
   const bound = kernel.agents.setRuntime(main.id, "pi-research", { actor: "system" });
   assert.equal(bound.runtimeName, "pi-research");
 
@@ -30,13 +30,13 @@ test("未注册的运行时被拒绝：不允许把 Agent 指向不存在的引�
 
 test("仍有未完成任务时拒绝切换运行时，不把运行中的任务换到另一个引擎", async () => {
   const kernel = new Kernel();
-  kernel.runtimes.register(stubRuntime("deepseek-harness-sdk"));
+  kernel.runtimes.register(stubRuntime("stub-runtime"));
   kernel.runtimes.register(stubRuntime("pi-research"));
-  const main = await mainAgent(kernel, "deepseek-harness-sdk");
+  const main = await mainAgent(kernel, "stub-runtime");
   const task = await kernel.tasks.create({ goal: "整理证据", ownerAgentId: main.id, assignedAgentId: main.id, ctx: { actor: "user" } });
 
   assert.throws(() => kernel.agents.setRuntime(main.id, "pi-research", { actor: "system" }), /未完成任务/);
-  assert.equal(kernel.agents.get(main.id).runtimeName, "deepseek-harness-sdk");
+  assert.equal(kernel.agents.get(main.id).runtimeName, "stub-runtime");
 
   await kernel.tasks.fail(task.id, "测试收尾", { actor: "system" });
   assert.equal(kernel.agents.setRuntime(main.id, "pi-research", { actor: "system" }).runtimeName, "pi-research");

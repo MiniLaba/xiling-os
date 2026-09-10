@@ -1,8 +1,8 @@
 // PiResearchRuntimeAdapter：把 Pi（@earendil-works）放进 Runtime Boundary 后面。
 //
-// 定位（INTEGRATION.md）：Pi 是科研路线的默认 Harness；DSH 与音频是适配器，不是并列的
-// 产品后端。本文件与 dsh-adapter.ts 并列，内核只看到 AgentRuntime 端口；Pi 的具体实现由
-// 宿主注入工厂（apps/desktop 用 @xiling/pi-runtime 构造），os-runtime 不直接依赖任何引擎包。
+// 定位（INTEGRATION.md）：Pi 是产品唯一执行者；内核只看到 AgentRuntime 端口，
+// Pi 的具体实现由宿主注入工厂（apps/desktop 用 @xiling/pi-runtime 构造），
+// os-runtime 不直接依赖任何引擎包。
 //
 // 真实能力声明（禁止夸大）：
 // - nativeInputModalities 默认只有 text；只有宿主按已解析的模型路由显式声明后才包含 image。
@@ -28,11 +28,28 @@ export type PiStreamEventLike =
   | { type: "session.finished"; sessionId: string; stopReason: string }
   | { type: "session.error"; sessionId: string; message: string };
 
+/**
+ * 宿主工具规格：适配器把内核投递的工具描述与 executeTool 网关转成这个形状，
+ * 由宿主装进 Pi 的工具循环。工具执行的唯一权威仍是内核的 executeTool，
+ * Pi 侧只负责调用与结果回传，不另开一条执行路径。
+ */
+export interface PiHostToolSpec {
+  name: string;
+  description: string;
+  inputSchema?: unknown;
+  execute: (callId: string, parameters: unknown) => Promise<unknown>;
+}
+
 /** 一个 Pi 轮次的最小客户端面（PiRuntimeAdapter 结构化满足）。 */
 export interface PiTurnSession {
   subscribe(listener: (event: PiStreamEventLike) => void | Promise<void>): () => void;
   prompt(text: string, images?: readonly unknown[]): Promise<void>;
   abort(): void;
+  /**
+   * 在轮次开始前把宿主工具装进 Pi 的工具循环。
+   * 未实现本方法 = 该会话兑现不了带工具的任务契约，适配器会明确失败而不是剥离工具。
+   */
+  setActiveTools?(specs: readonly PiHostToolSpec[]): void;
 }
 
 export interface PiTurnSessionFactoryInput {
@@ -79,8 +96,8 @@ export class PiResearchRuntimeAdapter implements AgentRuntime {
   async activate(_spec: ActivationSpec): Promise<void> {}
 
   async *run(request: RunRequest): AsyncIterable<RuntimeEvent> {
-    if (request.tools.length > 0 && (!this.supportsHostTools || !request.executeTool)) {
-      yield { type: "run.failed", runId: request.runId, reason: "Pi 工具桥未接入内核；拒绝执行无法兑现的工具契约" };
+    if (request.tools.length > 0 && (!this.supportsHostTools || request.executeTool === undefined)) {
+      yield { type: "run.failed", runId: request.runId, reason: "Pi 宿主工具桥未接入内核；拒绝执行无法兑现的工具契约" };
       return;
     }
     if (this.runs.has(request.runId) || this.suspended.has(request.agentId)) {
@@ -109,6 +126,24 @@ export class PiResearchRuntimeAdapter implements AgentRuntime {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     try {
+      if (request.tools.length > 0) {
+        const activateTools = session.setActiveTools;
+        if (activateTools === undefined) {
+          yield { type: "run.failed", runId: request.runId, reason: "Pi 会话不支持载入宿主工具；拒绝执行无法兑现的工具契约" };
+          return;
+        }
+        const executeTool = request.executeTool;
+        if (executeTool === undefined) {
+          yield { type: "run.failed", runId: request.runId, reason: "Pi 宿主工具桥未接入内核；拒绝执行无法兑现的工具契约" };
+          return;
+        }
+        activateTools.call(session, request.tools.map((tool): PiHostToolSpec => ({
+          name: tool.name,
+          description: tool.description,
+          ...(tool.inputSchema === undefined ? {} : { inputSchema: tool.inputSchema }),
+          execute: async (callId, parameters) => executeTool(tool.name, parameters, callId),
+        })));
+      }
       const prompt = session.prompt(composePrompt(request))
         .catch((error: unknown) => { promptError = error; })
         .finally(() => queue.close());

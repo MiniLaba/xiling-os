@@ -191,6 +191,9 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
       artifacts: host.kernel.projection.artifacts.size,
       eventsReplayed: host.recovery.eventsReplayed,
       plugins: host.kernel.plugins.list().length,
+      // 唯一执行者的真实状态：注册成功、工具桥是否接入、失败原因。
+      researchHarness: host.researchHarness,
+      scienceAdapters: host.kernel.science.adapters(),
     };
   }
   if (method === "os.snapshot") {
@@ -327,7 +330,8 @@ async function dispatch(method: CoreMethod, rawParams: unknown): Promise<unknown
   }
   if (method === "os.runtime.enable") {
     const host = await bootOsKernel();
-    return { runtimeName: host.kernel.agents.enableNativeMain({ actor: "user" }).runtimeName };
+    // 产品唯一执行者是 Pi；这里只把它显式绑定给 Main，不接受任意运行时名。
+    return { runtimeName: host.kernel.agents.enableNativeMain(host.researchHarness.executor, { actor: "user" }).runtimeName };
   }
   if (method === "os.artifact.import") {
     const host = await bootOsKernel();

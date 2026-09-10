@@ -5,12 +5,9 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { createHash } from "node:crypto";
-import { DeepSeekHarnessSdkRuntimeAdapter, createDefaultHarnessFactory, parseDshArgs, bundledHarnessLaunch, harnessSessionId } from "@xiling/os-runtime";
 import { OSKernel, recoverFromEvents } from "@xiling/os-kernel";
 import type { AgentPluginManifest, ModelAddress, NativeInputModality, NativeOutputModality, OSEvent } from "@xiling/os-domain";
 import { OsPersistence } from "./os-persistence.js";
-import { harnessCredentials } from "./core/harness-credentials.js";
 import { VoiceService } from "./core/voice-service.js";
 import { NativeVoiceRuntime } from "./core/native-voice-runtime.js";
 
@@ -32,9 +29,12 @@ export interface OsKernelHost {
 }
 
 export interface ResearchHarnessStatus {
-  requested: "pi" | "dsh";
-  active: string | undefined;
-  piAvailable: boolean;
+  /** 产品唯一执行者：Pi 科研运行时。 */
+  executor: string;
+  /** Pi 是否已接入宿主工具桥（能兑现带工具的任务契约）。 */
+  hostTools: boolean;
+  /** 适配器是否真的注册成功。false = 任务会以 runtime_not_found 明确失败。 */
+  runtimeRegistered: boolean;
   reason?: string;
 }
 
@@ -52,76 +52,32 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
   await voice.initialize();
   kernel.runtimes.register(new NativeVoiceRuntime(kernel, voice));
 
-  // 科研 Harness 主路径（INTEGRATION.md）：Pi 是目标默认科研路线，DSH 是并列适配器，
-  // 不是第二个产品后端。两者都通过同一 AgentRuntime 端口注册；实际生效的运行时如实上报，
-  // 缺少任何一路都不静默替换、也不声称已接通。
-  // 产品只注册真实运行时；确定性脚本适配器仅由测试独立注册。
-  const requestedHarness: "pi" | "dsh" = process.env.XILING_RESEARCH_HARNESS === "dsh" ? "dsh" : "pi";
-  let activeRuntimeName: string | undefined;
-  let piAvailable = false;
+  // 科研 Harness（INTEGRATION.md）：Pi 是产品唯一执行者。DSH 不再注册、不再考虑。
+  // 目标路线与执行者是同一件事，因此没有"降级到另一个引擎"这条路径：
+  // Pi 装配失败就明确报错，不用别的引擎顶替，也不静默换成文本轮次。
+  let researchRuntimeName: string | undefined;
+  let hostTools = false;
   let harnessReason: string | undefined;
-
-  if (requestedHarness === "pi") {
+  {
     const { createPiResearchRuntime } = await import("./core/pi-research-runtime.js");
     const piBoot = await createPiResearchRuntime({
       readModelKey: options.readModelKey ?? (() => undefined),
       inputModalities: parsePiInputModalities(process.env.XILING_PI_INPUT_MODALITIES),
     });
-    piAvailable = piBoot.available;
     if (piBoot.runtime) {
       kernel.runtimes.register(piBoot.runtime);
-      activeRuntimeName = piBoot.runtime.name;
+      researchRuntimeName = piBoot.runtime.name;
+      hostTools = piBoot.runtime.supportsHostTools === true;
+      if (!hostTools) harnessReason = "Pi 会话未提供宿主工具能力：带工具的任务会被拒绝而不是被剥离工具";
     } else {
       harnessReason = piBoot.reason ?? "Pi 运行时装配失败";
     }
   }
-
-  // 默认按需启动内置无执行器的官方 DSH 组合；XILING_DSH_ENABLED=0 禁用。
-  // 外部运行程序仍可通过 XILING_DSH_BIN / JSON XILING_DSH_ARGS 显式覆盖。
-  // 产品进程禁止注册模拟成功；旧 scripted 身份显式不可运行，不能静默切换引擎。
-  let realRuntime: DeepSeekHarnessSdkRuntimeAdapter | undefined;
-  const configuredModel = configuredModelAddress();
-  if (process.env.XILING_DSH_ENABLED !== "0") {
-    realRuntime = new DeepSeekHarnessSdkRuntimeAdapter({
-      supportsHostTools: !process.env.XILING_DSH_BIN,
-      ownsSessionHistory: !process.env.XILING_DSH_BIN,
-      factory: (route, request, bridge) => {
-        const credential = harnessCredentials(route?.address.providerId ?? process.env.XILING_DSH_PROVIDER,
-          options.readModelKey ?? (() => undefined), process.env);
-        const bundled = bundledHarnessLaunch();
-        const provider = route?.address.providerId ?? process.env.XILING_DSH_PROVIDER;
-        const model = route?.address.modelId ?? process.env.XILING_DSH_MODEL;
-        const useBundled = !process.env.XILING_DSH_BIN;
-        if (useBundled && !request) throw new Error("Missing runtime task identity");
-        const sessionId = request ? harnessSessionId(request) : undefined;
-        if (useBundled && provider === "deepseek-official") throw new Error("内置多提供商运行时请使用 deepseek 提供商名称");
-        const harness = createDefaultHarnessFactory({
-        dshBin: useBundled ? bundled.command : process.env.XILING_DSH_BIN,
-        dshArgs: useBundled ? bundled.args : parseDshArgs(process.env.XILING_DSH_ARGS),
-        provider: process.env.XILING_DSH_PROVIDER,
-        model: process.env.XILING_DSH_MODEL,
-        cwd: process.env.XILING_DSH_CWD,
-        env: { ...credential.env, ...(useBundled ? {
-          ELECTRON_RUN_AS_NODE: "1",
-          XILING_HARNESS_ROUTE: JSON.stringify({ provider, model, keyVariable: credential.keyVariable,
-            bridge, tools: request?.tools,
-            profile: credential.profile, contextWindow: route?.capabilities.contextWindowTokens,
-            sessionId, persistenceRoot: sessionId ? path.join(dataDirectory, "harness-sessions", createHash("sha256").update(sessionId).digest("hex")) : undefined }),
-        } : {}) },
-      })(route);
-        harness.redactError = credential.redactError;
-        return harness;
-      },
-      turnTimeoutMs: 15 * 60_000,
-    });
-    kernel.runtimes.register(realRuntime);
-    activeRuntimeName ??= realRuntime.name;
-  } else if (activeRuntimeName === undefined) {
-    harnessReason ??= "XILING_DSH_ENABLED=0 且 Pi 运行时不可用：没有已注册的科研运行时";
-  }
   kernel.scheduler.setRunner({
     run: async (taskId, ctx) => { await kernel.runner.executeTask(taskId, ctx); },
   });
+
+  const configuredModel = configuredModelAddress();
 
   // 重放历史事件（保留 eventId/seq/occurredAt，且绝不再次写回 JSONL）
   kernel.events.hydrate(persisted);
@@ -129,11 +85,11 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
   if (configuredModel !== undefined && kernel.modelCatalog.get(configuredModel) === undefined) {
     kernel.modelCatalog.register({
       address: configuredModel,
-      nativeInputs: parseInputModalities(process.env.XILING_DSH_INPUT_MODALITIES),
-      nativeOutputs: parseOutputModalities(process.env.XILING_DSH_OUTPUT_MODALITIES),
-      contextWindowTokens: positiveInteger(process.env.XILING_DSH_CONTEXT_WINDOW) ?? 32_000,
-      supportsToolUse: process.env.XILING_DSH_TOOL_USE !== "0",
-      reasoning: process.env.XILING_DSH_REASONING === "1",
+      nativeInputs: parseInputModalities(process.env.XILING_MODEL_INPUT_MODALITIES),
+      nativeOutputs: parseOutputModalities(process.env.XILING_MODEL_OUTPUT_MODALITIES),
+      contextWindowTokens: positiveInteger(process.env.XILING_MODEL_CONTEXT_WINDOW) ?? 32_000,
+      supportsToolUse: process.env.XILING_MODEL_TOOL_USE !== "0",
+      reasoning: process.env.XILING_MODEL_REASONING === "1",
       source: "user-declared",
     });
   }
@@ -152,7 +108,7 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
     const main = await kernel.agents.create({
       name: "Main Agent",
       isMainAgent: true,
-      runtimeName: activeRuntimeName ?? "deepseek-harness-sdk",
+      runtimeName: researchRuntimeName ?? "pi-research",
       pluginBindings: [],
       allowedActions: ["task.create", "task.delegate", "memory.write", "ui.present", "agent.message", ...new Set(pluginPermissions)],
       systemInstructions: "你是用户与汐灵 OS 交互的主要入口。",
@@ -165,9 +121,9 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
   }
   // 已存在的 Main 指向本次生效的科研运行时。仍有未完成任务时拒绝切换：不把运行中的任务
   // 换到另一个引擎继续，也不假装切换成功。
-  if (mainAgentId !== undefined && activeRuntimeName !== undefined && existingMain !== undefined && existingMain.runtimeName !== activeRuntimeName) {
+  if (mainAgentId !== undefined && researchRuntimeName !== undefined && existingMain !== undefined && existingMain.runtimeName !== researchRuntimeName) {
     try {
-      kernel.agents.setRuntime(mainAgentId, activeRuntimeName, { actor: "system" });
+      kernel.agents.setRuntime(mainAgentId, researchRuntimeName, { actor: "system" });
     } catch (error) {
       harnessReason ??= `Main 仍绑定 ${existingMain.runtimeName}：${error instanceof Error ? error.message : String(error)}`;
     }
@@ -191,20 +147,18 @@ export async function startOsKernel(dataDirectory: string, options: OsKernelHost
     mainAgentId,
     recovery,
     researchHarness: {
-      requested: requestedHarness,
-      active: activeRuntimeName,
-      piAvailable,
+      executor: researchRuntimeName ?? "pi-research",
+      hostTools,
+      runtimeRegistered: researchRuntimeName !== undefined,
       ...(harnessReason === undefined ? {} : { reason: harnessReason }),
     },
-    shutdown: async () => {
-      try { await realRuntime?.close(); } finally { persistence.close(); }
-    },
+    shutdown: async () => { persistence.close(); },
   };
 }
 
 function configuredModelAddress(): ModelAddress | undefined {
-  const providerId = process.env.XILING_DSH_PROVIDER?.trim();
-  const modelId = process.env.XILING_DSH_MODEL?.trim();
+  const providerId = process.env.XILING_MODEL_PROVIDER?.trim();
+  const modelId = process.env.XILING_MODEL_ID?.trim();
   return providerId && modelId ? { providerId, modelId } : undefined;
 }
 

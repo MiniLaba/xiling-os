@@ -3,6 +3,6 @@
 
 export * from "./port.js";
 export * from "./scripted-adapter.js";
-export * from "./dsh-adapter.js";
+export * from "./prompt-composer.js";
 export * from "./pi-research-adapter.js";
 export * from "./plugin-lifecycle.js";
