@@ -13,3 +13,9 @@
 数据目录没有破坏性迁移，原 localStorage 证据不自动导入、不删除。当前桌面科研库在其系统数据目录 research/workspace，Web 可独立使用其原数据根；桌面/网页并发访问同一图数据库的产品支持尚未建立，不能声称跨宿主同步。最终单宿主服务归一见整合检查清单。
 
 边界与剩余任务：docs/research-desktop/INTEGRATION.md。旧 PR #17 不自动合并；整合完成后通过新的 main 目标 PR 发布。
+
+## 后续（ADR 0057）
+
+Pi 被定为唯一科研执行者，DSH 适配器与相关模块已删除；`researchHarness` 如实上报执行者、工具桥与注册状态。科学执行、统一科研应用服务与窗口作用域见 [ADR 0057](0057-pi-sole-executor-and-research-main-path.md)。
+
+注意：`AGENTS.md` 中"Pi remains the target default research Harness; DSH and audio are adapters"这条规则**尚未更新**（受保护文件，写入被拦截）。应替换为："Pi is the ONLY research Harness executor. DSH is removed from the product: do not register it, do not fall back to it, do not reintroduce a second model engine. Audio stays an adapter, not a second backend. A missing Pi runtime must fail explicitly, never degrade to another engine."

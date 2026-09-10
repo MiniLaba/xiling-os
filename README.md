@@ -32,7 +32,10 @@
 - 官方 Harness 的按需进程、会话恢复和自动压缩；受限原生工具支持内部产物、App 协作与追问，界面支持显式输入和导出。
 - 两条独立语音通路：原生音频输入/回复，或独立 STT 识别后提交文字任务、独立 TTS 朗读。设置 → 语音与对话填写模型/音色并真实测试后启用；不自动降级，不默认监听。详见 [语音设计](docs/adr/0055-dual-voice-task-runtime.md)。
 - Hiyori 显示与设置复用 AIRI 默认角色方案；模型与 Cubism Core 是独立许可的本地资源，不随 Git 仓库再分发。克隆后按 [伴侣资源配置](docs/ai-native-os/COMPANION_ASSETS.md) 安装；未配置角色不影响文字、语音和任务功能。
-- 当前验证为真实 SDK + 本地协议 fixture；公网模型、真人麦克风/扬声器和跨平台发布验收尚未完成。旧 Main 可在设置中显式启用真实引擎，不会模拟成功。
+- **Pi 是唯一科研执行者**：内核只依赖 `AgentRuntime` 端口，Pi 在反腐适配层后面；宿主工具桥把内核投递的工具装入 Pi 工具循环，工具执行权（权限、幂等键、副作用事件）仍在内核。DSH 已从产品移除，Pi 装配失败即明确失败，不降级到别的引擎也不静默退化为纯文本轮次。
+- 科研执行走单一主路径：计划 → 审批（资源 = 计划哈希）→ 执行记录 → 内容寻址产物 → 科研图谱投影。没有通过验收的系统级执行沙箱时如实返回"不可执行"，不宿主裸跑、不用 fixture 冒充。
+- 项目、事项、Wiki、证据与科研图谱读取只有一个统一入口；项目作用域按内部窗口显式绑定并持久化，跨项目读写被拒绝。
+- 当前验证为真实 Pi SDK + 真实内核装配 + 离线路由 fixture；公网模型、真人麦克风/扬声器和跨平台发布验收尚未完成。模型凭据缺失时运行会明确失败，不会模拟成功。
 
 - Electron 单实例、安全协议、沙箱化 Renderer、最小 Preload 和独立 Core Utility Process。
 - 一个操作系统原生窗口内的多内部窗口；React 窗口运行时首次打开应用时才动态加载，最小化即卸载内容。
@@ -42,7 +45,7 @@
 - Core 与目录监听的获取/释放/空闲停止生命周期。
 - 无容器依赖检查、基础层离线测试、真实 Electron + Dock 点击启动测试、动态窗口包体与活动工作集回归门禁。
 
-当前仍是架构基础版：对话、文献、数据和研究应用已经拥有窗口与能力入口，但完整科研工作流正在重新实现。界面中的空状态不会用示例数据伪装成已完成能力。
+当前仍是集成中的开发基线：项目、文献、证据、计算与图谱的服务层已经归一并有测试，但科研页面**尚未全部窗口化**（项目/Wiki/科研画布仍是空状态占位），语音/伴侣尚未按科研 scope 提交，真实科研闭环与执行沙箱验收未做。界面中的空状态不会用示例数据伪装成已完成能力。
 
 ## 核心模型
 
@@ -68,10 +71,12 @@ AI Native App = Agent + Memory + Plugins + Workspace + Generative UI
    ├─ 原生窗口、文件对话框、系统打开与应用生命周期
    └─ LazyResource
       └─ Core Utility Process
-         ├─ Harness Adapter（当前含 DeepSeek Harness 与测试适配器）
+         ├─ OS Kernel（Task / Session / Artifact / Approval / Science / Plugin）
+         ├─ Pi Research Runtime（唯一模型执行者；宿主工具桥 → 内核 executeTool）
+         ├─ Research Application Service（项目/事项/Wiki/证据/图谱 + 逐窗口作用域）
          ├─ Capability Gateway
          ├─ Workspace File Service
-         └─ SystemStore → system.sqlite
+         └─ 持久化（os-state.sqlite / knowledge.sqlite / project-scopes.sqlite）
 ```
 
 ### 存储原则

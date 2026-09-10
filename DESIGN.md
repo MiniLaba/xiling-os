@@ -2,7 +2,11 @@
 
 > **2026-09-10 当前有效定位**：本地优先、Agent 驱动的科研操作系统。桌面、真实文件、多内部窗口是系统宿主；科研服务是核心能力，海洋/气候是优先领域模块。最新整合规范与实际进度见 [科研桌面整合契约](docs/research-desktop/INTEGRATION.md)。下述 AI Native Virtual OS / 演示优先段落属于历史记录，不覆盖本次定位。
 
-> 整合状态：科研包已恢复构建，桌面证据改用科研 KnowledgeStore。Task/Artifact/Harness 与界面仍在统一，不得把 Git 合并当作全部完成。
+> **唯一执行者：Pi**（见 [ADR 0057](docs/adr/0057-pi-sole-executor-and-research-main-path.md)）。DSH 已从产品移除：不注册、不回退、不引入第二个模型引擎。音频是适配器，不是第二个后端。Pi 装配失败即明确失败，不降级到别的引擎，也不静默退化成纯文本轮次。Pi 的宿主工具桥把内核投递的工具装入 Pi 工具循环，工具执行权仍在内核 `executeTool`（权限、幂等、副作用事件不变）。
+
+> **已归一**：Task / Approval / Artifact / 科学执行各只有一个权威；项目、事项、Wiki、证据与科研图谱读取只有一个统一入口，项目作用域按内部窗口显式绑定。**未完成**：科研页面窗口化（服务层与作用域已就绪，界面仅文献窗口接入）、语音/伴侣科研 scope、真实科研闭环与执行沙箱验收。
+>
+> 不得把 Git 合并或构建成功当作完成；以整合契约的检查清单与证据为准。
 
 > **当前范围（2026-09-07）**：按用户最新指示，以演示美学、人机功效、AIRI 默认 Hiyori 伴侣和声明式生成 UI 为优先；此前未完成的生态/发布事项暂缓。见 [ADR 0054](docs/adr/0054-demo-ui-and-airi-default-companion.md)。不要继续按历史“全部开发”条目扩大本轮范围。
 
@@ -84,14 +88,14 @@ AI Native App = Agent + Memory + Plugins + Workspace + Generative UI
 | 原生桌面壳 | 已实现 | Electron 单实例、安全 `xiling://` 协议、CSP、沙箱化 Renderer |
 | 应用内多窗口 | 基础已实现 | 一个 `BrowserWindow`；React Window Manager 按需载入、拖动、缩放、聚焦、最大化、最小化卸载、键盘切换与布局恢复 |
 | 真实桌面文件夹 | D2 主路径已实现 | 原生目录选择、`workspace://`、目录导航、分页列表/搜索、新建、重命名、剪切移动、系统废纸篓、限量文本/图像预览、桌面图标、拖入和本机打开；专用查看器与 DOM 虚拟化待实现 |
-| 统一结构化存储 | schema/端口已实现 | `SystemStore` 与 `system.sqlite` v1；完整科研仓储 API 尚待实现 |
+| 统一结构化存储 | 已实现（分四库） | OS 事件与 Artifact Blob 在 `os-state.sqlite`（`OsPersistence`）；桌面结构化状态在 `system.sqlite`（`SystemStore`）；科研对象在科研数据根的 `knowledge.sqlite`（KnowledgeService）；窗口项目绑定在 `project-scopes.sqlite`。科研对象不复制进 OS 库。 |
 | 应用能力系统 | 基础已实现 | Manifest、Registry、Capability Gateway、显式 allow/deny |
 | 资源生命周期 | 基础已实现 | Core 和目录监听的 acquire/release/idle-stop；Agent/索引/运行时待接入 |
 | 工作台 | 基础已迁移 | 真实文件夹、拖入、本机打开和桌面文件投影均由受管 React 窗口承载 |
-| 对话、研究、文献、数据、设置 | 窗口入口已实现 | 设置已有程序坞尺寸；其余仍为空状态/能力占位，不宣称旧版功能已迁移 |
-| Pi Harness 与上下文 | 待选择性接回 | 复用旧版经验证端口，不复制旧组合根和多存储耦合 |
-| Research Graph | 待 V2 重建 | 以统一对象/关系事件为事实源，图索引为派生投影 |
-| 科学执行 | 禁用任意代码 | 仅允许未来的签名、锁版本、参数受限内置配方 |
+| 对话、研究、文献、数据、设置 | 入口已实现 | 文献工作台已迁入受管窗口并接统一科研服务；项目/Wiki/科研画布的服务层与作用域已就绪，**窗口尚未接入**，仍为空状态占位。 |
+| Pi Harness 与上下文 | 已接入，唯一执行者 | `PiResearchRuntimeAdapter` 在 `AgentRuntime` 端口后面；宿主工具桥接通内核 `executeTool`；Context 编译与 Receipt 已实现。真实公网模型验收单列。 |
+| Research Graph | 投影已接入 | 知识库 durable outbox → Ladybug 图投影，同一投影函数；图谱读取暴露待投影条数与失败原因。布局属 UI，不是科研事实。 |
+| 科学执行 | 受控，默认不可执行 | `ScienceService`：计划 → 审批（资源=计划哈希）→ 执行记录 → 内容寻址 Artifact。本机无可验收的系统级沙箱时如实返回"不可执行"，不宿主裸跑、不用 fixture 冒充。 |
 | 第三方应用 | 禁用可执行入口 | 系统沙箱、签名和权限 UX 未完成 |
 
 ## 4. 运行架构
@@ -112,21 +116,36 @@ Operating System
 Preload（版本化最小能力）
 └─ Desktop Main IPC
    └─ Core RPC
-      ├─ SystemStore
+      ├─ OS Kernel（Task / Session / Artifact / Approval / Science / Plugin）
+      ├─ Pi Research Runtime（唯一模型执行者；工具桥 → 内核 executeTool）
+      ├─ Research Application Service（项目/事项/Wiki/证据/图谱 + 窗口作用域）
       ├─ App Registry
       ├─ Capability Gateway
       └─ Workspace File Service
 ```
 
+### 科学执行的单一主路径
+
+```text
+计划（脚本哈希 + 输入哈希 + 环境 + 资源上限）
+  → Task（用户可见的工作单元；模型 Scheduler 不拾取）
+  → Approval（资源 = plan://<planHash>；改动参数即失效）
+  → ExecutionRecord（自己的 ID，不别名成 Task）
+  → Artifact（内容寻址 + lineage）
+  → Research Graph 投影（durable outbox，可重建）
+```
+
+没有通过验收的安全执行适配器时，`ScienceService.execute` 明确失败并给出原因：不产出产物，不把宿主裸跑或 fixture 当验收。
+
 ### 进程职责
 
 | 边界 | 拥有 | 禁止 |
 | --- | --- | --- |
-| Renderer | 显示状态、内部窗口、用户手势 | Node、绝对路径、密钥、业务事实写入 |
+| Renderer | 显示状态、内部窗口、用户手势；引用自己的项目作用域 | Node、绝对路径、密钥、业务事实写入；跨项目读写 |
 | Preload | 逐项暴露的强类型调用 | 暴露 `ipcRenderer`、shell 或通用 invoke |
 | Desktop Main | 原生能力、可信发送方校验、Core 生命周期 | 科研领域规则、模型工具循环 |
-| Core Utility Process | 存储、能力授权、工作区和未来 Agent/图服务 | 直接把任意本机能力交给应用 |
-| Execution Host（未来） | 受批准科研配方 | 在 Main/Core 内执行不可信代码 |
+| Core Utility Process | 存储、能力授权、工作区、OS 内核、Pi 运行时装配与科研应用服务 | 直接把任意本机能力交给应用 |
+| Science Execution Adapter（可插拔） | 受批准的计算配方；必须如实声明隔离能力 | 在 Main/Core 内执行不可信代码；无声明就宣称已沙箱化 |
 | Plugin/MCP Host（未来） | 隔离第三方协议与工具 | 常驻完整工具目录、绕过 Capability Gateway |
 
 ## 5. 单窗口与内部多窗口
@@ -220,10 +239,11 @@ Manifest 中声明能力不等于获得能力。Capability Gateway 的规则是�
 
 ## 9. Agent、Pi 与上下文的重建约束
 
-V2 后续接回 Pi 时保留以下内核，不搬回旧版组合方式：
+Pi 已接入并是唯一科研执行者（DSH 已移除）。接回时保留以下内核，不搬回旧版组合方式：
 
 - Pi 的模型调用、流式事件、工具循环、取消、会话树与 Compaction 原语；
-- Pi 反腐适配层，业务包不得到处直接依赖 Pi；
+- Pi 反腐适配层（`PiResearchRuntimeAdapter`）：业务包不得到处直接依赖 Pi；内核只依赖 `AgentRuntime` 端口；
+- 工具执行权留在内核 `executeTool`：Pi 侧只调用与回传结果，权限、幂等键与副作用事件不另开一条路径；
 - Durable Session/Run/Entry/Usage/Compaction 语义；
 - Skill 索引常驻、正文按任务命中后读取；
 - MCP Server/工具目录留在隔离 Host，只按 search/describe 激活命中 schema；
@@ -273,11 +293,15 @@ Desktop V2 目标平台为 macOS、Windows 11 x86_64 与主流 Linux，均原生
 ## 13. 自动化验证
 
 ```sh
+pnpm boundary
 pnpm --filter @xiling/desktop typecheck
 pnpm --filter @xiling/desktop test:foundation
 pnpm --filter @xiling/desktop smoke
+pnpm test
 XILING_DESKTOP_LAUNCH_SMOKE=1 pnpm --filter @xiling/desktop start
 ```
+
+`smoke` 含 `test:foundation`、真实 Electron 程序坞点击与容器无关性检查（无 Docker/WSL 依赖）。
 
 当前测试覆盖：
 
@@ -289,7 +313,11 @@ XILING_DESKTOP_LAUNCH_SMOKE=1 pnpm --filter @xiling/desktop start
 - 原生目录变化推送和监听器关闭；
 - Electron 安全不变量与无容器依赖；
 - 动态窗口包未进入冷启动、包体上限；
-- 真实 Electron 中实际点击程序坞、打开 React 工作台、验证缩放入口、唤醒 Core 与活动内存上限。
+- 真实 Electron 中实际点击程序坞、打开 React 工作台、验证缩放入口、唤醒 Core 与活动内存上限；
+- Pi 执行者装配：唯一注册、能力如实声明、重启后绑定来自事件重放（`research-harness.test.ts`）；
+- Pi 工具桥：工具装入 Pi 且调用落到内核 `executeTool`；会话缺 `setActiveTools` 或内核缺执行网关时明确失败（`pi-research-adapter.test.ts`）；
+- 科学执行主路径：审批门禁、计划哈希绑定与篡改检测、幂等重放、产物契约、取消、无可执行后端时明确失败（`science-service.test.ts`）；
+- 统一科研服务与作用域：未绑定拒绝、跨项目读写拒绝、归属校验、重启恢复、图谱投影待处理与失败暴露（`research-service.test.ts`）。
 
 ## 14. 后续顺序
 
@@ -298,10 +326,12 @@ XILING_DESKTOP_LAUNCH_SMOKE=1 pnpm --filter @xiling/desktop start
 1. 完成窗口系统剩余项：文档型多实例、窗口菜单、无障碍焦点环与 Core/Renderer 崩溃后的恢复提示；“关于”作为系统界面可暂留静态层。
 2. 在已完成目录导航、分页、搜索、新建、重命名、剪切移动、系统废纸篓和文本/小型图像预览的基础上，补齐 PDF/科研格式独立查看器和长列表 DOM 虚拟化。
 3. 在统一 `objects/relations/events/artifacts` 上实现强类型 Repository 和事务性 outbox。
-4. 选择性接回 Pi Harness、上下文装配、Skill/MCP 隔离与模型权限；先做一个可恢复的真实 Agent 纵向切片。
-5. 重建 Research Graph、证据提升、计算溯源和 Artifact 生命周期，并用真实小型科研任务验收。
-6. 实现跨平台系统级执行沙箱；通过安全门禁后才开放模型生成代码与第三方应用。
-7. 完成安装、签名、自动更新、备份恢复、低资源设备与真实三平台发布验收。
+4. ~~选择性接回 Pi Harness~~ **已完成**：Pi 是唯一执行者，工具桥接通内核 `executeTool`（ADR 0057）。
+5. ~~重建 Research Graph、证据提升、计算溯源和 Artifact 生命周期~~ **部分完成**：证据提升 → 图谱投影 → 内容寻址 Artifact 已接入并有测试；真实小型科研任务验收仍未做，因为它需要真实凭据与通过验收的执行沙箱。
+6. **科研页面窗口化**：把项目/Wiki/科研画布/证据迁入受管内部窗口，逐窗口 ProjectScope，统一设计组件与主题。服务层与作用域已就绪。
+7. 语音与伴侣改为科研服务入口（携带项目 scope），保留原生音频语义。
+8. 实现跨平台系统级执行沙箱；通过安全门禁后才开放模型生成代码与第三方应用。
+9. 完成安装、签名、自动更新、备份恢复、低资源设备与真实三平台发布验收。
 
 任何阶段都必须保持：一个原生 OS 窗口、真实目录、单一结构化事实源、按需资源、能力网关和科研可追溯性。
 # 2026-09-06 实现补记

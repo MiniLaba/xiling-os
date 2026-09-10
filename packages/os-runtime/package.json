@@ -21,20 +21,7 @@
     "test": "node --test dist/pi-research-adapter.test.js dist/cordis-plugin-host.test.js"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-compaction": "catalog:",
-    "@deepseek-ai/dsh-compaction-basic": "catalog:",
-    "@deepseek-ai/dsh-token-meter": "catalog:",
-    "@deepseek-ai/dsh-tools": "catalog:",
-    "@deepseek-ai/dsh-session-persistence-jsonl": "catalog:",
-    "@deepseek-ai/dsh-agent": "catalog:",
-    "@deepseek-ai/dsh-session": "catalog:",
-    "@deepseek-ai/dsh-llm": "catalog:",
-    "@deepseek-ai/dsh-sdk-jsonrpc-server": "catalog:",
-    "@deepseek-ai/dsh-agent-spine-demo": "catalog:",
-    "@deepseek-ai/dsh-llm-pi-ai": "catalog:",
     "@deepseek-ai/cordis": "catalog:",
-    "@deepseek-ai/dsh-sdk-client": "catalog:",
-    "@deepseek-ai/dsh-sdk-protocol": "catalog:",
     "@xiling/os-domain": "workspace:*"
   },
   "devDependencies": {
