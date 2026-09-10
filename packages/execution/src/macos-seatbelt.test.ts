@@ -248,6 +248,39 @@ print("SIBLING:", attempt(${JSON.stringify(sibling)}))
     }
   });
 
+  it("脚本能读回自己写进 scratch 的中间产物（生产布局下 scratch 位于被拒区）", async () => {
+    const base = await mkdtemp(path.join(os.tmpdir(), "xiling-roundtrip-"));
+    try {
+      const runRoot = path.join(base, "science-runs");
+      const codeDir = path.join(runRoot, "code");
+      const inputsDir = path.join(runRoot, "inputs");
+      const scratchDir = path.join(runRoot, "scratch");
+      for (const directory of [codeDir, inputsDir, scratchDir]) await mkdir(directory, { recursive: true });
+      const scriptPath = path.join(codeDir, "recipe.py");
+      await writeFile(scriptPath, `${ABI_PREAMBLE}
+# 两段式计算：先写中间结果，再读回来做第二段
+with open(SCRATCH + "/stage1.txt", "w") as handle:
+    handle.write("42")
+with open(SCRATCH + "/stage1.txt") as handle:
+    value = int(handle.read())
+with open(SCRATCH + "/stage2.txt", "w") as handle:
+    handle.write(str(value * 2))
+print("ROUNDTRIP_OK", value * 2)
+`, "utf8");
+      const outputs = await runInSeatbelt({
+        scriptPath, inputsDir, scratchDir, parametersJson: "{}",
+        timeoutMs: 20_000, cpuSeconds: 10, interpreter: interpreter!,
+        deniedReadPaths: [base],
+      });
+      expect(outputs.stdout).toMatch(/ROUNDTRIP_OK 84/);
+      expect(outputs.artifacts.map((artifact) => artifact.name).sort()).toEqual(["stage1.txt", "stage2.txt"]);
+      // getcwd 不该再报错：scratch 可读之后 shell-init 不能失败的提示应消失
+      expect(outputs.stderr).not.toMatch(/getcwd/);
+    } finally {
+      await rm(base, { recursive: true, force: true });
+    }
+  });
+
   it("拒绝写 scratch 之外的路径", async () => {
     const escapeTarget = `/tmp/xiling-escape-${Date.now()}.txt`;
     await withSandbox(

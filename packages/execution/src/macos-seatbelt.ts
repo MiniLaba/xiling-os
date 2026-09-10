@@ -236,7 +236,9 @@ export async function runInSeatbelt(input: SeatbeltRunInput): Promise<SeatbeltRu
   const { launcher, interpreter, version } = input.interpreter;
 
   const policy: SeatbeltPolicy = {
-    readPaths: [path.dirname(scriptPath), inputsDir],
+    // scratch 必须同时可读：脚本要能读回自己写的中间产物；否则生产布局下
+    // （run root 位于 /Users 内的被拒区）getcwd 与二次读取都会失败
+    readPaths: [path.dirname(scriptPath), inputsDir, scratchDir],
     writablePaths: [scratchDir],
     execAllowances: interpreterExecAllowances(input.interpreter),
     allowFork: input.allowFork === true,
