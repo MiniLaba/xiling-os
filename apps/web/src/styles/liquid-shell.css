@@ -1,0 +1,89 @@
+/* Navigation is glass; research content remains an opaque reading surface.
+ * Imported last so legacy workspace geometry is not repurposed as shell layout. */
+.liquid-shell {
+  --glass-fill: color-mix(in srgb, var(--xl-surface) 86%, transparent);
+  --glass-edge: color-mix(in srgb, var(--xl-border-strong) 65%, transparent);
+  grid-template-columns: 76px minmax(0, 1fr);
+  padding: 14px 14px 14px 0;
+  gap: 0;
+  background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--xl-accent) 12%, transparent), transparent 55%), var(--xl-bg-secondary);
+}
+.liquid-shell.settings-mode { grid-template-columns: minmax(0, 1fr); padding-left: 14px; }
+.liquid-shell > .workspace {
+  grid-column: 2;
+  height: calc(100dvh - 28px);
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  background: var(--xl-surface);
+  isolation: isolate;
+}
+.liquid-shell.settings-mode > .workspace { grid-column: 1; }
+.liquid-shell > .workspace > .workspace-header {
+  flex-shrink: 0;
+  min-height: 62px;
+  background: var(--glass-fill);
+  backdrop-filter: blur(20px) saturate(135%);
+  -webkit-backdrop-filter: blur(20px) saturate(135%);
+}
+.liquid-shell .workspace-title { flex: 1; }
+.liquid-shell .workspace-header button { border-radius: 999px; }
+.locale-switch { min-width: 42px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--xl-border); color: var(--xl-text); background: var(--xl-surface); }
+.liquid-shell .liquid-dock {
+  position: fixed;
+  left: 10px;
+  top: 20px;
+  transform: none;
+  width: 56px;
+  height: auto;
+  max-height: calc(100dvh - 40px);
+  padding: 8px;
+  z-index: 150;
+  border: 1px solid var(--glass-edge);
+  border-radius: 28px;
+  background: var(--glass-fill);
+  backdrop-filter: blur(26px) saturate(145%);
+  -webkit-backdrop-filter: blur(26px) saturate(145%);
+  transition: width 220ms var(--xl-ease-out), border-radius 220ms ease;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.liquid-dock:is(:hover, :focus-within, .dock-open) { width: min(280px, calc(100vw - 28px)); border-radius: 26px; }
+.liquid-dock .sidebar-brand { display: none; }
+.liquid-dock .dock-toggle { order: 0; }
+.liquid-dock .new-conversation-btn { order: 1; }
+.liquid-dock .sidebar-nav { order: 2; }
+.liquid-dock .sidebar-footer { order: 3; }
+.liquid-dock .project-switcher { order: 4; margin-top: 16px; }
+.liquid-dock .recent-work { order: 5; }
+.liquid-dock .dock-toggle { display: flex; align-items: center; gap: 12px; flex-shrink: 0; min-height: 40px; padding: 10px; border-radius: 18px; color: var(--xl-accent); margin-bottom: 8px; }
+.liquid-dock .dock-toggle span { white-space: nowrap; font-weight: 650; }
+.liquid-dock .sidebar-nav { gap: 8px; margin: 8px 0; }
+.liquid-dock .sidebar-nav button, .liquid-dock .settings-entry, .liquid-dock .new-conversation-btn { display: flex; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; min-height: 40px; padding: 10px; border-radius: 16px; flex-shrink: 0; white-space: nowrap; }
+.liquid-dock svg { flex-shrink: 0; }
+.liquid-dock .sidebar-nav button.active { background: var(--xl-accent-soft); color: var(--xl-accent-strong); }
+.liquid-dock .sidebar-nav button.active::before { display: none; }
+.liquid-dock .sidebar-footer { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--xl-border); }
+.liquid-dock .recent-work { min-height: 0; max-height: 28dvh; overflow: auto; }
+.liquid-dock .project-switcher-menu { position: relative; top: 4px; }
+.liquid-dock:not(:hover):not(:focus-within):not(.dock-open) :is(.project-switcher, .recent-work, .dock-toggle span, .sidebar-nav button span, .settings-entry span, .new-conversation-btn span) { display: none; }
+.liquid-shell :is(.credential-card, .skill-card, .appearance-capsule-card, .agent-role-grid > article) { border-radius: 24px; border: 1px solid var(--xl-border); background: var(--xl-surface); box-shadow: none; }
+.liquid-shell .settings-local-nav { background: var(--xl-bg-secondary); }
+.language-card { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px; }
+.language-card select { padding: 10px 16px; border-radius: 999px; border: 1px solid var(--xl-border); background: var(--xl-bg); color: var(--xl-text); }
+.liquid-shell :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--xl-accent); outline-offset: 2px; }
+@media (hover: none) { .liquid-dock .dock-toggle { background: var(--xl-accent-soft); } }
+@media (max-width: 680px) {
+  .liquid-shell { grid-template-columns: 64px minmax(0, 1fr); padding: 6px 6px 6px 0; }
+  .liquid-shell > .workspace { height: calc(100dvh - 12px); border-radius: 20px; }
+  .liquid-shell .liquid-dock { left: 4px; }
+  .liquid-shell .workspace-header { padding: 10px; gap: 6px; }
+  .liquid-shell .workspace-title > span, .liquid-shell .workspace-actions kbd { display: none; }
+  .liquid-shell.settings-mode { padding-left: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .liquid-shell, .liquid-shell .liquid-dock { transition: none; } }
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-shell .liquid-dock, .liquid-shell > .workspace > .workspace-header { background: var(--xl-surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .liquid-shell .liquid-dock, .liquid-shell > .workspace > .workspace-header { background: var(--xl-surface); }
+}

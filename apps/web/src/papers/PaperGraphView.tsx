@@ -132,10 +132,28 @@ export function PaperGraphView({ projectId, onNavigate }: { projectId: string; o
       ],
     });
     cyRef.current = cy;
+    // Canvas labels do not inherit CSS; update paint only, preserving layout,
+    // zoom, selection and the shared year/relation legend palette.
+    const applyTheme = () => {
+      if (!container.current) return;
+      const tokens = getComputedStyle(container.current);
+      const value = (name: string) => tokens.getPropertyValue(name).trim();
+      cy.style()
+        .selector("node").style({ color: value("--xl-text"), "border-color": value("--xl-surface"), "font-family": value("--xl-font-ui") })
+        .selector("node[seed = 1]").style({ color: value("--xl-accent"), "border-color": value("--xl-accent") })
+        .selector("node:selected").style({ "border-color": value("--xl-accent") })
+        .selector("edge.focus").style({ "line-color": value("--xl-accent"), "target-arrow-color": value("--xl-accent") })
+        .update();
+    };
+    applyTheme();
+    const themeObserver = new MutationObserver(applyTheme);
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class", "style"] });
+    const colorScheme = window.matchMedia("(prefers-color-scheme: dark)");
+    colorScheme.addEventListener("change", applyTheme);
     const initial = graph.nodes.find((node) => node.seed) ?? graph.nodes[0];
     if (initial) { const node = cy.getElementById(initial.id); node.select(); node.connectedEdges().addClass("focus"); }
     cy.on("tap", "node", (event) => focusPaper(graph.nodes.find((node) => node.id === event.target.id())));
-    return () => { cyRef.current = null; cy.destroy(); };
+    return () => { themeObserver.disconnect(); colorScheme.removeEventListener("change", applyTheme); cyRef.current = null; cy.destroy(); };
   }, [graph, edgeFilter]);
 
   if (!graph) return <div className="literature-start">

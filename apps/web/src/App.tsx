@@ -7,8 +7,8 @@ import { WorkspaceProvider, useWorkspace } from "./workspace/WorkspaceContext.js
 import { ConversationProvider, useConversations } from "./workspace/ConversationContext.js";
 import { ToastProvider, useToast } from "./components/ui/toast.js";
 import { Dialog } from "./components/ui/dialog.js";
-import { DesignTweaks } from "./devtools/DesignTweaks.js";
 import { HomeView } from "./home/HomeView.js";
+import { useLocale } from "./lib/locale.js";
 
 const ChatView = lazy(async () => ({ default: (await import("./chat/ChatView.js")).ChatView }));
 const PaperGraphView = lazy(async () => ({ default: (await import("./papers/PaperGraphView.js")).PaperGraphView }));
@@ -54,6 +54,9 @@ export function App() {
 }
 
 function WorkspaceApp() {
+  const { locale, setLocale, t } = useLocale();
+  const localizedLabels = Object.fromEntries(Object.entries(labels).map(([key, value]) => [key, t(value)])) as Record<View, string>;
+  const [dockPinned, setDockPinned] = useState(false);
   const [view, setView] = useState<View>("home");
   const [viewHistory, setViewHistory] = useState<View[]>([]);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
@@ -93,14 +96,14 @@ function WorkspaceApp() {
     const query = commandQuery.trim().toLocaleLowerCase();
     const viewActions = (Object.keys(labels) as View[])
       .filter((target) => target !== "project")
-      .filter((target) => !query || labels[target].includes(query))
-      .map((target) => ({ id: `view:${target}`, label: labels[target], hint: "打开视图", run: () => { navigateToView(target); } }));
+      .filter((target) => !query || t(labels[target]).toLocaleLowerCase().includes(query))
+      .map((target) => ({ id: `view:${target}`, label: t(labels[target]), hint: t("打开视图"), run: () => { navigateToView(target); } }));
     const projectActions = [...projects]
       .sort((a, b) => (a.id === FREE_EXPLORATION_PROJECT_ID ? -1 : b.id === FREE_EXPLORATION_PROJECT_ID ? 1 : 0))
       .filter((project) => !query || `${project.name} ${project.researchQuestion}`.toLocaleLowerCase().includes(query))
       .map((project) => ({ id: `project:${project.id}`, label: project.name, hint: project.id === activeProjectId ? "当前项目" : "切换项目", run: () => { setActiveProjectId(project.id); } }));
     return [...viewActions, ...projectActions];
-  }, [commandQuery, projects, activeProjectId, setActiveProjectId, navigateToView]);
+  }, [commandQuery, projects, activeProjectId, setActiveProjectId, navigateToView, locale]);
 
   const runCommandAction = (index: number) => {
     const action = commandActions[index];
@@ -139,50 +142,51 @@ function WorkspaceApp() {
     return (
       <main className="home-shell">
         <HomeView onEnter={navigateToView} />
-        <Dialog open={pendingDelete !== undefined} onClose={() => setPendingDelete(undefined)} title="删除对话" width={420}
+        <Dialog open={pendingDelete !== undefined} onClose={() => setPendingDelete(undefined)} title={t("删除对话")} width={420}
           footer={<>
-            <button className="xl-btn" data-variant="ghost" onClick={() => setPendingDelete(undefined)}>取消</button>
-            <button className="xl-btn" data-variant="danger" onClick={confirmDeleteSession}>删除</button>
+            <button className="xl-btn" data-variant="ghost" onClick={() => setPendingDelete(undefined)}>{t("取消")}</button>
+            <button className="xl-btn" data-variant="danger" onClick={confirmDeleteSession}>{t("删除")}</button>
           </>}>
           <p>确定删除对话「<b>{pendingDelete?.title}</b>」吗？对话中的推演记录将一并移除，删除后不可恢复。</p>
         </Dialog>
       </main>
     );
   }
-  if (loading && !activeProject) return <main className="shell"><div className="view-loading">正在恢复科研工作区…</div></main>;
+  if (loading && !activeProject) return <main className="shell"><div className="view-loading">{t("正在恢复科研工作区…")}</div></main>;
   if (!activeProject) return <main className="shell"><div className="view-loading">{error ?? "没有可用科研项目"}</div></main>;
 
   return (
-    <main className={`shell sidebar-collapsed ${view === "settings" ? "settings-mode" : ""}`}>
-      {view !== "settings" ? <aside className="sidebar">
+    <main className={`shell liquid-shell ${view === "settings" ? "settings-mode" : ""}`}>
+      {view !== "settings" ? <aside className={`sidebar liquid-dock ${dockPinned || projectMenuOpen ? "dock-open" : ""}`} aria-label={t("工作区")}>
+        <button className="dock-toggle" aria-expanded={dockPinned} aria-label={locale === "en" ? "Pin navigation" : "固定导航栏"} onClick={() => setDockPinned((value) => !value)}><LayoutGrid size={19} /><span>{locale === "en" ? "Workspace" : "工作空间"}</span></button>
         <div className="sidebar-brand">
           <div className="brand-mark"><img src="/brand/xiling-mark.png" alt="" /></div>
-          <div className="brand-text"><b>汐灵</b><small>SCIENCE OS</small></div>
+          <div className="brand-text"><b>{t("汐灵")}</b><small>SCIENCE OS</small></div>
         </div>
         <div className="project-switcher" ref={projectMenuRef}>
           <button className="project-switcher-trigger" aria-expanded={projectMenuOpen} onClick={() => setProjectMenuOpen((open) => !open)}>
-            <span><small>当前项目</small><b>{activeProject.name}{activeProject.id === FREE_EXPLORATION_PROJECT_ID ? <em className="project-badge-free">开放问答</em> : null}</b><em>{activeProject.researchQuestion}</em></span><ChevronDown size={15} aria-hidden="true" />
+            <span><small>{t("当前项目")}</small><b>{activeProject.name}{activeProject.id === FREE_EXPLORATION_PROJECT_ID ? <em className="project-badge-free">{t("开放问答")}</em> : null}</b><em>{activeProject.researchQuestion}</em></span><ChevronDown size={15} aria-hidden="true" />
           </button>
           {projectMenuOpen ? <div className="project-switcher-menu">
-            <header><b>科研项目</b><small>{projects.length} 个进行中</small></header>
-            <div>{[...projects].sort((a, b) => (a.id === FREE_EXPLORATION_PROJECT_ID ? -1 : b.id === FREE_EXPLORATION_PROJECT_ID ? 1 : 0)).map((project) => <button className={project.id === activeProjectId ? "active" : ""} key={project.id} onClick={() => { setActiveProjectId(project.id); setProjectMenuOpen(false); }}><i>{project.id === activeProjectId ? "✓" : ""}</i><span><b>{project.name}{project.id === FREE_EXPLORATION_PROJECT_ID ? <em className="project-badge-free">开放问答</em> : null}</b><small>{project.researchQuestion}</small></span></button>)}</div>
+            <header><b>{t("科研项目")}</b><small>{projects.length} 个进行中</small></header>
+            <div>{[...projects].sort((a, b) => (a.id === FREE_EXPLORATION_PROJECT_ID ? -1 : b.id === FREE_EXPLORATION_PROJECT_ID ? 1 : 0)).map((project) => <button className={project.id === activeProjectId ? "active" : ""} key={project.id} onClick={() => { setActiveProjectId(project.id); setProjectMenuOpen(false); }}><i>{project.id === activeProjectId ? "✓" : ""}</i><span><b>{project.name}{project.id === FREE_EXPLORATION_PROJECT_ID ? <em className="project-badge-free">{t("开放问答")}</em> : null}</b><small>{project.researchQuestion}</small></span></button>)}</div>
             <footer><button onClick={() => { navigateToView("project"); setProjectMenuOpen(false); }}><Plus size={14} aria-hidden="true" /> 新建或管理项目</button></footer>
           </div> : null}
         </div>
-        <button className="new-conversation-btn" onClick={() => { startNewConversation(); navigateToView("chat"); }}>
-          <Plus size={16} aria-hidden="true" /><span>新建对话</span>
+        <button className="new-conversation-btn" aria-label={t("新建对话")} title={t("新建对话")} onClick={() => { startNewConversation(); navigateToView("chat"); }}>
+          <Plus size={16} aria-hidden="true" /><span>{t("新建对话")}</span>
         </button>
         <nav className="sidebar-nav">
           {navigationItems.map((item) => (
-            <button aria-current={view === item ? "page" : undefined} className={view === item ? "active" : ""} key={item} onClick={() => navigateToView(item)}>
+            <button aria-label={localizedLabels[item]} title={localizedLabels[item]} aria-current={view === item ? "page" : undefined} className={view === item ? "active" : ""} key={item} onClick={() => navigateToView(item)}>
               {icons[item]}
-              <span>{labels[item]}</span>
+              <span>{localizedLabels[item]}</span>
             </button>
           ))}
         </nav>
         <div className="recent-work">
-          <header><small>对话历史</small>{sessions.length ? <span>{sessions.length}</span> : null}</header>
-          {sessionsLoading ? <p className="session-loading">正在恢复…</p> : sessions.length ? (
+          <header><small>{t("对话历史")}</small>{sessions.length ? <span>{sessions.length}</span> : null}</header>
+          {sessionsLoading ? <p className="session-loading">{t("正在恢复…")}</p> : sessions.length ? (
             <div className="session-list">
               {sessions.map((session) => (
                 <div className={`session-item ${view === "chat" && session.id === activeSessionId ? "active" : ""}`} key={session.id}>
@@ -190,34 +194,35 @@ function WorkspaceApp() {
                     <i>●</i>
                     <span><b>{session.title}</b><small>{formatSessionTime(session.updatedAt)} · {session.messageCount} 条</small></span>
                   </button>
-                  <button className="session-delete" aria-label={`删除对话「${session.title}」`} title="删除对话" onClick={(event) => { event.stopPropagation(); setPendingDelete({ id: session.id, title: session.title }); }}><Trash2 size={13} aria-hidden="true" /></button>
+                  <button className="session-delete" aria-label={`删除对话「${session.title}」`} title={t("删除对话")} onClick={(event) => { event.stopPropagation(); setPendingDelete({ id: session.id, title: session.title }); }}><Trash2 size={13} aria-hidden="true" /></button>
                 </div>
               ))}
             </div>
-          ) : <p className="session-empty">这个项目还没有对话</p>}
+          ) : <p className="session-empty">{t("这个项目还没有对话")}</p>}
         </div>
         <div className="sidebar-footer">
-          <button className="settings-entry" onClick={() => navigateToView("settings")} aria-label="设置">
-            <Settings size={16} aria-hidden="true" /><span>设置</span>
+          <button className="settings-entry" onClick={() => navigateToView("settings")} aria-label={t("设置")}>
+            <Settings size={16} aria-hidden="true" /><span>{t("设置")}</span>
           </button>
         </div>
       </aside> : null}
       <section className={`workspace workspace-${view}`}>
         <header className="workspace-header">
           <div className="workspace-title">
-            <button aria-label="返回上一视图" title="返回上一视图" disabled={!viewHistory.length} onClick={goBack}>‹</button>
-            <strong>{labels[view]}</strong>
+            <button aria-label={t("返回上一视图")} title={t("返回上一视图")} disabled={!viewHistory.length} onClick={goBack}>‹</button>
+            <strong>{localizedLabels[view]}</strong>
             <span>{activeProject.name}</span>
           </div>
+          <button className="locale-switch" onClick={() => setLocale(locale === "en" ? "zh-CN" : "en")} aria-label={locale === "en" ? "Switch to Chinese" : "切换至英文"}>{locale === "en" ? "中文" : "EN"}</button>
           {view === "settings"
             ? null
             : <div className="workspace-actions">
-                <button onClick={() => { setCommandOpen(true); setCommandIndex(0); }}><Search size={14} aria-hidden="true" /><kbd aria-hidden="true">Ctrl K</kbd> 搜索与跳转</button>
+                <button onClick={() => { setCommandOpen(true); setCommandIndex(0); }}><Search size={14} aria-hidden="true" /><kbd aria-hidden="true">Ctrl K</kbd> {t("搜索与跳转")}</button>
               </div>
           }
         </header>
         <div className="workspace-body">
-          <Suspense fallback={<div className="view-loading">按需加载当前视图…</div>}>
+          <Suspense fallback={<div className="view-loading">{t("按需加载当前视图…")}</div>}>
             {view === "chat" ? <ChatView project={activeProject} />
               : view === "attention" ? <AttentionView projectId={activeProjectId} onNavigate={navigateToView} />
               : view === "canvas" ? <ScientificCanvasView projectId={activeProjectId} onNavigate={navigateToView} />
@@ -237,7 +242,7 @@ function WorkspaceApp() {
           </header>
           <div ref={commandListRef} style={{ overflow: "auto", minHeight: 0 }}>
             <section>
-              <small>工作区</small>
+              <small>{t("工作区")}</small>
               {commandActions.filter((action) => action.id.startsWith("view:")).map((action) => {
                 const index = commandActions.indexOf(action);
                 const target = action.id.slice(5) as View;
@@ -251,7 +256,7 @@ function WorkspaceApp() {
               })}
             </section>
             <section>
-              <small>科研项目</small>
+              <small>{t("科研项目")}</small>
               {commandActions.filter((action) => action.id.startsWith("project:")).map((action) => {
                 const index = commandActions.indexOf(action);
                 return (
@@ -268,11 +273,10 @@ function WorkspaceApp() {
           </footer>
         </div>
       </div> : null}
-      <DesignTweaks />
-      <Dialog open={pendingDelete !== undefined} onClose={() => setPendingDelete(undefined)} title="删除对话" width={420}
+      <Dialog open={pendingDelete !== undefined} onClose={() => setPendingDelete(undefined)} title={t("删除对话")} width={420}
         footer={<>
-          <button className="xl-btn" data-variant="ghost" onClick={() => setPendingDelete(undefined)}>取消</button>
-          <button className="xl-btn" data-variant="danger" onClick={confirmDeleteSession}>删除</button>
+          <button className="xl-btn" data-variant="ghost" onClick={() => setPendingDelete(undefined)}>{t("取消")}</button>
+          <button className="xl-btn" data-variant="danger" onClick={confirmDeleteSession}>{t("删除")}</button>
         </>}>
         <p>确定删除对话「<b>{pendingDelete?.title}</b>」吗？对话中的推演记录将一并移除，删除后不可恢复。</p>
       </Dialog>

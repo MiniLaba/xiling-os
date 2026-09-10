@@ -1,9 +1,11 @@
+import { useLocale } from "../lib/locale.js";
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from "react";
 import type { AgentInputAttachment, ChatMessageRecord, ContextAssemblyTrace, ResearchProject, ModelCatalogEntry, ModelProviderId, ModelRuntimeStatus, ProjectItem, WikiPageDetail } from "@xiling/contracts";
 import { FREE_EXPLORATION_PROJECT_ID } from "@xiling/contracts";
 import type { ProjectResearchWorkflow } from "@xiling/domain-ocean";
 import { useConversations } from "../workspace/ConversationContext.js";
 import { ResearchWorkflowCard } from "./ResearchWorkflowCard.js";
+import { AgentExecutionGraphView } from "./AgentExecutionGraphView.js";
 import { runResearchTurn } from "../lib/research-session-client.js";
 import { formatAttachmentSize, nativeImageUpload, NATIVE_IMAGE_ACCEPT, readNativeImages, type PendingNativeImage } from "../lib/native-image-input.js";
 import { ModelCapsule, type CapsuleRoute } from "../components/ModelCapsule.js";
@@ -72,6 +74,7 @@ function extractText(content: readonly { type: string; text?: string }[]): strin
 }
 
 export function ChatView({ project }: { project: ResearchProject }) {
+  const { t } = useLocale();
   const { sessions, activeSessionId, ensureSession, refreshSessions } = useConversations();
   const visibleSessionRef = useRef(activeSessionId);
   visibleSessionRef.current = activeSessionId;
@@ -96,6 +99,9 @@ export function ChatView({ project }: { project: ResearchProject }) {
   const [artifactOpen, setArtifactOpen] = useState(true);
   const [artifactExpanded, setArtifactExpanded] = useState(false);
   const [workbenchWidth, setWorkbenchWidth] = useState(0);
+  const [primaryMode, setPrimaryMode] = useState<"conversation" | "execution">("conversation");
+  const [graphRefreshKey, setGraphRefreshKey] = useState(0);
+  const artifactBeforeGraphRef = useRef(artifactOpen);
   const manualArtifactOpenRef = useRef(false);
   const seenArtifactCountRef = useRef(0);
   const workbenchRef = useRef<HTMLDivElement>(null);
@@ -120,7 +126,7 @@ export function ChatView({ project }: { project: ResearchProject }) {
     } else {
       setMessages([welcomeMessage(project)]);
     }
-    setTools([]); setContextTrace(undefined); setSaveStatus(""); setPendingImages([]); setAttachmentError(""); setArtifactExpanded(false); manualArtifactOpenRef.current = false; seenArtifactCountRef.current = 0;
+    setTools([]); setContextTrace(undefined); setSaveStatus(""); setPendingImages([]); setAttachmentError(""); setArtifactExpanded(false); setPrimaryMode("conversation"); manualArtifactOpenRef.current = false; seenArtifactCountRef.current = 0;
     return () => { cancelled = true; };
   }, [project.id, activeSessionId]);
   useEffect(() => {
@@ -214,6 +220,7 @@ export function ChatView({ project }: { project: ResearchProject }) {
         runSessionIdRef.current = null;
         if (visibleSessionRef.current === session.id) setRunning(false);
         await refreshSessions(session.id);
+        setGraphRefreshKey((value) => value + 1);
             if (visibleSessionRef.current === session.id) {
           try {
             const response = await fetch(`/api/v1/chat-sessions/${encodeURIComponent(session.id)}/messages`);
@@ -298,11 +305,24 @@ export function ChatView({ project }: { project: ResearchProject }) {
 
   const artifactDocked = workbenchWidth >= 1_040 && !artifactExpanded;
 
+  const switchPrimaryMode = (next: "conversation" | "execution") => {
+    if (next === primaryMode) return;
+    if (next === "execution") {
+      artifactBeforeGraphRef.current = artifactOpen;
+      setArtifactOpen(false);
+      setArtifactExpanded(false);
+    } else if (artifactBeforeGraphRef.current && (artifactCount > 0 || manualArtifactOpenRef.current)) {
+      setArtifactOpen(true);
+    }
+    setPrimaryMode(next);
+  };
+
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <div className={`chat-workbench ${artifactExpanded ? "artifact-expanded" : ""} ${artifactOpen && !artifactDocked && !artifactExpanded ? "artifact-overlay" : ""}`} ref={workbenchRef} style={{ gridTemplateColumns: artifactExpanded || !artifactOpen || !artifactDocked ? "minmax(0, 1fr)" : `minmax(520px, 1fr) 7px ${artifactWidth}px` }}>
-        <ThreadPrimitive.Root className="chat-view">
-          <div className="chat-heading"><div><h1>{activeSession?.title ?? "新对话"}</h1></div><div className="chat-heading-actions">{!artifactOpen ? <button onClick={() => { manualArtifactOpenRef.current = true; setArtifactOpen(true); }}>打开产物面板</button> : null}</div></div>
+        <ThreadPrimitive.Root className={`chat-view ${primaryMode === "execution" ? "chat-view-execution" : ""}`}>
+          {primaryMode === "conversation" ? <div className="chat-heading"><div><small>{project.name} · 研究对话</small><h1>{activeSession?.title ?? "新对话"}</h1></div><div className="chat-heading-actions"><div className="chat-primary-switch" role="tablist" aria-label="Chat 工作区模式"><button role="tab" aria-selected className="active">{t("对话")}</button><button role="tab" aria-selected={false} onClick={() => switchPrimaryMode("execution")}>{t("运行图")}</button></div>{!artifactOpen ? <button onClick={() => { manualArtifactOpenRef.current = true; setArtifactOpen(true); }}>打开产物面板</button> : null}</div></div> : null}
+          {primaryMode === "execution" ? <AgentExecutionGraphView projectId={project.id} activeSessionId={activeSessionId} refreshKey={graphRefreshKey} onReturnToChat={() => switchPrimaryMode("conversation")} /> : <>
             <ThreadPrimitive.Viewport className="aui-thread">
               <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
               {!running && choiceOptions.length ? <div className="chat-choice-chips" role="group" aria-label="可选操作">{choiceOptions.map((label) => <button key={label} onClick={() => void submitPrompt(label, [])}>{label}</button>)}</div> : null}
@@ -320,10 +340,11 @@ export function ChatView({ project }: { project: ResearchProject }) {
             <input ref={imageInputRef} className="native-file-input" type="file" accept={NATIVE_IMAGE_ACCEPT} multiple onChange={(event) => { void addImages(event.currentTarget.files); event.currentTarget.value = ""; }} />
             <div className="composer-tools"><button type="button" aria-label="添加图像" disabled={!nativeImageEnabled || running} title={attachmentTitle} onClick={() => imageInputRef.current?.click()}>＋</button><span>{nativeImageEnabled ? "原生图像可用" : "仅文字输入"}</span><div className="composer-model-slot"><ModelCapsule value={modelRuntime?.primary ? { providerId: modelRuntime.primary.providerId, modelId: modelRuntime.primary.modelId, reasoning: modelRuntime.primary.reasoning } : undefined} catalog={modelCatalog} configuredProviders={configuredModelProviders.map((id) => ({ id, title: providerTitles[id] ?? id }))} disabled={running} onCommit={(route) => void commitPrimaryModel(route)} /></div><div className="composer-actions"><ComposerPrimitive.Send aria-label="发送">↑</ComposerPrimitive.Send><ComposerPrimitive.Cancel aria-label="取消">■</ComposerPrimitive.Cancel></div></div>
             </ComposerPrimitive.Root>
+          </>}
         </ThreadPrimitive.Root>
         {artifactOpen && artifactDocked ? <div className="split-resizer" role="separator" aria-label="调整 Artifact 面板宽度" aria-orientation="vertical" onPointerDown={beginResize}><i /></div> : null}
         {artifactOpen ? <ArtifactViewer projectId={project.id} workflows={workflows} expanded={artifactExpanded} onToggleExpanded={() => setArtifactExpanded((value) => !value)} onClose={() => { setArtifactOpen(false); setArtifactExpanded(false); }} /> : null}
-        {pendingSaveTarget && lastAssistant ? <div className="chat-publish-dialog" role="dialog" aria-modal="true" aria-label="确认沉淀 Agent 回答"><div><header><div><small>{pendingSaveTarget === "wiki" ? "WIKI DRAFT" : "PROJECT TASK DRAFT"}</small><h2>确认写入内容</h2></div><button aria-label="关闭" onClick={() => setPendingSaveTarget(undefined)}>×</button></header><p className="chat-publish-warning">模型回答不是证据。请先确认正文、当前科研图上下文和来源 Run，再创建正式记录。</p><div className="chat-publish-preview"><pre>{lastAssistant.text}</pre></div><dl><div><dt>目标</dt><dd>{pendingSaveTarget === "wiki" ? "新 Wiki 页面与不可变首版" : "项目任务"}</dd></div><div><dt>项目</dt><dd>{project.name}</dd></div><div><dt>Agent Run</dt><dd>{lastAssistant.runId ?? "无可用 Run ID"}</dd></div><div><dt>科研上下文</dt><dd>{activeSession?.canvasContext?.activeNodeId ?? "项目研究问题"}</dd></div></dl><footer><button onClick={() => setPendingSaveTarget(undefined)}>取消</button><button className="primary" onClick={() => void persistResponse(pendingSaveTarget)}>确认写入</button></footer></div></div> : null}
+        {pendingSaveTarget && lastAssistant ? <div className="chat-publish-dialog" role="dialog" aria-modal="true" aria-label="确认沉淀 Agent 回答"><div><header><div><small>{pendingSaveTarget === "wiki" ? "WIKI DRAFT" : "PROJECT TASK DRAFT"}</small><h2>确认写入内容</h2></div><button aria-label="关闭" onClick={() => setPendingSaveTarget(undefined)}>×</button></header><p className="chat-publish-warning">模型回答不是证据。请先确认正文、当前科研图上下文和来源 Run，再创建正式记录。</p><div className="chat-publish-preview"><pre>{lastAssistant.text}</pre></div><dl><div><dt>目标</dt><dd>{pendingSaveTarget === "wiki" ? "新 Wiki 页面与不可变首版" : "项目任务"}</dd></div><div><dt>项目</dt><dd>{project.name}</dd></div><div><dt>Agent Run</dt><dd>{lastAssistant.runId ?? "无可用 Run ID"}</dd></div><div><dt>科研上下文</dt><dd>{activeSession?.canvasContext?.activeNodeId ?? "项目研究问题"}</dd></div></dl><footer><button onClick={() => setPendingSaveTarget(undefined)}>{t("取消")}</button><button className="primary" onClick={() => void persistResponse(pendingSaveTarget)}>确认写入</button></footer></div></div> : null}
       </div>
     </AssistantRuntimeProvider>
   );

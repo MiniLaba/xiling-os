@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useLocale } from "../lib/locale.js";
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -124,6 +125,7 @@ const NODES = [
 const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export function HomeView({ onEnter }: { onEnter: (view: "chat" | "canvas" | "wiki" | "papers") => void }) {
+  const { locale, setLocale, t } = useLocale();
   const hostRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Array<HTMLDivElement | null>>([]);
 
@@ -212,17 +214,18 @@ export function HomeView({ onEnter }: { onEnter: (view: "chat" | "canvas" | "wik
           <div className="home-brand"><img src="/brand/xiling-mark.png" alt="" /><b>汐灵</b><small>SCIENCE OS</small></div>
           <nav aria-label="进入各工作面">
             {([["chat", "对话"], ["canvas", "科研画布"], ["wiki", "Wiki"], ["papers", "文献工作台"]] as const).map(([view, label]) => (
-              <button key={view} onClick={() => onEnter(view)}>{label}</button>
+              <button key={view} onClick={() => onEnter(view)}>{t(label)}</button>
             ))}
+            <button onClick={() => setLocale(locale === "en" ? "zh-CN" : "en")}>{locale === "en" ? "中文" : "EN"}</button>
           </nav>
         </header>
         <div className="home-title">
           <small>XI LING · SCIENCE OS</small>
-          <h1>汐语灵境</h1>
-          <p>潮汐的语言，灵境之中。本地优先的 AI 科研操作系统。</p>
+          <h1>{locale === "en" ? "A space for discovery" : "汐语灵境"}</h1>
+          <p>{locale === "en" ? "Your local-first AI operating system for research." : "潮汐的语言，灵境之中。本地优先的 AI 科研操作系统。"}</p>
           <div className="home-cta">
-            <button className="home-cta-primary" onClick={() => onEnter("chat")}>进入工作区</button>
-            <button className="home-cta-ghost" onClick={() => onEnter("canvas")}>先看看科研画布</button>
+            <button className="home-cta-primary" onClick={() => onEnter("chat")}>{t("进入工作区")}</button>
+            <button className="home-cta-ghost" onClick={() => onEnter("canvas")}>{locale === "en" ? "Explore the canvas" : "先看看科研画布"}</button>
           </div>
         </div>
         {NODES.map((node, index) => (
@@ -233,7 +236,7 @@ export function HomeView({ onEnter }: { onEnter: (view: "chat" | "canvas" | "wik
             ref={(el) => { nodeRefs.current[index] = el; }}
           >
             <i aria-hidden="true" />
-            <span><b>{node.zh}</b><small>{node.en}</small></span>
+            <span><b>{locale === "en" ? node.en : node.zh}</b></span>
           </div>
         ))}
       </div>
