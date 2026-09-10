@@ -26,3 +26,4 @@ export * from "./capability-resolver.js";
 export * from "./agent-orchestrator.js";
 export * from "./model-router.js";
 export * from "./model-catalog-service.js";
+export * from "./science-service.js";

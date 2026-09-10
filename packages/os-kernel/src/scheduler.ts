@@ -28,7 +28,11 @@ export class Scheduler {
   /** 挑选下一个可执行任务：依赖满足 + 已指派 + 授权可判定 */
   pickNext(): Task | undefined {
     const candidates = [...this.services.projection.tasks.values()].filter((task) =>
-      (task.state === "created" || task.state === "queued" || task.state === "waiting_dependency") && task.assignedAgentId !== undefined,
+      (task.state === "created" || task.state === "queued" || task.state === "waiting_dependency")
+      && task.assignedAgentId !== undefined
+      // 科学执行任务由 ScienceService 驱动（审批 → 安全适配器），绝不由模型 Run Loop 执行：
+      // 用模型轮次冒充计算执行会掩盖"本机其实不可执行"的事实。
+      && task.constraints.science === undefined,
     );
     const ready = candidates.filter((task) => taskDependenciesSatisfied(this.services.projection, task));
     if (ready.length === 0) return undefined;
@@ -74,7 +78,7 @@ export class Scheduler {
 
   listRunnableFor(agentId: AgentId): Task[] {
     return [...this.services.projection.tasks.values()].filter((task) =>
-      task.assignedAgentId === agentId && (task.state === "queued" || task.state === "created"),
+      task.assignedAgentId === agentId && (task.state === "queued" || task.state === "created") && task.constraints.science === undefined,
     );
   }
 }

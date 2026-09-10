@@ -20,6 +20,7 @@ import type { OSProjection } from "./projection.js";
 import type { AgentRuntime } from "@xiling/os-runtime";
 import type { ModelRouter } from "./model-router.js";
 import type { ModelCatalogService } from "./model-catalog-service.js";
+import type { ScienceService } from "./science-service.js";
 
 export interface KernelServices {
   readonly events: EventStore;
@@ -42,6 +43,7 @@ export interface KernelServices {
   readonly orchestrator: AgentOrchestrator;
   readonly models: ModelRouter;
   readonly modelCatalog: ModelCatalogService;
+  readonly science: ScienceService;
 }
 
 /** runtimeName → AgentRuntime。DeepSeek Harness 将来作为一个条目注册进来。 */

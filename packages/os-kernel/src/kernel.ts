@@ -27,6 +27,7 @@ import type { KernelServices } from "./kernel-services.js";
 import { ModelRouter } from "./model-router.js";
 import { ModelCatalogService } from "./model-catalog-service.js";
 import { InMemoryArtifactContentStore, type ArtifactContentStore } from "./artifact-content-store.js";
+import { ScienceService, unavailableScienceExecutionPort, type ScienceExecutionPort } from "./science-service.js";
 
 export class OSKernel {
   readonly apps: AppService;
@@ -52,8 +53,9 @@ export class OSKernel {
   readonly modelCatalog: ModelCatalogService;
   readonly services: KernelServices;
   readonly artifactContentStore: ArtifactContentStore;
+  readonly science: ScienceService;
 
-  constructor(options: { eventHooks?: ConstructorParameters<typeof EventStore>[0]; artifactContentStore?: ArtifactContentStore } = {}) {
+  constructor(options: { eventHooks?: ConstructorParameters<typeof EventStore>[0]; artifactContentStore?: ArtifactContentStore; scienceExecution?: ScienceExecutionPort } = {}) {
     this.events = new EventStore(options.eventHooks);
     this.artifactContentStore = options.artifactContentStore ?? new InMemoryArtifactContentStore();
     this.projection = emptyProjection();
@@ -94,6 +96,7 @@ export class OSKernel {
       get orchestrator() { return kernel.orchestrator; },
       get models() { return kernel.models; },
       get modelCatalog() { return kernel.modelCatalog; },
+      get science() { return kernel.science; },
     };
 
     this.agents = new AgentRegistry(this, services);
@@ -112,6 +115,7 @@ export class OSKernel {
     this.resolver = new CapabilityResolver(services);
     this.orchestrator = new AgentOrchestrator(services);
     this.modelCatalog = new ModelCatalogService(this, services);
+    this.science = new ScienceService(this, services, { execution: options.scienceExecution ?? unavailableScienceExecutionPort() });
     this.services = services;
   }
 

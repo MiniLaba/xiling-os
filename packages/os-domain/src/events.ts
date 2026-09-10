@@ -10,7 +10,7 @@ import type {
 } from "./ids.js";
 import type { AgentActivation, AgentDefinition, AgentState, ModelPolicy } from "./agent.js";
 import type { AgentSession, SessionState } from "./session.js";
-import type { Task, TaskInput } from "./task.js";
+import type { Task, TaskInput, ScienceTaskBinding } from "./task.js";
 import type { Artifact } from "./artifact.js";
 import type { MemoryRecord } from "./memory.js";
 import type { CapabilityGrant } from "./capability.js";
@@ -80,6 +80,11 @@ export type OSEventPayloads = {
   "task.artifact_added": { taskId: TaskId; artifactId: ArtifactId; version: number };
   "task.input_submitted": { taskId: TaskId; input: TaskInput };
   "task.priority_changed": { taskId: TaskId; priority: number };
+  /**
+   * 科学执行绑定的落定事实：哪个适配器真的跑了、执行记录 ID 是什么。
+   * 计划本身与 planHash 在 task.created 的约束里；这里只记录执行事实。
+   */
+  "task.science_bound": { taskId: TaskId; binding: ScienceTaskBinding };
   "task.completed": { taskId: TaskId };
   "task.failed": { taskId: TaskId; reason: string };
   "task.cancelled": { taskId: TaskId; reason: string };

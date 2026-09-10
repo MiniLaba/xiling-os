@@ -44,6 +44,27 @@ export interface TaskConstraints {
   priority?: number | undefined;
   budgetTokens?: number | undefined;
   budgetCost?: number | undefined;
+  /**
+   * 科学计算绑定。带此标记的任务是"本次计算计划"的用户可见工作单元，
+   * 由 ScienceService 驱动，绝不由模型 Scheduler 执行（Harness Run 不冒充科学执行）。
+   * 执行记录拥有自己的 ID（executionId），不是任务的别名。
+   */
+  science?: ScienceTaskBinding | undefined;
+}
+
+export interface ScienceTaskBinding {
+  projectId: string;
+  /** 规范化后的执行计划哈希；审批必须匹配同一个哈希。 */
+  planHash: string;
+  /**
+   * 用户批准过的计划快照（规范化 JSON）。执行前会重新校验哈希，
+   * 因此事后改动计划会被发现并拒绝，而不是按新参数执行旧审批。
+   */
+  plan: unknown;
+  /** 真正执行该计划的安全适配器 ID（有可用执行后端时才写入）。 */
+  adapterId?: string | undefined;
+  /** 科学执行记录 ID（与任务 ID 不同，不互相冒充）。 */
+  executionId?: string | undefined;
 }
 
 export interface OutputContract {

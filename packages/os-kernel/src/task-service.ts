@@ -102,7 +102,13 @@ export class TaskService {
     for (const child of [...this.services.projection.tasks.values()]) {
       if (child.parentTaskId === taskIdValue && !isTerminalTaskState(child.state)) await this.cancel(child.id, "父任务已取消", ctx);
     }
-    if (this.get(taskIdValue).state === "running") await this.services.runner.cancelRunningTask(taskIdValue);
+    const task = this.get(taskIdValue);
+    if (task.state === "running") {
+      // 取消的责任跟着驱动方走：模型任务交给 Runtime；科学执行交给 ScienceService。
+      // 不把科学执行当成模型运行去取消，那会掩盖"取消其实没生效"。
+      if (task.constraints.science !== undefined) this.services.science.abortRunning(taskIdValue);
+      else await this.services.runner.cancelRunningTask(taskIdValue);
+    }
     this.transition(taskIdValue, { type: "task.cancelled", payload: { taskId: taskIdValue, reason } }, ctx);
     await this.services.capabilities.releaseTaskGrants(taskIdValue);
   }
