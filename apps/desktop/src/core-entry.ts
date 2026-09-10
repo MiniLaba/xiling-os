@@ -20,8 +20,9 @@ const databasePath = process.env.XILING_SYSTEM_DB_PATH;
 if (!databasePath) throw new Error("XILING_SYSTEM_DB_PATH is required");
 
 const store = new SystemStore(databasePath);
-// 开发期破坏性更名：任务中心是通用 OS 应用，不继续沿用旧科研语义 ID。
-store.removeApp("system.research");
+// 内置 App 行随当前声明迁移：声明之外的历史 system.* 行会从程序坞消失。
+// 用户安装的 App 不受影响。
+store.pruneUndeclaredSystemApps([...BUILT_IN_APPS, ...PLUGIN_APPS].map((manifest) => manifest.id));
 for (const manifest of BUILT_IN_APPS) store.upsertApp(manifest);
 const capabilityGateway = new CapabilityGateway(store);
 // 插件 APP：标准插件清单派生的 AppManifest 注册进 store（apps.list → 程序坞）。

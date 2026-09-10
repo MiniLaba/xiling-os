@@ -259,6 +259,19 @@ export class SystemStore {
     this.database.prepare("DELETE FROM apps WHERE id = ?").run(appId);
   }
 
+  /**
+   * 内置 App 行随声明迁移：删除不再声明的 `system.*` 行，返回被删除的 ID。
+   * 用户安装的 App（`local.*` 等）永不自动删除；历史行不属于"用户数据"，
+   * 但留着一行未声明的内置 App 会让程序坞与真实声明漂移。
+   */
+  pruneUndeclaredSystemApps(declaredIds: readonly string[]): string[] {
+    const declared = new Set(declaredIds);
+    const rows = this.database.prepare("SELECT id FROM apps WHERE id LIKE 'system.%'").all() as Array<{ id: string }>;
+    const removed = rows.map((row) => row.id).filter((id) => !declared.has(id));
+    for (const id of removed) this.removeApp(id);
+    return removed;
+  }
+
   listApps(): AppManifest[] {
     const rows = this.database
       .prepare(`

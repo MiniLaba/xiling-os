@@ -10,7 +10,9 @@ The active product is Xi Ling OS, a local-first research operating system. The c
 - Keep Agent execution graphs, Research Graph and literature discovery graphs distinct.
 - Research Graph owns typed scientific relationships, not every tool event. All promoted claims require source/version references.
 - Project scope is explicit per window/request. Never infer ownership from a mutable global selected project.
-- Pi remains the target default research Harness; DSH and audio are adapters, not separate product backends.
+- Pi is the ONLY research Harness executor. DSH is removed from the product: do not register it, do not fall back to it, do not reintroduce a second model engine. Audio stays an adapter, not a second backend. A missing Pi runtime must fail explicitly, never degrade to another engine.
+- The research application service (apps/desktop/src/core/research-service.ts) is the single entry for projects, items, wiki, evidence and research-graph reads. Project scope is bound per internal window by ProjectScopeRegistry; a projectId sent by the renderer is never authorisation.
+- Science execution goes through ScienceService (packages/os-kernel/src/science-service.ts): plan → approval keyed by the plan hash → execution record with its own id → content-addressed artifacts. No verified sandbox means the task fails with that reason; never a fixture success and never a host bare run.
 - No Docker/WSL dependency for installation or desktop startup. Do not replace isolation with unrestricted host execution.
 - Do not delete user databases or third-party local assets. Do not upload credentials, recordings, generated output, layout adjusters or local-only companion assets.
 - Update integration checklist and DESIGN.md with actual evidence. Never mark an entire stage complete from build success alone.
