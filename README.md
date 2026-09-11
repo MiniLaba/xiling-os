@@ -19,16 +19,24 @@
 > 项目状态：`0.1.0-beta.1`，处于开发阶段。汐灵 OS 的产品定位是可扩展的通用科研操作系统；海洋与气候只是目前优先完成的官方领域模块，表格实验是另一项已接入的领域模块。它还不是生产级云服务，也不应被当作已经完成真实科研验证的自动科学家。
 
 <p align="center">
-  <a href="docs/media/Tide-Mind-90s-1080p.mp4">
-    <img src="docs/media/tide-mind-film-poster.jpg" alt="汐灵 Tide Mind：一问起潮，万象成章。90 秒演示与概念短片" width="960" />
-  </a>
-</p>
-
-<p align="center">
-  <strong>🎬 汐灵 · 一问起潮，万象成章。</strong><br />
-  <a href="https://minilaba.github.io/xiling-os/film/">在线播放（GitHub Pages）</a> ·
-  <a href="docs/media/Tide-Mind-90s-1080p.mp4">下载 MP4</a> ·
-  <a href="docs/media/Tide-Mind.zh-CN.srt">下载中文字幕</a>
+  <video
+    controls
+    playsinline
+    preload="metadata"
+    width="100%"
+    poster="https://minilaba.github.io/xiling-os/media/tide-mind-film-poster.jpg"
+  >
+    <source src="https://minilaba.github.io/xiling-os/media/Tide-Mind-90s-1080p.mp4" type="video/mp4" />
+    <track
+      kind="subtitles"
+      srclang="zh"
+      label="中文字幕"
+      src="https://minilaba.github.io/xiling-os/media/Tide-Mind.zh-CN.srt"
+      default
+    />
+    当前浏览器不支持内嵌播放，请打开
+    <a href="https://minilaba.github.io/xiling-os/film/">汐灵影片播放器</a>。
+  </video>
 </p>
 
 ## 汐灵 OS 是什么
