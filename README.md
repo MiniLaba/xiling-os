@@ -20,12 +20,12 @@
 
 <p align="center">
   <a href="docs/media/Tide-Mind-90s-1080p.mp4">
-    <img src="docs/media/tide-mind-film-poster.jpg" alt="汐灵 Tide Mind：一问起潮，万象成章。90 秒演示与概念短片" width="960" />
+    <img src="docs/media/tide-mind-film-poster.jpg" alt="汐灵 Tide Mind：一问起潮，万象成章。120 秒演示与概念短片" width="960" />
   </a>
 </p>
 
 <p align="center">
-  <strong>🎬 汐灵 · 一问起潮，万象成章。</strong><br />
+  <strong>🎬 汐灵 · 一问起潮，万象成章。120 秒有声演示与概念短片</strong><br />
   <a href="https://minilaba.github.io/xiling-os/film/">在线播放（GitHub Pages）</a> ·
   <a href="docs/media/Tide-Mind-90s-1080p.mp4">下载 MP4</a> ·
   <a href="docs/media/Tide-Mind.zh-CN.srt">下载中文字幕</a>
