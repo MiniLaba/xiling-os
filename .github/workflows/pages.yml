@@ -33,6 +33,9 @@ jobs:
         run: |
           mkdir -p _site/film _site/media
           cp docs/film/index.html _site/film/index.html
+          cp docs/media/Tide-Mind-Research-Film.mp4 _site/media/Tide-Mind-Research-Film.mp4
+          cp docs/media/Tide-Mind-Research-Film.zh-CN.srt _site/media/Tide-Mind-Research-Film.zh-CN.srt
+          cp docs/media/Tide-Mind-Research-Film-poster.jpg _site/media/Tide-Mind-Research-Film-poster.jpg
           cp docs/media/Tide-Mind-90s-1080p.mp4 _site/media/Tide-Mind-90s-1080p.mp4
           cp docs/media/Tide-Mind.zh-CN.srt _site/media/Tide-Mind.zh-CN.srt
           cp docs/media/tide-mind-film-poster.jpg _site/media/tide-mind-film-poster.jpg

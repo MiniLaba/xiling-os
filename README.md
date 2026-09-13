@@ -21,13 +21,13 @@
 <p align="center">
   <a href="https://minilaba.github.io/xiling-os/film/">
     <img
-      src="https://minilaba.github.io/xiling-os/media/tide-mind-film-poster.jpg"
+      src="https://minilaba.github.io/xiling-os/media/Tide-Mind-Research-Film-poster.jpg"
       alt="播放汐灵 Tide Mind 最新宣传片：一问起潮，万象成章。"
       width="960"
     />
   </a>
   <br />
-  <strong>▶ 点击播放最新宣传片</strong>
+  <strong>▶ 点击播放最新宣传片（约 3 分 15 秒）</strong>
 </p>
 
 ## 汐灵 OS 是什么
