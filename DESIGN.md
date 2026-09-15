@@ -135,6 +135,7 @@ Docker 沙箱当前覆盖科学 Runner；MCP 使用隔离子进程、固定代�
 ```text
 apps/
 ├── web/                         # UI、视图状态、HTTP/SSE 客户端
+├── desktop/                     # Electron 桌面壳、Bloub 悬浮指示球与安装包
 └── server/                      # 组合根、模块路由、应用级编排
     └── src/modules/
         ├── research-graph/      # 科研图查询与独立 Scientific Canvas Layout Store
@@ -177,6 +178,7 @@ docs/adr/                        # 已接受或被替代的架构决策
 - `api-contracts` 只依赖 `contracts` 和运行时校验库。
 - 领域包不得依赖 `apps/*`。
 - Web 不得导入 Server 实现。
+- Desktop 不得成为第二份 Chat、Agent 或 Research Graph 真相源；只托管窗口、托盘和指示球。
 - Server 是组合根，可以装配领域包；模块之间优先依赖 port/interface。
 - 新依赖必须通过 `pnpm architecture`。
 
@@ -574,6 +576,8 @@ R0–R8 现代化开发同时受[科研内核架构宪法](docs/architecture/res
 
 ## 17. 变更记录
 
+- **2026-09-14**：桌面端二次启动跳过完整编译；悬浮球默认海洋蓝 idle 球体，Agent 忙碌时切到 orbit。见 ADR 0043。
+- **2026-09-14**：新增 Electron 桌面壳与海洋色 Bloub 悬浮指示球；桌面进程只拉起现有 Server/Web，不改变科研事实源。见 ADR 0043。
 - **2026-09-01**：文献工作台、项目管理与 Wiki 完整回归 `27ebdf7`；三份视图源码以哈希锁定，旧样式机械提取并限制在三个工作区，最新版后端与其余前端不回退。
 - **2026-09-01**：重做设置页信息架构与响应式双栏布局；移除侧栏独立主题循环按钮，将“灵境 / 破晓”主题选择迁入“设置 → 主题”，侧栏左下角只保留单一设置入口。
 - **2026-09-01**：首次运行主题改为“灵境”，在 React 渲染前应用持久化选择以避免主题闪烁；README 增加经平台 smoke 约束的一行克隆、锁定安装、健康检查启动与自动打开 Web 链路。

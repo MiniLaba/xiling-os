@@ -248,6 +248,25 @@ Windows 原生运行 Node 控制面、SQLite、LadybugDB、项目和 Artifact；
 
 默认数据目录为 `%LOCALAPPDATA%\XiLingOS`。完整说明见[跨平台部署设计](docs/architecture/deployment.md)。
 
+### 桌面端（傻瓜式）
+
+Windows 双击 `一键启动桌面端.bat`；macOS / Linux 在仓库根目录运行 `sh 一键启动桌面端.sh`。第一次会安装依赖并编译；之后再打开会跳过这些步骤，直接出现桌面窗口和右下角海洋蓝悬浮球。安装后的桌面快捷方式名为「汐灵」，图标为水滴标志。
+
+- 单击悬浮球：显示或隐藏主窗口。
+- 拖动悬浮球：换位置。
+- 右键悬浮球：打开 / 隐藏 / 退出。
+- 打包安装包：必须在对应系统上打。Windows 双击 `一键打包.bat` 得到 `.exe`；把仓库拷到 macOS / Linux 后运行 `sh 一键打包.sh`，分别得到 `.dmg` / `.AppImage`。这台 Windows 电脑打不出能用的 Mac/Linux 包（安装包要打进该系统自己的 Node 和原生模块）。没有 Mac/Linux 机器时，把仓库推到 GitHub，在 Actions 里手动跑 `desktop-pack`，下载三个系统的安装包。完成后打开仓库里的 `安装包` 文件夹。
+
+命令行等价：
+
+```powershell
+pnpm install
+pnpm desktop
+pnpm desktop:pack
+```
+
+桌面端仍然使用本机 Node 控制面；关闭主窗口不会退出，只有悬浮球右键「退出」才会停止服务。
+
 ## 配置与真实调用
 
 - 正式 Agent 调用使用真实模型路由；未配置主模型时明确失败，不以 fixture 冒充真实回答。
@@ -285,6 +304,7 @@ docker run --rm --network none xiling-runner:dev python smoke.py
 
 ```text
 apps/web/                   React + TypeScript 产品界面
+apps/desktop/               Electron 桌面壳与 Bloub 悬浮指示球
 apps/server/                Fastify 组合根、领域 API 与应用编排
 packages/contracts/         领域中立核心类型
 packages/api-contracts/     前后端共享运行时契约

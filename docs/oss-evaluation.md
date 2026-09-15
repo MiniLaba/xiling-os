@@ -31,6 +31,9 @@
 | Research Graph | LadybugDB | MIT | 嵌入式类型化属性图、Cypher、ACID/WAL 与图算法；RG-0 技术门禁通过后采用 | 有条件采用（0.19.1） |
 | Research Graph 回退 | Neo4j Community | GPL-3.0 | 仅在 Ladybug 跨平台或恢复门禁失败时作为隔离容器适配器，不与默认实现同时维护 | 备选 |
 | Windows 后端 | 原生 Node + Docker Desktop Engine API | 平台组件/Apache Go SDK | 原生控制面与隔离科研执行 | 采用 |
+| 桌面壳 | Electron | MIT | 只托管主窗口、托盘和置顶指示球；Server 仍由 Node 子进程运行 | 采用（44.3.0） |
+| 桌面安装包 | electron-builder | MIT | 当前平台生成 NSIS / DMG / AppImage，不签名 | 采用（26.15.3） |
+| 悬浮指示球外观 | jeremy-prt/bloub `src/bot` | MIT | Vendor 无框架引擎；颜色改为海洋蓝。MIT 只覆盖代码，不覆盖 x.ai 外观设计 | 采用 |
 
 ## 明确自研项及原因
 
@@ -44,6 +47,7 @@
 | Windows Path Bridge | 需在浏览器、Windows 与容器间保持稳定资源 URI | `ResourceUri`、`ImportPort` | 中文、空格、盘符、非法名、越界 |
 | Token Ledger | 需统一不同提供商、检索与工具 schema 成本 | `UsageRecord` | 预算、缓存、费用计算 |
 | MCP Host Boundary | 需把 Pi Extension 与外部 stdio 进程隔离在 Server 之外，并适配汐灵凭据、路由和生命周期 | `PiMcpGatewayManager` JSONL port | 真实离线 MCP 连接、搜索、调用、取消和清理 |
+| Desktop shell | Electron/Bloub 不负责启动汐灵 Server、健康检查或窗口生命周期 | `apps/desktop` | `scripts/desktop-smoke.mjs`；主窗口加载本机 `/health` |
 
 ## 暂不引入
 

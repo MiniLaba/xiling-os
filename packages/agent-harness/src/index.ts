@@ -443,6 +443,17 @@ export class SqliteAgentSessionStore {
     return rows.map((row) => this.getRun(row.id)).filter((run): run is AgentRunRecord => Boolean(run));
   }
 
+  hasActiveWork(): boolean {
+    const row = this.sqlite.prepare(`
+      SELECT EXISTS(
+        SELECT 1 FROM agent_runs WHERE status IN ('queued', 'running')
+        UNION ALL
+        SELECT 1 FROM agent_delegations WHERE status IN ('queued', 'running')
+      ) AS n
+    `).get() as { n: number };
+    return Boolean(row.n);
+  }
+
   createDelegation(input: Omit<AgentDelegationRecord, "createdAt" | "status"> & { status?: AgentDelegationStatus }): AgentDelegationRecord {
     const parent = this.getRun(input.parentRunId);
     const root = this.getRun(input.rootRunId);

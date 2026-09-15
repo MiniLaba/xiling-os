@@ -1,0 +1,86 @@
+{
+  "name": "@xiling/desktop",
+  "version": "0.1.0-beta.1",
+  "private": true,
+  "type": "module",
+  "main": "src/main.mjs",
+  "description": "XiLing OS desktop shell",
+  "author": "MiniLaba",
+  "scripts": {
+    "bundle": "node scripts/bundle-pet.mjs",
+    "icon": "node scripts/generate-icon.mjs",
+    "start": "node scripts/bundle-pet.mjs && node scripts/launch-electron.mjs",
+    "make-installer": "node scripts/bundle-pet.mjs && node scripts/pack.mjs"
+  },
+  "devDependencies": {
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.2",
+    "pngjs": "catalog:"
+  },
+  "build": {
+    "appId": "os.xiling.desktop",
+    "productName": "汐灵",
+    "copyright": "MiniLaba",
+    "icon": "icons/icon.png",
+    "forceCodeSigning": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**",
+      "preload.cjs",
+      "pet/index.html",
+      "pet/dist/**",
+      "icons/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime",
+        "to": "."
+      },
+      {
+        "from": "stage",
+        "to": "xiling",
+        "filter": [
+          "**/*",
+          "!node_modules"
+        ]
+      }
+    ],
+    "afterPack": "./scripts/after-pack.cjs",
+    "win": {
+      "icon": "icons/icon.ico",
+      "signExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Science"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "shortcutName": "汐灵",
+      "installerIcon": "icons/icon.ico",
+      "uninstallerIcon": "icons/icon.ico"
+    }
+  }
+}

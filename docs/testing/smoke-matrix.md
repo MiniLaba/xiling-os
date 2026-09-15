@@ -28,6 +28,7 @@
 | Token Ledger | 记录多组成 token 与费用 | 未知模型保留原始 usage |
 | Windows Doctor | Node/pnpm/Docker Linux 容器/端口/数据目录检查通过 | 缺失组件给出无副作用建议 |
 | Windows Path Bridge | 中文、空格、C/D 盘导入 | UNC、非法名、越界被阻止 |
+| Desktop shell | Electron 主窗口加载本机 Server，Bloub 指示球置顶、可拖、单击显隐；忙碌态轮询 `/api/agent-center/activity` | 缺少 Server dist 时明确失败；退出时 POST `/api/system/stop` 并清理 PID |
 | Import/Export | NTFS→内容寻址项目快照→Artifact→NTFS | 空间不足不留下有效记录 |
 | Stop/Recovery | 优雅停止并再次启动 | Runner 卡死后超时升级 |
 | Encoding | UTF-8/LF 跨平台一致 | 非法编码返回定位信息 |

@@ -14,6 +14,7 @@ const commands = [
   ["node", ["scripts/platform-smoke.mjs"]],
   ["node", ["scripts/ui-dom-smoke.mjs"]],
   ["node", ["scripts/web-human-factors-check.mjs"]],
+  ["node", ["scripts/desktop-smoke.mjs"]],
 ];
 
 for (const [command, args] of commands) {

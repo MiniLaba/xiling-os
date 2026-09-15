@@ -65,6 +65,7 @@ for (const scope of [resolve(root, "apps"), resolve(root, "packages")]) {
 for (const file of files(resolve(root, "apps"))) {
   const source = readFileSync(file, "utf8");
   const local = relative(root, file);
+  if (local.includes(`${sep}vendor${sep}`)) continue;
   if (/legacy-gate3|\/api\/gate3\//.test(source)) failures.push(`${local} references the retired Gate 3 product surface`);
   if (local.startsWith(`apps${sep}web${sep}`) && /research\/ResearchView/.test(source)) failures.push(`${local} imports the retired legacy research dashboard`);
 }
@@ -73,6 +74,7 @@ for (const scope of [resolve(root, "apps"), resolve(root, "packages"), resolve(r
   for (const file of files(scope)) {
     const source = readFileSync(file, "utf8");
     const local = relative(root, file);
+    if (local.includes(`${sep}vendor${sep}`)) continue;
     if (/\/api\/gate4\b/.test(source)) failures.push(`${local} references the retired pre-v1 API prefix`);
     if (/\/api\/v1\/workflow-artifacts\b/.test(source)) failures.push(`${local} references the retired path-addressed Artifact API`);
     if (/\b(?:Gate3ProjectSnapshot|Gate4Project)\b/.test(source)) failures.push(`${local} references a retired Gate product contract`);

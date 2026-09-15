@@ -121,6 +121,7 @@ describe("server vertical slice", () => {
     const dataRoot = await mkdtemp(join(tmpdir(), "xiling-agent-center-api-"));
     const app = createApp({ dataRoot });
     expect((await app.inject({ method: "GET", url: "/api/agent-center/status" })).json()).toMatchObject({ mode: "durable-harness-primary", messageSource: "agent-store", researchGraphContext: true, workflowProjection: "durable-server-owned", sessionFormat: 1 });
+    expect((await app.inject({ method: "GET", url: "/api/agent-center/activity" })).json()).toEqual({ busy: false });
     const session = await app.inject({ method: "POST", url: "/api/v1/chat-sessions", payload: { projectId: "ocean-heatwave", title: "Agent Center 测试" } });
     expect(session.statusCode).toBe(201);
     const started = await app.inject({ method: "POST", url: "/api/agent-center/runs", payload: { sessionId: session.json().id, projectId: "ocean-heatwave", prompt: "离线检查海温数据", clientCommandId: "api-command-1" } });

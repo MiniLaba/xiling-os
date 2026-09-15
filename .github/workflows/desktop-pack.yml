@@ -1,0 +1,31 @@
+name: desktop-pack
+on:
+  workflow_dispatch:
+jobs:
+  pack:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11.19.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22.19.0, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: node apps/desktop/scripts/ensure-built.mjs
+      - run: node apps/desktop/scripts/bundle-pet.mjs
+      - run: node apps/desktop/scripts/pack.mjs
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xiling-desktop-${{ runner.os }}
+          path: |
+            安装包/*.dmg
+            安装包/*.AppImage
+            安装包/*.exe
+          if-no-files-found: error
