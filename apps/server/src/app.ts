@@ -49,10 +49,10 @@ import { createTabularExecutionRunner, registerTabularExecutionRoutes } from "./
 import { createInstalledScienceDomainRegistry } from "./installed-domains.js";
 import { selectModelRoute } from "./model-route-selection.js";
 
-export function createApp(options: { dataRoot?: string; webRoot?: string; literatureFetch?: typeof fetch; literatureSleep?: (ms: number, signal?: AbortSignal) => Promise<void>; connectorProbe?: ConnectorMetadataProbe; connectorDownloader?: ConnectorDownloader; connectorMode?: "fixture" | "live"; projectAnalysisRunner?: ProjectAnalysisRunner; artifactStore?: ArtifactRegistry; fixtureModel?: boolean; additionalProjects?: Array<{ id: string; name: string; description: string; researchQuestion: string; domainIds: string[] }> } = {}) {
+export function createApp(options: { dataRoot?: string; webRoot?: string; skillsRoot?: string; literatureFetch?: typeof fetch; literatureSleep?: (ms: number, signal?: AbortSignal) => Promise<void>; connectorProbe?: ConnectorMetadataProbe; connectorDownloader?: ConnectorDownloader; connectorMode?: "fixture" | "live"; projectAnalysisRunner?: ProjectAnalysisRunner; artifactStore?: ArtifactRegistry; fixtureModel?: boolean; additionalProjects?: Array<{ id: string; name: string; description: string; researchQuestion: string; domainIds: string[] }> } = {}) {
   const app = Fastify({ logger: false });
   void app.register(cors, { origin: /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/ });
-  const webRoot = options.webRoot ?? resolve(dirname(fileURLToPath(import.meta.url)), "../../web/dist");
+  const webRoot = options.webRoot ?? process.env.XILING_WEB_ROOT ?? resolve(dirname(fileURLToPath(import.meta.url)), "../../web/dist");
   // wildcard 静态服务按请求实时解析路径：wildcard:false 会在启动时冻结文件
   // 清单，web 重新构建后新哈希资产全部 404（需重启服务才能恢复的隐性故障）。
   void app.register(fastifyStatic, { root: webRoot });
@@ -108,7 +108,7 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; litera
   const credentialsReady = credentials.initialize();
   const modelRuntime = new ModelRuntimeStore(resolve(workspaceRoot, "model-runtime.json"));
   const tokenLedger = new TokenLedger(resolve(workspaceRoot, "token-ledger.jsonl"));
-  const skillCatalog = new LazySkillCatalog(resolve(dirname(fileURLToPath(import.meta.url)), "../../../skills"));
+  const skillCatalog = new LazySkillCatalog(options.skillsRoot ?? process.env.XILING_SKILLS_ROOT ?? resolve(dirname(fileURLToPath(import.meta.url)), "../../../skills"));
   const skillCatalogReady = skillCatalog.initialize().then(() => {
     const knownSkills = new Set(skillCatalog.list().map((skill) => skill.name));
     for (const capability of installedCapabilityCatalog) for (const skillName of capability.skillNames) if (!knownSkills.has(skillName)) throw new Error(`Capability ${capability.id} references unknown Skill ${skillName}`);

@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart LR
-  Browser["浏览器：Chat / Canvas / Project / Wiki / Literature"]
+  Browser["浏览器或 Electron 主窗口"]
   Server["原生 Node 控制面：Fastify + Pi SDK"]
   DB[("SQLite / LadybugDB")]
   Store["Content-addressed Artifact Store"]
@@ -51,6 +51,8 @@ sequenceDiagram
 ```
 
 `pnpm start` 默认在前台运行并显示日志。无桌面环境使用 `pnpm start:no-browser` 或 `XILING_NO_BROWSER=1`。PID 写入 `<dataRoot>/runtime/xiling-server.pid`；停止首先调用应用 API，只有明确的故障恢复参数才强制结束进程。
+
+桌面入口 `pnpm desktop` / `一键启动桌面端.bat` 复用同一启动序列，只是把「打开系统浏览器」换成 Electron 主窗口，并额外创建一个透明置顶悬浮球窗口。已经构建过时跳过 `pnpm build`。Server 仍由 Node 子进程运行；Electron 不直接执行 Fastify。悬浮球通过 `GET /api/agent-center/activity` 轮询是否有排队/运行中的 Agent。
 
 ## Windows 数据目录
 

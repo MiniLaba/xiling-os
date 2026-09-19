@@ -37,7 +37,7 @@
 | 多智能体 | [多智能体科研编排](architecture/multi-agent.md) | 何时委派、如何隔离上下文、怎样 Handoff？ |
 | 科学领域 | [科学领域扩展架构](architecture/science-domains.md) | 新学科怎样复用通用内核并接入能力？ |
 | Pi 兼容 | [Pi Package 兼容策略](architecture/pi-package-compatibility.md) | Pi 如何升级，Package 哪些能安全接入？ |
-| 部署与安全 | [跨平台部署设计](architecture/deployment.md) | macOS/Linux/Windows 如何运行，Docker 沙箱保护什么？ |
+| 部署与安全 | [跨平台部署设计](architecture/deployment.md) | macOS/Linux/Windows 如何运行，Docker 沙箱保护什么？桌面壳如何启动同一套 Server？ |
 | 现代化状态 | [架构现代化计划](architecture/modernization-plan.md) | 已完成哪些现代化阶段，哪些仍是发布门禁？ |
 
 ## 架构决策记录
@@ -57,6 +57,7 @@
 - [原生 Windows 控制面与 Docker 科研沙箱](adr/0039-native-windows-control-plane-and-docker-sandbox.md)
 - [可安装科学领域包](adr/0040-extensible-science-domain-packages.md)
 - [两栏应用壳与 Chat 上下文产物面板](adr/0041-two-column-shell-and-contextual-artifact-panel.md)
+- [Electron 桌面壳与 Bloub 悬浮指示球](adr/0043-electron-desktop-shell-and-bloub-pet.md)
 
 ## 质量、测试与合规
 

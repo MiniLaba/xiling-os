@@ -58,6 +58,14 @@
 |---|---:|---|---|
 | @ladybugdb/core | 0.19.1 | MIT | 嵌入式属性图、Cypher、ACID/WAL/Checkpoint；RG-0 通过后作为科研关系事实源 |
 
+### 桌面壳固定版本
+
+| Package | Version | License | Purpose |
+|---|---:|---|---|
+| electron | 44.3.0 | MIT | 桌面主窗口、托盘与置顶悬浮球 |
+| electron-builder | 26.15.3 | MIT | Windows NSIS / macOS DMG / Linux AppImage |
+| jeremy-prt/bloub `src/bot` | vendored 2026-09-14 | MIT | Grok bot 形态的 SVG 引擎；主体色覆盖为 `#5EC8F8` |
+
 ## 计划参考但不复制代码
 
 | Project | Reference scope | License consideration |

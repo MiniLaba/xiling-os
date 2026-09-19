@@ -6,6 +6,8 @@ allowBuilds:
   '@ladybugdb/core': true
   '@google/genai': false
   esbuild: true
+  electron: true
+  electron-winstaller: true
   protobufjs: false
 
 catalog:

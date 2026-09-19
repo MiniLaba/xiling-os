@@ -57,6 +57,8 @@ export function registerAgentCenterRoutes(app: FastifyInstance, dependencies: Ag
     multiAgent: { enabled: true, maxConcurrency: 3, maxTasksPerDelegation: 6, recursiveDelegation: false },
   }));
 
+  app.get("/api/agent-center/activity", async () => ({ busy: store.hasActiveWork() }));
+
   app.get("/api/agent-center/roles", async () => ({ roles: listAgentRoles?.() ?? [] }));
 
   app.get("/api/agent-center/delegations", async (request, reply) => {

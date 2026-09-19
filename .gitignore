@@ -23,6 +23,15 @@ cache/
 logs/
 output/
 build/
+apps/desktop/pet/dist/
+apps/desktop/release/
+apps/desktop/stage/
+apps/desktop/runtime/
+apps/desktop/vendor/bloub-tmp/
+apps/desktop/icons/logo-decoded.png
+xiling-desktop-*.tgz
+安装包/
+安装包/
 /credentials/
 master.key
 credentials.enc.json

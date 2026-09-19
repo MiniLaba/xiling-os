@@ -9,7 +9,13 @@
   font-family: var(--xl-font-ui);
   overflow: hidden;
 }
-.home-gl { position: absolute; inset: 0; }
+.home-gl {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 80% at 50% 48%, rgba(18, 90, 120, 0.35), transparent 62%),
+    linear-gradient(180deg, #02060c 0%, #000 100%);
+}
 .home-gl canvas { display: block; }
 
 .home-ui { position: absolute; inset: 0; pointer-events: none; }
