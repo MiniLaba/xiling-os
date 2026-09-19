@@ -1,8 +1,15 @@
 import { app, BrowserWindow, Menu, Tray, nativeImage, screen, ipcMain, dialog } from "electron";
 import { spawn } from "node:child_process";
-import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+app.commandLine.appendSwitch("ignore-gpu-blocklist");
+app.commandLine.appendSwitch("enable-webgl");
+app.commandLine.appendSwitch("use-gl", "angle");
+app.commandLine.appendSwitch("use-angle", "swiftshader");
+app.commandLine.appendSwitch("enable-unsafe-swiftshader");
 
 const here = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(here, "..");
@@ -33,7 +40,22 @@ function layout() {
   };
 }
 
+function userDataRoot(platform, environment = process.env) {
+  if (platform === "win32") {
+    if (environment.LOCALAPPDATA) return join(environment.LOCALAPPDATA, "XiLingOS");
+  } else if (platform === "darwin") {
+    const home = environment.HOME || homedir();
+    if (home) return join(home, "Library", "Application Support", "XiLingOS");
+  } else {
+    if (environment.XDG_DATA_HOME) return join(environment.XDG_DATA_HOME, "XiLingOS");
+    const home = environment.HOME || homedir();
+    if (home) return join(home, ".local", "share", "XiLingOS");
+  }
+  return join(tmpdir(), "XiLingOS");
+}
+
 function defaultDataRoot(platform, environment = process.env) {
+  if (app.isPackaged) return userDataRoot(platform, environment);
   if (platform === "win32" && environment.LOCALAPPDATA) return join(environment.LOCALAPPDATA, "XiLingOS");
   return layout().dataFallback;
 }
@@ -71,6 +93,39 @@ let quitting = false;
 let currentUrl = "";
 let petWatchTimer;
 let lastAgentBusy = false;
+
+function hasPackagedServerDeps(repoRoot) {
+  if (existsSync(join(repoRoot, "node_modules", "fastify", "package.json"))) return true;
+  const pnpm = join(repoRoot, "node_modules", ".pnpm");
+  if (!existsSync(pnpm)) return false;
+  try {
+    for (const dir of readdirSync(pnpm)) {
+      if (!dir.startsWith("fastify@")) continue;
+      if (existsSync(join(pnpm, dir, "node_modules", "fastify", "package.json"))) return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+function packagedDepProbe(repoRoot) {
+  const nm = join(repoRoot, "node_modules");
+  const lines = [
+    `resourcesPath=${process.resourcesPath}`,
+    `execPath=${process.execPath}`,
+    `repoRoot=${repoRoot}`,
+  ];
+  for (const path of [nm, join(nm, "fastify"), join(nm, "fastify", "package.json"), join(nm, ".pnpm")]) {
+    lines.push(`${existsSync(path) ? "OK" : "NO"} ${path}`);
+  }
+  try {
+    lines.push(`node_modules: ${readdirSync(nm).slice(0, 40).join(", ")}`);
+  } catch (error) {
+    lines.push(`readdir node_modules: ${error instanceof Error ? error.message : error}`);
+  }
+  return lines.join("\n");
+}
 
 function nodeBinary() {
   if (process.env.XILING_NODE_BINARY && existsSync(process.env.XILING_NODE_BINARY)) return process.env.XILING_NODE_BINARY;
@@ -124,8 +179,8 @@ async function ensureServer() {
       return { url, spawned: false };
     }
     if (!existsSync(serverEntry)) throw new Error("还没有构建后端。请双击「一键启动桌面端.bat」，或先运行 pnpm build");
-    if (app.isPackaged && !existsSync(join(repoRoot, "node_modules", "fastify", "package.json"))) {
-      throw new Error("安装包不完整，缺少后台依赖。请重新双击「一键打包.bat」，再用新的安装包安装。");
+    if (app.isPackaged && !hasPackagedServerDeps(repoRoot)) {
+      throw new Error(`安装包不完整，缺少后台依赖。请用新打好的安装包再试一次。\n${packagedDepProbe(repoRoot)}`);
     }
     const nodePath = nodeBinary();
     if (app.isPackaged && nodePath !== "node" && !existsSync(nodePath)) {
@@ -307,7 +362,23 @@ function petMenu() {
     { type: "separator" },
     { label: "退出", click: () => app.quit() },
   ]);
-  menu.popup({ window: petWindow });
+  const win = petWindow && !petWindow.isDestroyed() ? petWindow : undefined;
+  const point = screen.getCursorScreenPoint();
+  if (!win) {
+    menu.popup();
+    return;
+  }
+  const [wx, wy] = win.getPosition();
+  const wasFocusable = win.isFocusable();
+  win.setFocusable(true);
+  menu.popup({
+    window: win,
+    x: Math.max(0, point.x - wx),
+    y: Math.max(0, point.y - wy),
+    callback: () => {
+      if (!win.isDestroyed()) win.setFocusable(wasFocusable);
+    },
+  });
 }
 
 async function stopServer() {

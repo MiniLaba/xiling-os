@@ -132,7 +132,17 @@ export function HomeView({ onEnter }: { onEnter: (view: "chat" | "canvas" | "wik
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: false,
+        powerPreference: "low-power",
+        failIfMajorPerformanceCaveat: false,
+      });
+    } catch (error) {
+      console.warn("WebGL unavailable, using static home background", error);
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(host.clientWidth, host.clientHeight);
     host.appendChild(renderer.domElement);

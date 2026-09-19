@@ -11,6 +11,8 @@
     <div id="root"></div>
     <script>
       window.addEventListener("error", function (event) {
+        var msg = String(event.message || "");
+        if (/WebGL/i.test(msg)) return;
         if (document.getElementById("root").childElementCount) return;
         document.getElementById("root").innerHTML = '<main style="max-width:680px;margin:12vh auto;padding:28px;font-family:system-ui;color:#E8EEF6"><small style="color:#38BDF8">界面加载失败</small><h1 style="font-size:24px">汐灵 OS 无法启动当前视图</h1><pre style="white-space:pre-wrap;padding:16px;background:#111D31;border:1px solid #263852;border-radius:8px">' + String(event.message || "未知错误").replaceAll("<", "&lt;") + '</pre><p style="color:#A5B6CC;font-size:13px">刷新页面重试；若问题持续，请运行 xiling-doctor。</p></main>';
       });

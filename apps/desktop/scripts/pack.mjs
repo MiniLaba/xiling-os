@@ -116,7 +116,7 @@ const deployTarget = resolve(tmpdir(), "xiling-desktop-stage");
 rmSync(deployTarget, { recursive: true, force: true });
 runPnpm(["--filter", "@xiling/server", "deploy", "--prod", "--legacy", deployTarget]);
 mkdirSync(stage, { recursive: true });
-cpSync(deployTarget, stage, { recursive: true });
+cpSync(deployTarget, stage, { recursive: true, dereference: true });
 mkdirSync(resolve(stage, "web"), { recursive: true });
 cpSync(resolve(repoRoot, "apps/web/dist"), resolve(stage, "web/dist"), { recursive: true });
 if (existsSync(resolve(repoRoot, "skills"))) {

@@ -156,7 +156,7 @@ window.addEventListener("pointermove", (event) => {
   lastY = event.screenY;
 });
 
-stage.addEventListener("pointerdown", (event) => {
+window.addEventListener("pointerdown", (event) => {
   if (event.button === 2) {
     event.preventDefault();
     window.xilingDesktop?.petMenu?.();
@@ -168,19 +168,19 @@ stage.addEventListener("pointerdown", (event) => {
   moved = false;
   lastX = event.screenX;
   lastY = event.screenY;
-  stage.setPointerCapture(event.pointerId);
+  try { stage.setPointerCapture(event.pointerId); } catch { /* capture may already be held */ }
 });
 
-stage.addEventListener("pointerup", (event) => {
+window.addEventListener("pointerup", (event) => {
   if (pointerId !== event.pointerId) return;
-  stage.releasePointerCapture(event.pointerId);
+  try { stage.releasePointerCapture(event.pointerId); } catch { /* already released */ }
   pointerId = null;
   stage.classList.remove("dragging");
   if (!moved) window.xilingDesktop?.petClick?.();
   dragging = false;
 });
 
-stage.addEventListener("contextmenu", (event) => {
+window.addEventListener("contextmenu", (event) => {
   event.preventDefault();
   window.xilingDesktop?.petMenu?.();
 });

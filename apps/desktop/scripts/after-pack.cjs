@@ -1,4 +1,4 @@
-const { cpSync, existsSync, mkdirSync, readdirSync } = require("node:fs");
+const { cpSync, existsSync, mkdirSync, readdirSync, rmSync } = require("node:fs");
 const { spawnSync } = require("node:child_process");
 const { createRequire } = require("node:module");
 const { dirname, join } = require("node:path");
@@ -72,14 +72,14 @@ exports.default = async function afterPack(context) {
   const src = join(context.packager.projectDir, "stage", "node_modules");
   const dest = join(context.appOutDir, "resources", "xiling", "node_modules");
   if (!existsSync(src)) throw new Error(`打包失败：找不到 ${src}`);
+  mkdirSync(join(context.appOutDir, "resources", "xiling"), { recursive: true });
+  if (existsSync(dest)) rmSync(dest, { recursive: true, force: true });
+  console.log(`afterPack: copying server node_modules from ${src}`);
+  cpSync(src, dest, { recursive: true, dereference: true });
   if (!existsSync(join(dest, "fastify", "package.json"))) {
-    console.log(`afterPack: copying server node_modules from ${src}`);
-    mkdirSync(join(context.appOutDir, "resources", "xiling"), { recursive: true });
-    cpSync(src, dest, { recursive: true });
-    console.log("afterPack: server node_modules copied");
-  } else {
-    console.log("afterPack: server node_modules already present");
+    throw new Error("打包失败：复制后台依赖后仍然缺少 fastify");
   }
+  console.log("afterPack: server node_modules copied");
 
   if (context.electronPlatformName !== "win32") return;
   const icon = join(context.packager.projectDir, "icons", "icon.ico");
