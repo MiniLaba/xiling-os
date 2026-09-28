@@ -1,49 +1,39 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FREE_EXPLORATION_PROJECT_ID } from "@xiling/contracts";
 import {
-  AlertTriangle, BookOpen, ChevronDown, FolderKanban, LayoutGrid, MessageSquare, Network, Plus, Search, Settings, Trash2, X,
+  Bot, Brain, ChevronDown, LayoutGrid, MessageSquare, Plus, Search, Settings,
 } from "lucide-react";
 import { WorkspaceProvider, useWorkspace } from "./workspace/WorkspaceContext.js";
-import { ConversationProvider, useConversations } from "./workspace/ConversationContext.js";
-import { ToastProvider, useToast } from "./components/ui/toast.js";
-import { Dialog } from "./components/ui/dialog.js";
+import { ConversationProvider } from "./workspace/ConversationContext.js";
+import { ToastProvider } from "./components/ui/toast.js";
 import { HomeView } from "./home/HomeView.js";
 import { useLocale } from "./lib/locale.js";
 
 const ChatView = lazy(async () => ({ default: (await import("./chat/ChatView.js")).ChatView }));
-const PaperGraphView = lazy(async () => ({ default: (await import("./papers/PaperGraphView.js")).PaperGraphView }));
-const ProjectView = lazy(async () => ({ default: (await import("./project/ProjectView.js")).ProjectView }));
-const WikiView = lazy(async () => ({ default: (await import("./wiki/WikiView.js")).WikiView }));
 const SettingsView = lazy(async () => ({ default: (await import("./settings/SettingsView.js")).SettingsView }));
-const ScientificCanvasView = lazy(async () => ({ default: (await import("./canvas/ScientificCanvasView.js")).ScientificCanvasView }));
-const AttentionView = lazy(async () => ({ default: (await import("./attention/AttentionView.js")).AttentionView }));
+const BrainView = lazy(async () => ({ default: (await import("./brain/BrainView.js")).BrainView }));
+const BotView = lazy(async () => ({ default: (await import("./bot/BotView.js")).BotView }));
 
-type View = "home" | "chat" | "attention" | "canvas" | "project" | "wiki" | "papers" | "settings";
+type View = "home" | "chat" | "brain" | "bot" | "settings";
 
 const labels: Record<View, string> = {
   home: "首页",
-  chat: "对话",
-  attention: "需要关注",
-  canvas: "科研画布",
-  project: "项目",
-  wiki: "Wiki",
-  papers: "文献工作台",
-  settings: "设置",
+  chat: "Chat",
+  brain: "Brain",
+  bot: "Bot",
+  settings: "Settings",
 };
 
 const iconSize = 17;
 const icons: Record<View, React.ReactNode> = {
   home: <MessageSquare size={iconSize} aria-hidden="true" />,
   chat: <MessageSquare size={iconSize} aria-hidden="true" />,
-  attention: <AlertTriangle size={iconSize} aria-hidden="true" />,
-  canvas: <LayoutGrid size={iconSize} aria-hidden="true" />,
-  project: <FolderKanban size={iconSize} aria-hidden="true" />,
-  wiki: <BookOpen size={iconSize} aria-hidden="true" />,
-  papers: <Network size={iconSize} aria-hidden="true" />,
+  brain: <Brain size={iconSize} aria-hidden="true" />,
+  bot: <Bot size={iconSize} aria-hidden="true" />,
   settings: <Settings size={iconSize} aria-hidden="true" />,
 };
 
-const navigationItems: Exclude<View, "settings">[] = ["chat", "attention", "canvas", "wiki", "papers"];
+const navigationItems: Array<"chat" | "brain" | "bot"> = ["chat", "brain", "bot"];
 
 export function App() {
   return (
@@ -58,18 +48,15 @@ function WorkspaceApp() {
   const localizedLabels = Object.fromEntries(Object.entries(labels).map(([key, value]) => [key, t(value)])) as Record<View, string>;
   const [dockPinned, setDockPinned] = useState(false);
   const [view, setView] = useState<View>("home");
+  const [settingsSection, setSettingsSection] = useState<"appearance" | "projects">("appearance");
   const [viewHistory, setViewHistory] = useState<View[]>([]);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [commandIndex, setCommandIndex] = useState(0);
-  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | undefined>();
   const projectMenuRef = useRef<HTMLDivElement>(null);
   const commandListRef = useRef<HTMLDivElement>(null);
   const { projects, activeProject, activeProjectId, setActiveProjectId, refreshProjects, loading, error } = useWorkspace();
-  const { sessions, activeSessionId, loading: sessionsLoading, selectSession, startNewConversation, deleteSession } = useConversations();
-  const { push } = useToast();
-
   useEffect(() => {
     if (!projectMenuOpen) return;
     const close = (event: PointerEvent) => { if (!projectMenuRef.current?.contains(event.target as Node)) setProjectMenuOpen(false); };
@@ -80,7 +67,8 @@ function WorkspaceApp() {
     const shortcut = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "k") { event.preventDefault(); setCommandOpen((open) => !open); setCommandIndex(0); } if (event.key === "Escape") setCommandOpen(false); };
     window.addEventListener("keydown", shortcut); return () => window.removeEventListener("keydown", shortcut);
   }, []);
-  const navigateToView = useCallback((next: View) => {
+  const navigateToView = useCallback((next: View, settings?: "appearance" | "projects") => {
+    if (next === "settings") setSettingsSection(settings ?? "appearance");
     if (next === view) return;
     setViewHistory((history) => [...history.slice(-19), view]);
     setView(next);
@@ -95,7 +83,6 @@ function WorkspaceApp() {
   const commandActions = useMemo(() => {
     const query = commandQuery.trim().toLocaleLowerCase();
     const viewActions = (Object.keys(labels) as View[])
-      .filter((target) => target !== "project")
       .filter((target) => !query || t(labels[target]).toLocaleLowerCase().includes(query))
       .map((target) => ({ id: `view:${target}`, label: t(labels[target]), hint: t("打开视图"), run: () => { navigateToView(target); } }));
     const projectActions = [...projects]
@@ -126,29 +113,10 @@ function WorkspaceApp() {
     if (event.key === "Enter") { event.preventDefault(); runCommandAction(commandIndex); }
   };
 
-  const confirmDeleteSession = async () => {
-    if (!pendingDelete) return;
-    try {
-      await deleteSession(pendingDelete.id);
-      push({ title: `对话「${pendingDelete.title}」已删除`, tone: "success" });
-    } catch (cause) {
-      push({ title: "删除对话失败", description: cause instanceof Error ? cause.message : String(cause), tone: "danger" });
-    }
-    setPendingDelete(undefined);
-  };
-
-  // 启动首页：不依赖工作区数据，点击「进入工作区」后才进入现在的首页（对话）。
   if (view === "home") {
     return (
       <main className="home-shell">
         <HomeView onEnter={navigateToView} />
-        <Dialog open={pendingDelete !== undefined} onClose={() => setPendingDelete(undefined)} title={t("删除对话")} width={420}
-          footer={<>
-            <button className="xl-btn" data-variant="ghost" onClick={() => setPendingDelete(undefined)}>{t("取消")}</button>
-            <button className="xl-btn" data-variant="danger" onClick={confirmDeleteSession}>{t("删除")}</button>
-          </>}>
-          <p>确定删除对话「<b>{pendingDelete?.title}</b>」吗？对话中的推演记录将一并移除，删除后不可恢复。</p>
-        </Dialog>
       </main>
     );
   }
@@ -170,12 +138,9 @@ function WorkspaceApp() {
           {projectMenuOpen ? <div className="project-switcher-menu">
             <header><b>{t("科研项目")}</b><small>{projects.length} 个进行中</small></header>
             <div>{[...projects].sort((a, b) => (a.id === FREE_EXPLORATION_PROJECT_ID ? -1 : b.id === FREE_EXPLORATION_PROJECT_ID ? 1 : 0)).map((project) => <button className={project.id === activeProjectId ? "active" : ""} key={project.id} onClick={() => { setActiveProjectId(project.id); setProjectMenuOpen(false); }}><i>{project.id === activeProjectId ? "✓" : ""}</i><span><b>{project.name}{project.id === FREE_EXPLORATION_PROJECT_ID ? <em className="project-badge-free">{t("开放问答")}</em> : null}</b><small>{project.researchQuestion}</small></span></button>)}</div>
-            <footer><button onClick={() => { navigateToView("project"); setProjectMenuOpen(false); }}><Plus size={14} aria-hidden="true" /> 新建或管理项目</button></footer>
+            <footer><button onClick={() => { navigateToView("settings", "projects"); setProjectMenuOpen(false); }}><Plus size={14} aria-hidden="true" /> 在设置中管理项目</button></footer>
           </div> : null}
         </div>
-        <button className="new-conversation-btn" aria-label={t("新建对话")} title={t("新建对话")} onClick={() => { startNewConversation(); navigateToView("chat"); }}>
-          <Plus size={16} aria-hidden="true" /><span>{t("新建对话")}</span>
-        </button>
         <nav className="sidebar-nav">
           {navigationItems.map((item) => (
             <button aria-label={localizedLabels[item]} title={localizedLabels[item]} aria-current={view === item ? "page" : undefined} className={view === item ? "active" : ""} key={item} onClick={() => navigateToView(item)}>
@@ -184,22 +149,6 @@ function WorkspaceApp() {
             </button>
           ))}
         </nav>
-        <div className="recent-work">
-          <header><small>{t("对话历史")}</small>{sessions.length ? <span>{sessions.length}</span> : null}</header>
-          {sessionsLoading ? <p className="session-loading">{t("正在恢复…")}</p> : sessions.length ? (
-            <div className="session-list">
-              {sessions.map((session) => (
-                <div className={`session-item ${view === "chat" && session.id === activeSessionId ? "active" : ""}`} key={session.id}>
-                  <button onClick={() => { selectSession(session.id); navigateToView("chat"); }}>
-                    <i>●</i>
-                    <span><b>{session.title}</b><small>{formatSessionTime(session.updatedAt)} · {session.messageCount} 条</small></span>
-                  </button>
-                  <button className="session-delete" aria-label={`删除对话「${session.title}」`} title={t("删除对话")} onClick={(event) => { event.stopPropagation(); setPendingDelete({ id: session.id, title: session.title }); }}><Trash2 size={13} aria-hidden="true" /></button>
-                </div>
-              ))}
-            </div>
-          ) : <p className="session-empty">{t("这个项目还没有对话")}</p>}
-        </div>
         <div className="sidebar-footer">
           <button className="settings-entry" onClick={() => navigateToView("settings")} aria-label={t("设置")}>
             <Settings size={16} aria-hidden="true" /><span>{t("设置")}</span>
@@ -224,12 +173,9 @@ function WorkspaceApp() {
         <div className="workspace-body">
           <Suspense fallback={<div className="view-loading">{t("按需加载当前视图…")}</div>}>
             {view === "chat" ? <ChatView project={activeProject} />
-              : view === "attention" ? <AttentionView projectId={activeProjectId} onNavigate={navigateToView} />
-              : view === "canvas" ? <ScientificCanvasView projectId={activeProjectId} onNavigate={navigateToView} />
-              : view === "project" ? <ProjectView projectId={activeProjectId} projects={projects} onProjectChange={setActiveProjectId} onProjectsChange={refreshProjects} />
-              : view === "wiki" ? <WikiView projectId={activeProjectId} onNavigate={navigateToView} />
-              : view === "papers" ? <PaperGraphView projectId={activeProjectId} onNavigate={navigateToView} />
-              : view === "settings" ? <SettingsView />
+              : view === "brain" ? <BrainView projectId={activeProjectId} onOpenProject={() => navigateToView("settings", "projects")} onOpenChat={() => navigateToView("chat")} />
+              : view === "bot" ? <BotView projectId={activeProjectId} />
+              : view === "settings" ? <SettingsView initialSection={settingsSection} />
               : <Placeholder title={labels[view]} />}
           </Suspense>
         </div>
@@ -237,7 +183,7 @@ function WorkspaceApp() {
       {commandOpen ? <div className="command-palette" role="dialog" aria-modal="true" aria-label="搜索与跳转" onKeyDown={onCommandKeyDown} onPointerDown={(event) => { if (event.target === event.currentTarget) setCommandOpen(false); }}>
         <div>
           <header>
-            <input autoFocus placeholder="跳转页面、切换项目或新建对话…" value={commandQuery} onChange={(event) => { setCommandQuery(event.target.value); setCommandIndex(0); }} />
+            <input autoFocus placeholder="跳转页面或切换项目…" value={commandQuery} onChange={(event) => { setCommandQuery(event.target.value); setCommandIndex(0); }} />
             <kbd>ESC</kbd>
           </header>
           <div ref={commandListRef} style={{ overflow: "auto", minHeight: 0 }}>
@@ -268,27 +214,10 @@ function WorkspaceApp() {
               })}
             </section>
           </div>
-          <footer>
-            <button onClick={() => { startNewConversation(); navigateToView("chat"); setCommandOpen(false); }}><Plus size={14} aria-hidden="true" /> 新建研究对话</button>
-          </footer>
         </div>
       </div> : null}
-      <Dialog open={pendingDelete !== undefined} onClose={() => setPendingDelete(undefined)} title={t("删除对话")} width={420}
-        footer={<>
-          <button className="xl-btn" data-variant="ghost" onClick={() => setPendingDelete(undefined)}>{t("取消")}</button>
-          <button className="xl-btn" data-variant="danger" onClick={confirmDeleteSession}>{t("删除")}</button>
-        </>}>
-        <p>确定删除对话「<b>{pendingDelete?.title}</b>」吗？对话中的推演记录将一并移除，删除后不可恢复。</p>
-      </Dialog>
     </main>
   );
-}
-
-function formatSessionTime(value: string): string {
-  const date = new Date(value);
-  const today = new Date();
-  if (date.toDateString() === today.toDateString()) return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
-  return date.toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
 }
 
 function Placeholder({ title }: { title: string }) {

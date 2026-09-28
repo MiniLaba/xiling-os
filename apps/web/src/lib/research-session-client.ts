@@ -37,7 +37,7 @@ export async function* runResearchTurn(request: ResearchTurnRequest): AsyncGener
         const persisted = raw as { type?: string; payload?: unknown; sequence?: number };
         if (typeof persisted.sequence === "number" && persisted.sequence > cursor) cursor = persisted.sequence;
         const payload = persisted.payload as AgentStreamEvent | undefined;
-        if (payload?.type && ["session.started", "context.ready", "message.delta", "tool.started", "tool.finished", "tool.failed", "workflow.projected", "workflow.projection.failed", "session.finished", "session.error"].includes(payload.type)) yield payload;
+        if (payload?.type && ["session.started", "model.selected", "context.ready", "message.delta", "tool.started", "tool.finished", "tool.failed", "workflow.projected", "workflow.projection.failed", "session.finished", "session.error"].includes(payload.type)) yield payload;
         if (persisted.type === "entry.persisted") {
           const entry = persisted.payload as { id: string; runId: string; kind: "user" | "assistant" | "tool-call" | "tool-result" | "compaction"; text: string; createdAt: string };
           yield { type: "entry.persisted", runId, entryId: entry.id, kind: entry.kind, text: entry.text, createdAt: entry.createdAt };

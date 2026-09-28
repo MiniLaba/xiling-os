@@ -11,6 +11,7 @@ import "./styles/legacy-27ebdf7-workspaces.css";
 import "./styles/research-workspace-theme.css";
 import "./home/home.css";
 import "./styles/liquid-shell.css";
+import "./styles/four-entry.css";
 import { App } from "./App.js";
 import { ensureLocalAccessToken, installLocalTokenFetch } from "./lib/api-client.js";
 import { initializeTheme } from "./lib/theme.js";

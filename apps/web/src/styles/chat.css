@@ -21,6 +21,9 @@
 .chat-heading small { font-size: var(--xl-type-caption); letter-spacing: 0.1em; color: var(--xl-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chat-heading h1 { font-size: var(--xl-type-title); font-weight: 650; letter-spacing: 0.01em; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chat-heading-actions { display: flex; align-items: center; gap: var(--xl-space-3); flex: none; }
+.chat-history-search { width: min(280px, 36vw); border: 1px solid var(--xl-border); background: var(--xl-bg-secondary); color: var(--xl-text); border-radius: var(--xl-radius-full); padding: 7px 14px; font-size: var(--xl-type-small); }
+.chat-history-search::placeholder { color: var(--xl-faint); }
+.chat-model-used { margin: 6px 0 0; display: inline-flex; width: fit-content; padding: 2px 8px; border-radius: var(--xl-radius-full); background: var(--xl-accent-soft); color: var(--xl-accent-strong); font-size: var(--xl-type-caption); letter-spacing: 0.02em; }
 
 .chat-primary-switch, .execution-scope-switch, .execution-interaction-switch {
   display: inline-flex;
@@ -194,6 +197,7 @@
   border-radius: var(--xl-radius-lg);
   background: var(--xl-surface);
   box-shadow: var(--xl-shadow-md);
+  overflow: visible;
   transition: border-color var(--xl-motion-fast) var(--xl-ease-tide), box-shadow var(--xl-motion-fast) var(--xl-ease-tide);
 }
 .chat-composer:focus-within { border-color: var(--xl-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--xl-accent) 18%, transparent); }

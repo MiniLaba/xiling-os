@@ -6,7 +6,6 @@ import type { AgentKnowledgeReader } from "@xiling/knowledge";
 import { LiteratureSearchService } from "@xiling/literature";
 import { preflightConnector } from "@xiling/connectors";
 import type { CapabilityDescriptor } from "@xiling/context";
-import type { AgentRoleSpec, AgentTaskRequest, DelegationMode } from "@xiling/multi-agent";
 import type { ScienceDomainCapabilityContribution } from "@xiling/science-domains";
 
 type ToolServices = {
@@ -22,51 +21,6 @@ export interface ResearchCapabilityDescriptor extends CapabilityDescriptor {
   toolName: string;
   alwaysAvailable?: boolean;
   skillNames: string[];
-}
-
-export function shouldOfferResearchDelegation(prompt: string): boolean {
-  const normalized = prompt.toLocaleLowerCase().normalize("NFKC");
-  return /多智能体|子智能体|并行|分别(?:检索|分析|验证)|多(?:路|个|种)(?:检索|方法|假设|数据源)|竞争(?:性)?假设|系统(?:综述|检索)|全面(?:检索|调查)|独立(?:审查|复核|验证)|交叉验证|反方审稿|文献.*(?:数据|计算|证据)|(?:比较|对照).*(?:方法|数据源|假设)|(?:复现|可重复性).*(?:审计|核验|检查)|multi[- ]?agent|parallel|independent review|systematic review/iu.test(normalized);
-}
-
-export function selectDelegationRoles(prompt: string, roles: AgentRoleSpec[]): AgentRoleSpec[] {
-  const normalized = prompt.toLocaleLowerCase().normalize("NFKC");
-  const selected = new Set<string>();
-  if (/文献|检索|搜索|综述|资料|多数据源|竞争(?:性)?假设|literature|search|survey|hypothes/iu.test(normalized)) selected.add("research-explorer");
-  if (/计算|执行|分析|数据处理|模型|代码|运行|实验|切片|下载|analysis|execute|compute|model|dataset/iu.test(normalized)) selected.add("domain-executor");
-  if (/审查|审核|复核|验证|证据|复现|可重复|方法|统计|反方|质疑|review|audit|evidence|reproduc|verify/iu.test(normalized)) selected.add("independent-reviewer");
-  const matched = roles.filter((role) => selected.has(role.id));
-  return matched.length ? matched : roles;
-}
-
-export function roleAllowsCapability(role: AgentRoleSpec, capabilityId: string, domainCapabilityIds: ReadonlySet<string>): boolean {
-  return role.allowedCapabilities.includes(capabilityId) || Boolean(role.includeDomainCapabilities && domainCapabilityIds.has(capabilityId));
-}
-
-export function researchDelegationTool(input: {
-  roles: AgentRoleSpec[];
-  delegate(mode: DelegationMode, tasks: AgentTaskRequest[], signal?: AbortSignal): Promise<unknown>;
-}): RuntimeTool<any> {
-  const roleIds = input.roles.map((role) => role.id);
-  return {
-    name: "delegate_research_tasks",
-    label: "委派独立科研子任务",
-    description: `只在任务可独立验收、并行探索或需要盲审时委派。可用角色：${input.roles.map((role) => `${role.id}（${role.title}）`).join("、")}。独立审查员可选择 evidence、reproducibility、methods 或 adversarial 清单。子智能体使用隔离上下文，不能继续委派，也不能直接写科研事实。`,
-    parameters: Type.Object({
-      mode: Type.Union([Type.Literal("single"), Type.Literal("parallel"), Type.Literal("chain")]),
-      tasks: Type.Array(Type.Object({
-        roleId: Type.Union(roleIds.map((id) => Type.Literal(id))),
-        objective: Type.String({ minLength: 8, maxLength: 1_200 }),
-        isolation: Type.Optional(Type.Union([Type.Literal("scoped"), Type.Literal("blind"), Type.Literal("execution")])),
-        reviewProfile: Type.Optional(Type.Union([Type.Literal("evidence"), Type.Literal("reproducibility"), Type.Literal("methods"), Type.Literal("adversarial")])),
-        dependsOn: Type.Optional(Type.Array(Type.Integer({ minimum: 0, maximum: 5 }), { maxItems: 5 })),
-      }, { additionalProperties: false }), { minItems: 1, maxItems: 6 }),
-    }, { additionalProperties: false }),
-    execute: async (_callId, params, signal) => {
-      const value = params as { mode: DelegationMode; tasks: AgentTaskRequest[] };
-      return result(await input.delegate(value.mode, value.tasks, signal));
-    },
-  };
 }
 
 export function agentEntryReaderTool(services: ToolServices): RuntimeTool<any> {

@@ -1,4 +1,4 @@
-import { Agent, loadSkills, type AgentEvent, type AgentMessage, type AgentTool, type Skill, type StreamFn } from "@earendil-works/pi-agent-core";
+import { Agent, BACKGROUND_CONTEXT, loadSkills, type AgentEvent, type AgentMessage, type AgentTool, type Skill, type StreamFn } from "@earendil-works/pi-agent-core";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import type { ImageContent, Model, Provider, Usage } from "@earendil-works/pi-ai";
 import { openaiProvider } from "@earendil-works/pi-ai/providers/openai";
@@ -11,19 +11,20 @@ import { mistralProvider } from "@earendil-works/pi-ai/providers/mistral";
 import { moonshotaiProvider } from "@earendil-works/pi-ai/providers/moonshotai";
 import { zaiProvider } from "@earendil-works/pi-ai/providers/zai";
 import { groqProvider } from "@earendil-works/pi-ai/providers/groq";
-import type { AgentStreamEvent, ModelCatalogEntry, ModelProviderId, ModelRouteSettings, ModelRuntimeSettings, TokenLedgerEntry } from "@xiling/contracts";
+import type { AgentStreamEvent, BackgroundRunSettings, ExecutionTargetSettings, ModelCatalogEntry, ModelProviderId, ModelRouteSettings, ModelRuntimeSettings, TokenLedgerEntry } from "@xiling/contracts";
 import { appendFile, mkdir, open, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { createErrorStream, createOfflineStream } from "./mock-stream.js";
+import { promptNativeHarness } from "./native-harness.js";
 
 export { PiMcpGatewayManager, XILING_MCP_ADAPTER_VERSION } from "./mcp-host.js";
 export type { PiMcpHostConfig, PiMcpServerDefinition } from "./mcp-host.js";
 
 export const PI_COMPATIBILITY_BASELINE = {
-  agentCore: "0.84.2",
-  ai: "0.84.2",
-  codingAgent: "0.84.2",
+  agentCore: "0.87.1",
+  ai: "0.87.1",
+  codingAgent: "0.87.1",
   mcpAdapter: "2.27.0",
   sessionFormat: 4,
 } as const;
@@ -63,7 +64,7 @@ export interface RuntimeModelRoute {
   modelId: string;
   contextWindow: number;
   maxOutputTokens: number;
-  [routeBinding]: { model: Model<any>; streamFn: StreamFn };
+  [routeBinding]: { model: Model<any>; streamFn: StreamFn; nativeHarness?: boolean };
 }
 
 export interface PiCompatibilityPort {
@@ -164,11 +165,21 @@ export class PiRuntimeAdapter implements PiCompatibilityPort {
   readonly sessionId: string;
   private readonly agent: Agent;
   private readonly listeners = new Set<RuntimeListener>();
+  private readonly nativeBinding: { model: Model<any>; streamFn: StreamFn } | undefined;
+  private readonly systemPrompt: string;
+  private readonly reasoning: PiRuntimeOptions["reasoning"];
+  private readonly onUsage: PiRuntimeOptions["onUsage"];
+  private tools: RuntimeTool<any, any>[] = [];
   private running = false;
+  private nativeAbort: (() => void) | undefined;
 
   constructor(options: PiRuntimeOptions) {
     this.sessionId = options.sessionId;
+    this.systemPrompt = options.systemPrompt;
+    this.reasoning = options.reasoning;
+    this.onUsage = options.onUsage;
     const binding = options.route?.[routeBinding];
+    this.nativeBinding = binding?.nativeHarness ? { model: binding.model, streamFn: binding.streamFn } : undefined;
     this.agent = new Agent({
       streamFn: binding?.streamFn ?? createOfflineStream(),
       sessionId: options.sessionId,
@@ -201,6 +212,7 @@ export class PiRuntimeAdapter implements PiCompatibilityPort {
     if (this.running) {
       throw new Error("Active tools can only change between Pi turns");
     }
+    this.tools = tools;
     this.agent.state.tools = tools as AgentTool<any>[];
   }
 
@@ -208,6 +220,22 @@ export class PiRuntimeAdapter implements PiCompatibilityPort {
     if (this.running) throw new Error("Pi runtime already has an active turn");
     this.running = true;
     try {
+      if (this.nativeBinding) {
+        await promptNativeHarness({
+          sessionId: this.sessionId,
+          systemPrompt: this.systemPrompt,
+          model: this.nativeBinding.model,
+          streamFn: this.nativeBinding.streamFn,
+          tools: this.tools,
+          text,
+          images,
+          ...(this.reasoning ? { reasoning: this.reasoning } : {}),
+          ...(this.onUsage ? { onUsage: this.onUsage } : {}),
+          emit: async (event) => { for (const listener of this.listeners) await listener(event); },
+          bindAbort: (abort) => { this.nativeAbort = abort; },
+        });
+        return;
+      }
       await this.agent.prompt(text, images);
     } catch (error) {
       const failure: AgentStreamEvent = {
@@ -223,6 +251,7 @@ export class PiRuntimeAdapter implements PiCompatibilityPort {
   }
 
   abort(): void {
+    this.nativeAbort?.();
     this.agent.abort();
   }
 
@@ -296,7 +325,7 @@ export class LazySkillCatalog {
       const directory = resolve(this.root, entry.path);
       const rootPrefix = this.root.endsWith(sep) ? this.root : `${this.root}${sep}`;
       if (!directory.startsWith(rootPrefix)) throw new Error(`Skill path escapes catalog root: ${entry.path}`);
-      const loaded = await loadSkills(new NodeExecutionEnv({ cwd: this.root }), directory);
+      const loaded = await loadSkills(new NodeExecutionEnv({ cwd: this.root }), directory, BACKGROUND_CONTEXT);
       diagnostics.push(...loaded.diagnostics.map(({ code, message, path }) => ({ code, message, path })));
       const skill = loaded.skills.find((candidate) => candidate.name === entry.name);
       if (!skill) {
@@ -478,13 +507,13 @@ export function listRecommendedModels(): ModelCatalogEntry[] {
 
 export interface CustomProviderRouteConfig { baseUrl: string; apiStyle: "openai-completions" | "openai-responses"; displayName?: string }
 
-function runtimeRoute(model: Model<any>, streamFn: StreamFn): RuntimeModelRoute {
+function runtimeRoute(model: Model<any>, streamFn: StreamFn, nativeHarness = false): RuntimeModelRoute {
   return {
     providerId: model.provider,
     modelId: model.id,
     contextWindow: model.contextWindow,
     maxOutputTokens: model.maxTokens,
-    [routeBinding]: { model, streamFn },
+    [routeBinding]: { model, streamFn, ...(nativeHarness ? { nativeHarness: true } : {}) },
   };
 }
 
@@ -533,7 +562,7 @@ export function createProviderRoute(provider: Provider, modelId: string, apiKey:
     maxRetryDelayMs: 10_000,
     timeoutMs: 120_000,
   });
-  return runtimeRoute(model, streamFn);
+  return runtimeRoute(model, streamFn, true);
 }
 
 const defaultSettings = (): ModelRuntimeSettings => ({ roleRoutes: {}, updatedAt: new Date(0).toISOString() });
@@ -550,7 +579,24 @@ export class ModelRuntimeStore {
   get(): ModelRuntimeSettings { return structuredClone(this.value); }
 
   async set(input: Omit<ModelRuntimeSettings, "updatedAt">): Promise<ModelRuntimeSettings> {
-    const value = this.validate({ ...input, updatedAt: this.now().toISOString() }, true);
+    return this.write(this.validate({ ...input, updatedAt: this.now().toISOString() }, true));
+  }
+
+  async updatePreferences(patch: Partial<Pick<ModelRuntimeSettings, "selection" | "autoProviders" | "costCapUsd" | "background" | "execution">>): Promise<ModelRuntimeSettings> {
+    const current = this.get();
+    return this.write(this.validate({
+      ...(current.primary ? { primary: current.primary } : {}),
+      roleRoutes: current.roleRoutes,
+      ...(current.selection || patch.selection ? { selection: patch.selection ?? current.selection } : {}),
+      ...(patch.autoProviders ? { autoProviders: patch.autoProviders } : current.autoProviders ? { autoProviders: current.autoProviders } : {}),
+      ...(patch.costCapUsd !== undefined ? { costCapUsd: patch.costCapUsd } : current.costCapUsd !== undefined ? { costCapUsd: current.costCapUsd } : {}),
+      ...(patch.background ? { background: patch.background } : current.background ? { background: current.background } : {}),
+      ...(patch.execution ? { execution: patch.execution } : current.execution ? { execution: current.execution } : {}),
+      updatedAt: this.now().toISOString(),
+    }, false));
+  }
+
+  private async write(value: ModelRuntimeSettings): Promise<ModelRuntimeSettings> {
     await mkdir(dirname(this.path), { recursive: true });
     const temporary = `${this.path}.${randomUUID()}.tmp`;
     await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8");
@@ -583,6 +629,32 @@ export class ModelRuntimeStore {
     const roleEntries = Object.entries(candidate.roleRoutes);
     if (roleEntries.length > 16 || roleEntries.some(([roleId]) => !roleId || roleId.length > 80)) throw new Error("invalid role routes");
     if (typeof candidate.updatedAt !== "string" || Number.isNaN(Date.parse(candidate.updatedAt))) throw new Error("invalid settings timestamp");
-    return { ...(migratedPrimary ? { primary: this.validateRoute(migratedPrimary) } : {}), roleRoutes: Object.fromEntries(roleEntries.map(([roleId, route]) => [roleId, this.validateRoute(route)])), updatedAt: candidate.updatedAt };
+    const preferences = this.validatePreferences(candidate);
+    return { ...(migratedPrimary ? { primary: this.validateRoute(migratedPrimary) } : {}), roleRoutes: Object.fromEntries(roleEntries.map(([roleId, route]) => [roleId, this.validateRoute(route)])), ...preferences, updatedAt: candidate.updatedAt };
+  }
+
+  private validatePreferences(candidate: Partial<ModelRuntimeSettings>): Pick<ModelRuntimeSettings, "selection" | "autoProviders" | "costCapUsd" | "background" | "execution"> {
+    const providerIds: ModelProviderId[] = ["openai", "anthropic", "google", "openrouter", "deepseek", "xai", "mistral", "moonshotai", "zai", "groq", "custom"];
+    if (candidate.selection !== undefined && candidate.selection !== "manual" && candidate.selection !== "auto") throw new Error("invalid model selection mode");
+    if (candidate.autoProviders !== undefined && (!Array.isArray(candidate.autoProviders) || candidate.autoProviders.some((provider) => !providerIds.includes(provider)))) throw new Error("invalid automatic providers");
+    if (candidate.costCapUsd !== undefined && (!Number.isFinite(candidate.costCapUsd) || candidate.costCapUsd < 0 || candidate.costCapUsd > 10_000)) throw new Error("invalid cost cap");
+    const background = candidate.background;
+    if (background !== undefined) {
+      const valid = background.enabled === true || background.enabled === false;
+      const hours = Number.isInteger(background.startHour) && background.startHour >= 0 && background.startHour <= 23 && Number.isInteger(background.endHour) && background.endHour >= 1 && background.endHour <= 24;
+      const budget = Number.isFinite(background.taskBudgetUsd) && background.taskBudgetUsd >= 0 && background.taskBudgetUsd <= 10_000;
+      const reminder = background.reminder === "none" || background.reminder === "desktop";
+      if (!valid || !hours || !budget || !reminder) throw new Error("invalid background settings");
+    }
+    const execution = candidate.execution;
+    if (execution !== undefined && execution.target !== "local" && execution.target !== "ssh" && execution.target !== "vm") throw new Error("invalid execution target");
+    if (execution?.sshHost !== undefined && (typeof execution.sshHost !== "string" || execution.sshHost.length > 240)) throw new Error("invalid ssh host");
+    return {
+      ...(candidate.selection ? { selection: candidate.selection } : {}),
+      ...(candidate.autoProviders ? { autoProviders: [...candidate.autoProviders] } : {}),
+      ...(candidate.costCapUsd !== undefined ? { costCapUsd: candidate.costCapUsd } : {}),
+      ...(background ? { background: { enabled: background.enabled, startHour: background.startHour, endHour: background.endHour, taskBudgetUsd: background.taskBudgetUsd, reminder: background.reminder } satisfies BackgroundRunSettings } : {}),
+      ...(execution ? { execution: { target: execution.target, ...(execution.sshHost ? { sshHost: execution.sshHost } : {}) } satisfies ExecutionTargetSettings } : {}),
+    };
   }
 }

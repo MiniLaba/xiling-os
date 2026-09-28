@@ -1,25 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { CredentialProviderId, CredentialProviderStatus, InstalledSkillSummary, InstalledSkillsResponse, McpSettingsResponse, ModelCatalogEntry, ModelProviderId, ModelRouteSettings, ModelRuntimeStatus, ProviderConnectionTestResult } from "@xiling/contracts";
 import { Moon, Sun } from "lucide-react";
 import { ApiError, apiJson, jsonInit } from "../lib/api-client.js";
 import { useTheme } from "../lib/theme.js";
 import { useLocale } from "../lib/locale.js";
 import { McpSettingsPanel } from "./McpSettingsPanel.js";
+import { useWorkspace } from "../workspace/WorkspaceContext.js";
+const ProjectView = lazy(async () => ({ default: (await import("../project/ProjectView.js")).ProjectView }));
 import { ModelCapsule, type CapsuleReasoning, type CapsuleRoute } from "../components/ModelCapsule.js";
 
-type SettingsSection = "appearance" | "agents" | "skills" | "mcp" | "model-apis" | "literature" | "data";
+export type SettingsSection = "appearance" | "runtime" | "background" | "projects" | "execution" | "skills" | "mcp" | "model-apis" | "literature" | "data";
 type ProviderCategory = CredentialProviderStatus["category"];
 type InstalledAgentRole = { id: string; title: string; description: string; allowedCapabilities: string[]; defaultIsolation: "scoped" | "blind" | "execution"; dynamic?: boolean };
 type RouteDraft = { providerId?: ModelProviderId; modelId: string; reasoning: ModelRouteSettings["reasoning"] };
 
 const sections: Array<{ label: string; items: Array<{ id: SettingsSection; label: string; icon: string }> }> = [
   { label: "常规", items: [{ id: "appearance", label: "主题", icon: "◐" }] },
-  { label: "智能体", items: [{ id: "agents", label: "子智能体", icon: "⑂" }, { id: "skills", label: "技能", icon: "✦" }, { id: "mcp", label: "MCP", icon: "⌘" }] },
+  { label: "智能体", items: [{ id: "runtime", label: "模型选择", icon: "◎" }, { id: "background", label: "后台运行", icon: "◷" }, { id: "execution", label: "执行目标", icon: "▷" }, { id: "skills", label: "技能", icon: "✦" }, { id: "mcp", label: "MCP", icon: "⌘" }] },
+  { label: "项目", items: [{ id: "projects", label: "项目管理", icon: "▣" }] },
   { label: "连接", items: [{ id: "model-apis", label: "模型 API 连接", icon: "⌁" }, { id: "literature", label: "文献服务", icon: "⌕" }, { id: "data", label: "科研数据账户", icon: "≈" }] },
 ];
 
 const sectionTitle: Record<SettingsSection, string> = {
-  appearance: "主题", agents: "子智能体", skills: "技能", mcp: "MCP", "model-apis": "模型 API 连接", literature: "文献服务", data: "科研数据账户",
+  appearance: "主题", runtime: "模型选择", background: "后台运行", projects: "项目管理", execution: "执行目标", skills: "技能", mcp: "MCP", "model-apis": "模型 API 连接", literature: "文献服务", data: "科研数据账户",
 };
 
 const skillPresentation: Record<string, { title: string; glyph: string }> = {
@@ -29,10 +32,12 @@ const skillPresentation: Record<string, { title: string; glyph: string }> = {
   "ocean-data-subsetting": { title: "海洋数据切片", glyph: "数" },
 };
 
-export function SettingsView() {
+export function SettingsView({ initialSection = "appearance" }: { initialSection?: SettingsSection }) {
   const { locale, setLocale, t } = useLocale();
+  const { projects, activeProjectId, setActiveProjectId, refreshProjects } = useWorkspace();
   const theme = useTheme();
-  const [section, setSection] = useState<SettingsSection>("appearance");
+  const [section, setSection] = useState<SettingsSection>(initialSection);
+  useEffect(() => { setSection(initialSection); }, [initialSection]);
   const [providers, setProviders] = useState<CredentialProviderStatus[]>([]);
   const [values, setValues] = useState<Partial<Record<CredentialProviderId, Record<string, string>>>>({});
   const [busy, setBusy] = useState<CredentialProviderId>();
@@ -45,6 +50,16 @@ export function SettingsView() {
   const [mcp, setMcp] = useState<McpSettingsResponse>();
   const [skillQuery, setSkillQuery] = useState("");
   const [agentRoles, setAgentRoles] = useState<InstalledAgentRole[]>([]);
+  const [selection, setSelection] = useState<"manual" | "auto">("manual");
+  const [autoProviders, setAutoProviders] = useState<ModelProviderId[]>([]);
+  const [costCapUsd, setCostCapUsd] = useState(1);
+  const [backgroundEnabled, setBackgroundEnabled] = useState(false);
+  const [startHour, setStartHour] = useState(9);
+  const [endHour, setEndHour] = useState(18);
+  const [taskBudgetUsd, setTaskBudgetUsd] = useState(2);
+  const [reminder, setReminder] = useState<"none" | "desktop">("none");
+  const [executionTarget, setExecutionTarget] = useState<"local" | "ssh" | "vm">("vm");
+  const [sshHost, setSshHost] = useState("");
 
   const refresh = async () => {
     try {
@@ -56,6 +71,16 @@ export function SettingsView() {
         apiJson<{ roles: InstalledAgentRole[] }>("/api/agent-center/roles"),
       ]);
       setProviders(nextProviders); setCatalog(models.catalog); setRuntime(models.runtime); setSkills(nextSkills); setMcp(nextMcp); setAgentRoles(nextAgentRoles.roles);
+      setSelection(models.runtime.selection ?? "manual");
+      setAutoProviders(models.runtime.autoProviders ?? []);
+      setCostCapUsd(models.runtime.costCapUsd ?? 1);
+      setBackgroundEnabled(Boolean(models.runtime.background?.enabled));
+      setStartHour(models.runtime.background?.startHour ?? 9);
+      setEndHour(models.runtime.background?.endHour ?? 18);
+      setTaskBudgetUsd(models.runtime.background?.taskBudgetUsd ?? 2);
+      setReminder(models.runtime.background?.reminder ?? "none");
+      setExecutionTarget(models.runtime.execution?.target ?? "vm");
+      setSshHost(models.runtime.execution?.sshHost ?? "");
     } catch (error) { setMessage(error instanceof Error ? `设置加载失败：${error.message}` : "设置加载失败。"); }
   };
   useEffect(() => { void refresh(); }, []);
@@ -161,10 +186,22 @@ export function SettingsView() {
     </section>
   </div>;
 
+  const saveWorkspace = async (patch: Record<string, unknown>) => {
+    const next = await apiJson<ModelRuntimeStatus>("/api/settings/workspace", jsonInit("PUT", patch));
+    setRuntime(next);
+    setMessage("已保存。自动选择只在指定提供商、所需输入模态和费用上限内挑模型；后台只在有未完成任务且处于时段内时继续。");
+  };
+  const configuredModelIds = providers.filter((provider) => provider.category === "model" && provider.configured).map((provider) => provider.id as ModelProviderId);
+
   return <div className="settings-view settings-shell">
     <aside className="settings-local-nav"><div><small>SETTINGS</small><strong>{t("汐灵设置")}</strong></div>{sections.map((group) => <section key={group.label}><span>{t(group.label)}</span>{group.items.map((item) => <button className={section === item.id ? "active" : ""} key={item.id} onClick={() => { setSection(item.id); setMessage(""); }}><i>{item.icon}</i>{t(item.label)}</button>)}</section>)}</aside>
     <main className="settings-content"><header className="settings-head"><h1>{t(sectionTitle[section])}</h1>{section === "skills" ? <span>{skills?.skills.length ?? 0} {t("已安装")}</span> : null}</header>{message ? <div className="settings-message" role="status">{message}</div> : null}
-      {section === "appearance" ? renderAppearance() : section === "agents" ? renderAgents() : section === "skills" ? renderSkills() : section === "mcp" ? <McpSettingsPanel value={mcp} onChanged={setMcp} onMessage={setMessage} /> : section === "model-apis" ? renderProviderCategory("model") : section === "literature" ? renderProviderCategory("literature") : renderProviderCategory("data")}
+      {section === "appearance" ? renderAppearance()
+        : section === "runtime" ? <form className="settings-runtime" onSubmit={(event) => { event.preventDefault(); void saveWorkspace({ selection, autoProviders, costCapUsd }); }}><p>手动固定沿用主模型。自动选择只在下面勾选的提供商里挑，并且必须满足本轮输入模态、不超过费用上限。回复会标出实际模型。</p><label>模式<select value={selection} onChange={(event) => setSelection(event.target.value as "manual" | "auto")}><option value="manual">手动固定</option><option value="auto">自动选择</option></select></label><fieldset><legend>允许的提供商</legend>{configuredModelIds.map((id) => <label key={id}><input type="checkbox" checked={autoProviders.includes(id)} onChange={(event) => setAutoProviders((current) => event.target.checked ? [...current, id] : current.filter((item) => item !== id))} />{id}</label>)}</fieldset><label>单轮费用上限（美元）<input type="number" min={0} step={0.1} value={costCapUsd} onChange={(event) => setCostCapUsd(Number(event.target.value))} /></label><button type="submit">保存模型策略</button></form>
+        : section === "background" ? <form className="settings-runtime" onSubmit={(event) => { event.preventDefault(); void saveWorkspace({ background: { enabled: backgroundEnabled, startHour, endHour, taskBudgetUsd, reminder } }); }}><p>后台运行单独开启。队列空闲时不会调用模型。把结束小时设为 24 只表示未完成任务可以跨时段继续。</p><label><input type="checkbox" checked={backgroundEnabled} onChange={(event) => setBackgroundEnabled(event.target.checked)} />允许后台推进未完成的 Bot 任务</label><label>开始小时<input type="number" min={0} max={23} value={startHour} onChange={(event) => setStartHour(Number(event.target.value))} /></label><label>结束小时<input type="number" min={1} max={24} value={endHour} onChange={(event) => setEndHour(Number(event.target.value))} /></label><label>任务预算（美元）<input type="number" min={0} step={0.5} value={taskBudgetUsd} onChange={(event) => setTaskBudgetUsd(Number(event.target.value))} /></label><label>提醒<select value={reminder} onChange={(event) => setReminder(event.target.value as "none" | "desktop")}><option value="none">不提醒</option><option value="desktop">桌面</option></select></label><button type="submit">保存后台策略</button></form>
+        : section === "projects" ? <Suspense fallback={<p>正在打开项目…</p>}><ProjectView projectId={activeProjectId} projects={projects} onProjectChange={setActiveProjectId} onProjectsChange={refreshProjects} /></Suspense>
+        : section === "execution" ? <form className="settings-runtime" onSubmit={(event) => { event.preventDefault(); void saveWorkspace({ execution: { target: executionTarget, ...(sshHost.trim() ? { sshHost: sshHost.trim() } : {}) } }); }}><p>Pi 仍然是唯一的模型循环。执行可以落在本机、SSH 或虚拟机，而且不能绕过审批去改正式结论或下载大规模数据。</p><label>目标<select value={executionTarget} onChange={(event) => setExecutionTarget(event.target.value as "local" | "ssh" | "vm")}><option value="local">本机</option><option value="ssh">远程 SSH</option><option value="vm">虚拟机</option></select></label>{executionTarget === "ssh" ? <label>SSH 主机<input value={sshHost} onChange={(event) => setSshHost(event.target.value)} /></label> : null}<button type="submit">保存执行目标</button></form>
+        : section === "skills" ? renderSkills() : section === "mcp" ? <McpSettingsPanel value={mcp} onChanged={setMcp} onMessage={setMessage} /> : section === "model-apis" ? renderProviderCategory("model") : section === "literature" ? renderProviderCategory("literature") : renderProviderCategory("data")}
     </main>
   </div>;
 }

@@ -215,6 +215,8 @@ cmd /d /s /c "git clone --depth 1 https://github.com/MiniLaba/xiling-os.git && c
 
 ### 开发模式
 
+当前四入口（Chat、Brain、Bot、Settings）以开发模式为准。安装包先不要重新打包。给后续同学的操作说明见[开发手册](docs/开发手册.md)。
+
 ```sh
 corepack enable
 pnpm install

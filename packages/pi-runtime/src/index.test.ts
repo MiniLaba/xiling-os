@@ -75,14 +75,14 @@ describe("PiRuntimeAdapter", () => {
 
   it("passes native image content to Pi without converting it to text", async () => {
     const model = { id: "vision-fixture", name: "Vision Fixture", provider: "fixture", api: "openai-responses", baseUrl: "https://invalid.local", reasoning: false, input: ["text", "image"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1_000, maxTokens: 100 } as Model<any>;
-    let capturedContent: unknown;
+    const capturedContent: unknown[] = [];
     const offline = createOfflineStream(["ok"]);
-    const provider = { id: "fixture", name: "Fixture", auth: {} as Provider["auth"], getModels: () => [model], stream: () => { throw new Error("unused"); }, streamSimple: (_model, context, options) => { capturedContent = context.messages.at(-1)?.content; return offline(model, context, options); } } as Provider;
+    const provider = { id: "fixture", name: "Fixture", auth: {} as Provider["auth"], getModels: () => [model], stream: () => { throw new Error("unused"); }, streamSimple: (_model, context, options) => { capturedContent.push(...context.messages.map((message) => message.content)); return offline(model, context, options); } } as Provider;
     const runtime = new PiRuntimeAdapter({ sessionId: "native-image", systemPrompt: "fixture", route: createProviderRoute(provider, model.id, "fixture-secret") });
 
     await runtime.prompt("解释图像", [{ type: "image", data: "aW1hZ2U=", mimeType: "image/png" }]);
 
-    expect(capturedContent).toEqual([{ type: "text", text: "解释图像" }, { type: "image", data: "aW1hZ2U=", mimeType: "image/png" }]);
+    expect(capturedContent).toContainEqual([{ type: "text", text: "解释图像" }, { type: "image", data: "aW1hZ2U=", mimeType: "image/png" }]);
   });
 
   it("persists primary and role model routes without a product offline mode", async () => {

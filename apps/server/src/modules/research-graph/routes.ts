@@ -60,6 +60,15 @@ export function registerResearchGraphRoutes(app: FastifyInstance, dependencies: 
 
     await dependencies.ready;
     await dependencies.reconcile();
+    if (proposal.action.type === "link_relation") {
+      const action = proposal.action;
+      await dependencies.graph.applyChangeSet({
+        projectId: params.data.projectId,
+        nodes: [],
+        relations: [{ projectId: params.data.projectId, kind: action.kind, sourceId: action.sourceId, targetId: action.targetId }],
+      });
+      return dependencies.proposals.decide(params.data.projectId, params.data.proposalId, "accepted", [action.sourceId, action.targetId]);
+    }
     const timestamp = new Date().toISOString();
     const projectNodeId = params.data.projectId;
     const questionId = `research-question:${params.data.projectId}`;

@@ -315,12 +315,14 @@ export function assembleContext(input: ContextAssemblyInput): ContextAssemblyRes
   const normalized = normalizeContextHistoryWithStats(input.history);
   const normalizedHistory = normalized.messages;
   let omittedHistoryCount = normalized.droppedCount;
+  let omittedByCapacity = 0;
   const turns: ContextHistoryMessage[][] = [];
   for (let index = 0; index < normalizedHistory.length; index += 2) turns.push(normalizedHistory.slice(index, index + 2));
   for (const turn of [...turns].reverse()) {
     const tokens = turn.reduce((total, message) => total + estimateContextTokens(message.text) + 8, 0);
     if (tokens > remaining) {
-      omittedHistoryCount += turns.slice(0, turns.indexOf(turn) + 1).reduce((total, item) => total + item.length, 0);
+      omittedByCapacity = turns.slice(0, turns.indexOf(turn) + 1).reduce((total, item) => total + item.length, 0);
+      omittedHistoryCount += omittedByCapacity;
       break;
     }
     history.unshift(...turn);
@@ -328,7 +330,7 @@ export function assembleContext(input: ContextAssemblyInput): ContextAssemblyRes
   }
   const degradations = [
     ...(capsuleIds.length ? [`${capsuleIds.length} 个较早画布节点使用持久化 Capsule，近期节点与显式引用保留原文。`] : []),
-    ...(omittedHistoryCount ? [`模型窗口不足以容纳 ${omittedHistoryCount} 条较早的补充会话记录；这些记录未被静默裁切，可通过切换分支或更长上下文模型重新装载。`] : []),
+    ...(omittedByCapacity ? [`模型窗口不足以容纳 ${omittedByCapacity} 条较早的补充会话记录；这些记录未被静默裁切，可通过切换分支或更长上下文模型重新装载。`] : []),
   ];
   const historyTokens = history.reduce((total, message) => total + estimateContextTokens(message.text) + 8, 0);
   const exactNodes = [...exactIds].map((id) => input.nodes.get(id)).filter((node): node is ContextNodeContent => Boolean(node));

@@ -5,7 +5,6 @@ import { FREE_EXPLORATION_PROJECT_ID } from "@xiling/contracts";
 import type { ProjectResearchWorkflow } from "@xiling/domain-ocean";
 import { useConversations } from "../workspace/ConversationContext.js";
 import { ResearchWorkflowCard } from "./ResearchWorkflowCard.js";
-import { AgentExecutionGraphView } from "./AgentExecutionGraphView.js";
 import { runResearchTurn } from "../lib/research-session-client.js";
 import { formatAttachmentSize, nativeImageUpload, NATIVE_IMAGE_ACCEPT, readNativeImages, type PendingNativeImage } from "../lib/native-image-input.js";
 import { ModelCapsule, type CapsuleRoute } from "../components/ModelCapsule.js";
@@ -39,6 +38,15 @@ type ToolActivity = { callId: string; name: string; status: "running" | "complet
 const CHOICE_FENCE_COMPLETE = /```xiling-choices\s*\n([\s\S]*?)```/g;
 const CHOICE_FENCE_PARTIAL = /```xiling-choices[\s\S]*$/;
 const stripChoiceFence = (text: string) => text.replace(CHOICE_FENCE_COMPLETE, "").replace(CHOICE_FENCE_PARTIAL, "").trimEnd();
+const explainTurnFailure = (message: string): string => {
+  if (/supported api model names|you passed sk-|模型名无效|模型 ID 不能/i.test(message)) return "保存的模型名无效。请在输入框旁重新点选 DeepSeek V4 Pro，不要把 API Key 填进模型名。";
+  if (message.includes("模型未返回文本") || message.includes("模型没有返回文本")) return "模型没有把正文写回对话。请再发一次。";
+  if (message.includes("configured tools are unavailable")) return "这一轮的工具没有接上，消息没有发出去。请再发一次。";
+  if (message.includes("selection_required")) return "还没有选定可用模型。请在输入框旁选择 DeepSeek V4 Pro。";
+  if (message.includes("credential_required") || /\b401\b|invalid api key|unauthorized/i.test(message)) return "API Key 无效或还没有保存。请在模型列表里重新填写密钥。";
+  const scrubbed = message.replace(/sk-[A-Za-z0-9_-]+/g, "（已隐藏）");
+  return scrubbed.length > 180 ? `${scrubbed.slice(0, 180)}…` : scrubbed;
+};
 
 const convertMessage = (message: UiMessage): ThreadMessageLike => ({
   id: message.id,
@@ -91,7 +99,7 @@ export function ChatView({ project }: { project: ResearchProject }) {
   const [pendingSaveTarget, setPendingSaveTarget] = useState<"task" | "wiki">();
   const [modelRuntime, setModelRuntime] = useState<ModelRuntimeStatus>();
   const [modelCatalog, setModelCatalog] = useState<ModelCatalogEntry[]>([]);
-  const [configuredModelProviders, setConfiguredModelProviders] = useState<ModelProviderId[]>([]);
+  const [modelProviders, setModelProviders] = useState<Array<{ id: ModelProviderId; title: string; configured: boolean }>>([]);
   const [pendingImages, setPendingImages] = useState<PendingNativeImage[]>([]);
   const [attachmentError, setAttachmentError] = useState("");
   const [contextTrace, setContextTrace] = useState<ContextAssemblyTrace>();
@@ -99,9 +107,9 @@ export function ChatView({ project }: { project: ResearchProject }) {
   const [artifactOpen, setArtifactOpen] = useState(true);
   const [artifactExpanded, setArtifactExpanded] = useState(false);
   const [workbenchWidth, setWorkbenchWidth] = useState(0);
-  const [primaryMode, setPrimaryMode] = useState<"conversation" | "execution">("conversation");
-  const [graphRefreshKey, setGraphRefreshKey] = useState(0);
-  const artifactBeforeGraphRef = useRef(artifactOpen);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyMatchIds, setHistoryMatchIds] = useState<Set<string> | null>(null);
+  const [turnModel, setTurnModel] = useState("");
   const manualArtifactOpenRef = useRef(false);
   const seenArtifactCountRef = useRef(0);
   const workbenchRef = useRef<HTMLDivElement>(null);
@@ -126,17 +134,19 @@ export function ChatView({ project }: { project: ResearchProject }) {
     } else {
       setMessages([welcomeMessage(project)]);
     }
-    setTools([]); setContextTrace(undefined); setSaveStatus(""); setPendingImages([]); setAttachmentError(""); setArtifactExpanded(false); setPrimaryMode("conversation"); manualArtifactOpenRef.current = false; seenArtifactCountRef.current = 0;
+    setTools([]); setContextTrace(undefined); setSaveStatus(""); setPendingImages([]); setAttachmentError(""); setArtifactExpanded(false); setTurnModel(""); manualArtifactOpenRef.current = false; seenArtifactCountRef.current = 0;
     return () => { cancelled = true; };
   }, [project.id, activeSessionId]);
   useEffect(() => {
     if (!activeSessionId) { setWorkflows([]); return; }
     void fetch(`/api/v1/research-workflows?projectId=${encodeURIComponent(project.id)}&sessionId=${encodeURIComponent(activeSessionId)}`).then((response) => response.ok ? response.json() : []).then((items) => setWorkflows(items as ProjectResearchWorkflow[]));
   }, [project.id, activeSessionId]);
-  const [providerTitles, setProviderTitles] = useState<Record<string, string>>({});
   useEffect(() => {
-    void fetch("/api/settings/models").then((response) => response.json()).then((body: { runtime: ModelRuntimeStatus; catalog: ModelCatalogEntry[]; configuredProviderIds: ModelProviderId[] }) => { setModelRuntime(body.runtime); setModelCatalog(body.catalog); setConfiguredModelProviders(body.configuredProviderIds); });
-    void fetch("/api/settings/providers").then((response) => response.json()).then((providers: Array<{ id: string; title: string }>) => setProviderTitles(Object.fromEntries(providers.map((provider) => [provider.id, provider.title]))));
+    const providerOrder = ["deepseek", "moonshotai", "zai", "openrouter", "openai", "anthropic", "google", "xai", "mistral", "groq", "custom"];
+    void fetch("/api/settings/models").then((response) => response.json()).then((body: { runtime: ModelRuntimeStatus; catalog: ModelCatalogEntry[] }) => { setModelRuntime(body.runtime); setModelCatalog(body.catalog); });
+    void fetch("/api/settings/providers").then((response) => response.json()).then((providers: Array<{ id: ModelProviderId; title: string; category: string; configured: boolean }>) => {
+      setModelProviders(providers.filter((provider) => provider.category === "model").sort((left, right) => providerOrder.indexOf(left.id) - providerOrder.indexOf(right.id)).map((provider) => ({ id: provider.id, title: provider.title, configured: provider.configured })));
+    });
   }, []);
   useEffect(() => {
     const clampWidth = () => {
@@ -181,6 +191,7 @@ export function ChatView({ project }: { project: ResearchProject }) {
       const controller = new AbortController();
       runAbortRef.current = controller;
       let streamedText = "";
+      let failureNotice = "";
       const updateVisibleMessages = (updater: (current: UiMessage[]) => UiMessage[]) => {
         if (visibleSessionRef.current === session.id) setMessages(updater);
       };
@@ -193,6 +204,11 @@ export function ChatView({ project }: { project: ResearchProject }) {
               updateVisibleMessages((current) => current.map((item) => item.id === userId ? { ...item, sourceEntryId: event.userEntryId, runId: event.runId, ...(event.attachments?.length ? { attachments: event.attachments.map((attachment) => ({ ...attachment, url: `/api/agent-center/attachments/${encodeURIComponent(attachment.id)}?projectId=${encodeURIComponent(project.id)}` })) } : {}) } : item.id === assistantId ? { ...item, runId: event.runId } : item));
             }
             if (event.type === "entry.persisted" && event.kind === "assistant") updateVisibleMessages((current) => current.map((item) => item.id === assistantId ? { ...item, sourceEntryId: event.entryId, runId: event.runId } : item));
+            if (event.type === "model.selected") {
+              const label = /^sk[-_]/i.test(event.modelId) ? `${event.providerId}/模型名无效` : `${event.providerId}/${event.modelId}`;
+              setTurnModel(label);
+              updateVisibleMessages((current) => current.map((item) => item.id === assistantId && !item.text.includes("实际模型：") ? { ...item, text: item.text } : item));
+            }
             if (event.type === "context.ready") setContextTrace(event.trace);
             if (event.type === "message.delta" && event.delta) {
               streamedText += event.delta;
@@ -207,26 +223,27 @@ export function ChatView({ project }: { project: ResearchProject }) {
               if (response.ok) setWorkflows(await response.json() as ProjectResearchWorkflow[]);
             }
             if (event.type === "tool.failed") setTools((current) => current.map((item) => item.callId === event.callId ? { ...item, status: "failed" } : item));
-            if (event.type === "session.error") throw new Error(event.message || "模型调用失败");
+            if (event.type === "session.error") throw new Error(explainTurnFailure(event.message || "模型调用失败"));
         }
-        if (!streamedText.trim()) throw new Error("模型没有返回文本，请检查模型 ID 或使用“测试连接”诊断。 ");
+        if (!streamedText.trim()) throw new Error("模型没有返回文本。请确认已点选 DeepSeek V4 Pro 后再发一次。");
         updateVisibleMessages((current) => current.map((item) => item.id === assistantId ? { ...item, status: "complete" } : item));
       } catch (error) {
         const cancelled = error instanceof DOMException && error.name === "AbortError";
-        const reason = error instanceof Error ? error.message : "请求失败";
-        updateVisibleMessages((current) => current.map((item) => item.id === assistantId ? { ...item, text: item.text || (cancelled ? "已取消" : `连接失败：${reason}`), status: "cancelled" } : item));
+        failureNotice = cancelled ? "已取消" : explainTurnFailure(error instanceof Error ? error.message : "请求失败");
+        updateVisibleMessages((current) => current.map((item) => item.id === assistantId ? { ...item, text: item.text || failureNotice, status: "cancelled" } : item));
       } finally {
         if (runAbortRef.current === controller) runAbortRef.current = null;
         runSessionIdRef.current = null;
         if (visibleSessionRef.current === session.id) setRunning(false);
         await refreshSessions(session.id);
-        setGraphRefreshKey((value) => value + 1);
             if (visibleSessionRef.current === session.id) {
           try {
             const response = await fetch(`/api/v1/chat-sessions/${encodeURIComponent(session.id)}/messages`);
             if (response.ok) {
               const records = await response.json() as ChatMessageRecord[];
-              setMessages([welcomeMessage(project), ...records.map((record) => ({ id: record.id, role: record.role, text: record.text, status: record.status, sourceEntryId: record.id, ...(record.attachments?.length ? { attachments: record.attachments.map((attachment) => ({ ...attachment, url: `/api/agent-center/attachments/${encodeURIComponent(attachment.id)}?projectId=${encodeURIComponent(project.id)}` })) } : {}) }))]);
+              const restored: UiMessage[] = [welcomeMessage(project), ...records.map((record) => ({ id: record.id, role: record.role, text: record.text, status: record.status, sourceEntryId: record.id, ...(record.attachments?.length ? { attachments: record.attachments.map((attachment) => ({ ...attachment, url: `/api/agent-center/attachments/${encodeURIComponent(attachment.id)}?projectId=${encodeURIComponent(project.id)}` })) } : {}) }))];
+              if (failureNotice) restored.push({ id: `failure-${assistantId}`, role: "assistant", text: failureNotice, status: "cancelled" });
+              setMessages(restored);
             }
           } catch {
             // The streamed transcript remains visible; the next session load retries the durable read.
@@ -235,8 +252,25 @@ export function ChatView({ project }: { project: ResearchProject }) {
       }
     }
   }, [project, ensureSession, refreshSessions, modelRuntime]);
+  useEffect(() => {
+    const needle = historyQuery.trim();
+    if (!needle || !activeSessionId) { setHistoryMatchIds(null); return; }
+    const timer = window.setTimeout(() => {
+      void fetch(`/api/v1/chat-sessions/${encodeURIComponent(activeSessionId)}/search?q=${encodeURIComponent(needle)}`).then(async (response) => {
+        if (!response.ok) { setHistoryMatchIds(null); return; }
+        const hits = await response.json() as Array<{ id: string }>;
+        setHistoryMatchIds(new Set(hits.map((hit) => hit.id)));
+      }).catch(() => setHistoryMatchIds(null));
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [activeSessionId, historyQuery]);
+  const visibleMessages = useMemo(() => {
+    const needle = historyQuery.trim().toLocaleLowerCase();
+    if (!needle) return messages;
+    return messages.filter((message) => (message.sourceEntryId && historyMatchIds?.has(message.sourceEntryId)) || message.text.toLocaleLowerCase().includes(needle));
+  }, [historyMatchIds, historyQuery, messages]);
   const runtime = useExternalStoreRuntime({
-    messages,
+    messages: visibleMessages,
     isRunning: running,
     convertMessage,
     onNew: async (message) => { await submitPrompt(extractText(message.content), pendingImages); },
@@ -252,10 +286,14 @@ export function ChatView({ project }: { project: ResearchProject }) {
   };
 
   const { push } = useToast();
-  const commitPrimaryModel = async (route: CapsuleRoute | null) => {
+  const commitPrimaryModel = async (route: CapsuleRoute | null, credential?: { apiKey: string }) => {
     if (!route) return;
     const modalities = modelCatalog.find((model) => model.providerId === route.providerId && model.id === route.modelId)?.inputModalities ?? ["text"];
     try {
+      if (credential?.apiKey) {
+        await apiJson(`/api/settings/providers/${route.providerId}`, jsonInit("PUT", { values: { apiKey: credential.apiKey } }));
+        setModelProviders((current) => current.map((provider) => provider.id === route.providerId ? { ...provider, configured: true } : provider));
+      }
       const next = await apiJson<ModelRuntimeStatus>("/api/settings/models", jsonInit("PUT", { primary: { providerId: route.providerId, modelId: route.modelId, reasoning: route.reasoning, inputModalities: modalities }, roleRoutes: modelRuntime?.roleRoutes ?? {} }));
       setModelRuntime(next);
       push({ title: `主模型已切换为 ${next.primary?.selectedModel?.name ?? route.modelId}`, tone: "success" });
@@ -305,24 +343,12 @@ export function ChatView({ project }: { project: ResearchProject }) {
 
   const artifactDocked = workbenchWidth >= 1_040 && !artifactExpanded;
 
-  const switchPrimaryMode = (next: "conversation" | "execution") => {
-    if (next === primaryMode) return;
-    if (next === "execution") {
-      artifactBeforeGraphRef.current = artifactOpen;
-      setArtifactOpen(false);
-      setArtifactExpanded(false);
-    } else if (artifactBeforeGraphRef.current && (artifactCount > 0 || manualArtifactOpenRef.current)) {
-      setArtifactOpen(true);
-    }
-    setPrimaryMode(next);
-  };
-
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <div className={`chat-workbench ${artifactExpanded ? "artifact-expanded" : ""} ${artifactOpen && !artifactDocked && !artifactExpanded ? "artifact-overlay" : ""}`} ref={workbenchRef} style={{ gridTemplateColumns: artifactExpanded || !artifactOpen || !artifactDocked ? "minmax(0, 1fr)" : `minmax(520px, 1fr) 7px ${artifactWidth}px` }}>
-        <ThreadPrimitive.Root className={`chat-view ${primaryMode === "execution" ? "chat-view-execution" : ""}`}>
-          {primaryMode === "conversation" ? <div className="chat-heading"><div><small>{project.name} · 研究对话</small><h1>{activeSession?.title ?? "新对话"}</h1></div><div className="chat-heading-actions"><div className="chat-primary-switch" role="tablist" aria-label="Chat 工作区模式"><button role="tab" aria-selected className="active">{t("对话")}</button><button role="tab" aria-selected={false} onClick={() => switchPrimaryMode("execution")}>{t("运行图")}</button></div>{!artifactOpen ? <button onClick={() => { manualArtifactOpenRef.current = true; setArtifactOpen(true); }}>打开产物面板</button> : null}</div></div> : null}
-          {primaryMode === "execution" ? <AgentExecutionGraphView projectId={project.id} activeSessionId={activeSessionId} refreshKey={graphRefreshKey} onReturnToChat={() => switchPrimaryMode("conversation")} /> : <>
+        <ThreadPrimitive.Root className="chat-view">
+          <div className="chat-heading"><div><small>{project.name} · 一条长对话</small><h1>{activeSession?.title ?? "项目对话"}</h1>{turnModel ? <p className="chat-model-used">实际模型：{turnModel}</p> : null}</div><div className="chat-heading-actions"><input className="chat-history-search" value={historyQuery} placeholder="搜索以前聊过的内容" aria-label="搜索这条长对话" onChange={(event) => setHistoryQuery(event.target.value)} />{!artifactOpen ? <button onClick={() => { manualArtifactOpenRef.current = true; setArtifactOpen(true); }}>打开产物面板</button> : null}</div></div>
+          <>
             <ThreadPrimitive.Viewport className="aui-thread">
               <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />
               {!running && choiceOptions.length ? <div className="chat-choice-chips" role="group" aria-label="可选操作">{choiceOptions.map((label) => <button key={label} onClick={() => void submitPrompt(label, [])}>{label}</button>)}</div> : null}
@@ -338,9 +364,9 @@ export function ChatView({ project }: { project: ResearchProject }) {
             {attachmentError ? <div className="native-attachment-error">{attachmentError}</div> : null}
             <ComposerPrimitive.Input placeholder="询问数据、文献或当前科研图选择…" />
             <input ref={imageInputRef} className="native-file-input" type="file" accept={NATIVE_IMAGE_ACCEPT} multiple onChange={(event) => { void addImages(event.currentTarget.files); event.currentTarget.value = ""; }} />
-            <div className="composer-tools"><button type="button" aria-label="添加图像" disabled={!nativeImageEnabled || running} title={attachmentTitle} onClick={() => imageInputRef.current?.click()}>＋</button><span>{nativeImageEnabled ? "原生图像可用" : "仅文字输入"}</span><div className="composer-model-slot"><ModelCapsule value={modelRuntime?.primary ? { providerId: modelRuntime.primary.providerId, modelId: modelRuntime.primary.modelId, reasoning: modelRuntime.primary.reasoning } : undefined} catalog={modelCatalog} configuredProviders={configuredModelProviders.map((id) => ({ id, title: providerTitles[id] ?? id }))} disabled={running} onCommit={(route) => void commitPrimaryModel(route)} /></div><div className="composer-actions"><ComposerPrimitive.Send aria-label="发送">↑</ComposerPrimitive.Send><ComposerPrimitive.Cancel aria-label="取消">■</ComposerPrimitive.Cancel></div></div>
+            <div className="composer-tools"><button type="button" aria-label="添加图像" disabled={!nativeImageEnabled || running} title={attachmentTitle} onClick={() => imageInputRef.current?.click()}>＋</button><span>{nativeImageEnabled ? "原生图像可用" : "仅文字输入"}</span><div className="composer-model-slot"><ModelCapsule value={modelRuntime?.primary ? { providerId: modelRuntime.primary.providerId, modelId: modelRuntime.primary.modelId, reasoning: modelRuntime.primary.reasoning } : undefined} catalog={modelCatalog} configuredProviders={modelProviders} disabled={running} onCommit={(route, credential) => void commitPrimaryModel(route, credential)} /></div><div className="composer-actions"><ComposerPrimitive.Send aria-label="发送">↑</ComposerPrimitive.Send><ComposerPrimitive.Cancel aria-label="取消">■</ComposerPrimitive.Cancel></div></div>
             </ComposerPrimitive.Root>
-          </>}
+          </>
         </ThreadPrimitive.Root>
         {artifactOpen && artifactDocked ? <div className="split-resizer" role="separator" aria-label="调整 Artifact 面板宽度" aria-orientation="vertical" onPointerDown={beginResize}><i /></div> : null}
         {artifactOpen ? <ArtifactViewer projectId={project.id} workflows={workflows} expanded={artifactExpanded} onToggleExpanded={() => setArtifactExpanded((value) => !value)} onClose={() => { setArtifactOpen(false); setArtifactExpanded(false); }} /> : null}

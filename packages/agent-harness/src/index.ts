@@ -208,6 +208,7 @@ export interface ResearchAgentHarnessOptions {
       },
     ): Promise<{ summary: string; model: string; usage: AgentUsageTotals; cumulative?: boolean }>;
   };
+  settleAnswer?(input: { prompt: string; answer: string; toolNames: string[] }): Promise<string>;
 }
 
 const isoNow = () => new Date().toISOString();
@@ -794,8 +795,9 @@ export class ResearchAgentHarness {
   private readonly active = new Map<string, { runtime?: HarnessRuntime; shutdown: boolean; cancel: boolean; guardError?: string }>();
   private readonly executions = new Map<string, Promise<void>>();
   private readonly waiters = new Map<string, Set<() => void>>();
-  private readonly limits: Required<Omit<ResearchAgentHarnessOptions, "compaction">>;
+  private readonly limits: Required<Omit<ResearchAgentHarnessOptions, "compaction" | "settleAnswer">>;
   private readonly compactionPolicy: ResearchAgentHarnessOptions["compaction"];
+  private readonly settleAnswer: ((input: { prompt: string; answer: string; toolNames: string[] }) => Promise<string>) | undefined;
   readonly recoveredOnStartup: number;
 
   constructor(private readonly store: SqliteAgentSessionStore, private readonly runtimeFactory: HarnessRuntimeFactory, options: ResearchAgentHarnessOptions = {}) {
@@ -806,6 +808,7 @@ export class ResearchAgentHarness {
       maxRunCost: options.maxRunCost ?? 5,
     };
     this.compactionPolicy = options.compaction;
+    this.settleAnswer = options.settleAnswer;
     this.recoveredOnStartup = store.recoverInterruptedRuns();
   }
 
@@ -905,6 +908,7 @@ export class ResearchAgentHarness {
 
   private async execute(run: AgentRunRecord, resumed: boolean): Promise<void> {
     let answer = "";
+    const finishedTools: string[] = [];
     let runtimeError: string | undefined;
     let totalCost = 0;
     let toolCallCount = 0;
@@ -964,6 +968,8 @@ export class ResearchAgentHarness {
           }
         }
         if (event.type === "tool.finished") {
+          const details = typeof event.details === "string" ? event.details : JSON.stringify(event.details ?? {});
+          if ((event.toolName === "computer_browse" || event.toolName === "computer_download") && /"success"\s*:\s*true/u.test(details)) finishedTools.push(event.toolName);
           const operation = toolOperations.get(event.callId);
           if (operation) this.store.finishOperation(operation.id, "completed", { result: event.details });
           this.store.appendEntry(run.sessionId, run.id, { kind: "tool-result", role: "tool", text: JSON.stringify(event.details ?? { status: "completed" }), metadata: { callId: event.callId, operationId: operation?.id, toolName: event.toolName } });
@@ -973,7 +979,10 @@ export class ResearchAgentHarness {
           if (operation) this.store.finishOperation(operation.id, "failed", { result: event.details, error: event.message });
           this.store.appendEntry(run.sessionId, run.id, { kind: "tool-result", role: "tool", text: event.message, metadata: { callId: event.callId, operationId: operation?.id, toolName: event.toolName, failed: true, details: event.details } });
         }
-        if (event.type === "session.error") runtimeError = event.message;
+        if (event.type === "session.error") {
+          runtimeError = event.message;
+          return;
+        }
         this.emit(run, event.type, event);
       });
       this.emit(run, "run.started", { resumed });
@@ -984,7 +993,20 @@ export class ResearchAgentHarness {
       if (state.shutdown) return;
       if (state.cancel) throw new Error("cancelled");
       if (state.guardError) throw new Error(state.guardError);
-      if (runtimeError) throw new Error(runtimeError);
+      const drafted = answer;
+      if (this.settleAnswer && (answer.trim() || runtimeError)) {
+        try {
+          const settled = await this.settleAnswer({ prompt: run.prompt, answer, toolNames: finishedTools });
+          if (settled.trim()) answer = settled;
+        } catch {
+          // A desktop follow-up must not discard the model reply.
+        }
+      }
+      const recovered = answer.trim() !== "" && answer.trim() !== drafted.trim();
+      if (runtimeError && !recovered) {
+        this.emit(run, "session.error", { type: "session.error", sessionId: run.sessionId, message: runtimeError });
+        throw new Error(runtimeError);
+      }
       if (answer.trim()) {
         const assistantEntry = this.store.appendEntry(run.sessionId, run.id, { kind: "assistant", role: "assistant", text: answer });
         this.emit(run, "entry.persisted", assistantEntry);
