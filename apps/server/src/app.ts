@@ -557,7 +557,14 @@ export function createApp(options: { dataRoot?: string; webRoot?: string; skills
     }
   });
   registerWorkspaceRoutes(app, { knowledge, agentSessions: agentSessionStore, onChatSessionCreated: (session) => agentHarness.createSession({ id: session.id, projectId: session.projectId }), onChatSessionArchived: (session) => agentHarness.archiveSession(session.id), validateDomainIds: (ids) => scienceDomains.validate(ids), validateResearchContext: async (projectId, context) => projectResearchContext(projectId, context) });
-  registerAgentCenterRoutes(app, { harness: agentHarness, store: agentSessionStore, ready: workflowProjectionReady, projectExists: (projectId) => Boolean(knowledge.getProject(projectId)), projectActive: (projectId) => { const project = knowledge.getProject(projectId); return Boolean(project && project.status !== "archived"); }, sessionExists: (sessionId, projectId) => knowledge.getChatSession(sessionId)?.projectId === projectId, sessionTitle: (sessionId) => knowledge.getChatSession(sessionId)?.title, listAgentRoles: () => [], acceptedInputModalities: async (override) => {
+  registerAgentCenterRoutes(app, { harness: agentHarness, store: agentSessionStore, ready: workflowProjectionReady, projectExists: (projectId) => Boolean(knowledge.getProject(projectId)), projectActive: (projectId) => { const project = knowledge.getProject(projectId); return Boolean(project && project.status !== "archived"); }, sessionExists: (sessionId, projectId) => knowledge.getChatSession(sessionId)?.projectId === projectId, sessionTitle: (sessionId) => knowledge.getChatSession(sessionId)?.title, listAgentRoles: () => {
+    const seen = new Set<string>();
+    return scienceDomains.list().flatMap((domain) => domain.agentRoles).flatMap((role) => {
+      if (seen.has(role.id)) return [];
+      seen.add(role.id);
+      return [{ id: role.id, title: role.title, description: role.description, allowedCapabilities: role.allowedCapabilities, defaultIsolation: role.defaultIsolation }];
+    });
+  }, acceptedInputModalities: async (override) => {
     if (override) return resolveModelCatalogEntry(override.providerId as ModelProviderId, override.modelId).inputModalities.filter((modality) => modality === "text" || modality === "image");
     const status = await modelStatus();
     if (!status.ready || !status.primary?.selectedModel) return ["text"];
