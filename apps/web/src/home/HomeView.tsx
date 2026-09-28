@@ -124,7 +124,7 @@ const NODES = [
 
 const reducedMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-export function HomeView({ onEnter }: { onEnter: (view: "chat" | "canvas" | "wiki" | "papers") => void }) {
+export function HomeView({ onEnter }: { onEnter: (view: "chat" | "brain" | "bot" | "settings") => void }) {
   const { locale, setLocale, t } = useLocale();
   const hostRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -223,7 +223,7 @@ export function HomeView({ onEnter }: { onEnter: (view: "chat" | "canvas" | "wik
         <header className="home-nav">
           <div className="home-brand"><img src="/brand/xiling-mark.png" alt="" /><b>{locale === "en" ? "Tide Mind" : "汐灵"}</b><small>RESEARCH OS</small></div>
           <nav aria-label="进入各工作面">
-            {([["chat", "对话"], ["canvas", "科研画布"], ["wiki", "Wiki"], ["papers", "文献工作台"]] as const).map(([view, label]) => (
+            {([["chat", "Chat"], ["brain", "Brain"], ["bot", "Bot"], ["settings", "Settings"]] as const).map(([view, label]) => (
               <button key={view} onClick={() => onEnter(view)}>{t(label)}</button>
             ))}
             <button onClick={() => setLocale(locale === "en" ? "zh-CN" : "en")}>{locale === "en" ? "中文" : "EN"}</button>
@@ -235,7 +235,7 @@ export function HomeView({ onEnter }: { onEnter: (view: "chat" | "canvas" | "wik
           <p className="home-description">{locale === "en" ? "An AI-native research operating system for curious minds." : "面向探索者的 AI 原生科研操作系统。"}</p>
           <div className="home-cta">
             <button className="home-cta-primary" onClick={() => onEnter("chat")}>{t("进入工作区")}</button>
-            <button className="home-cta-ghost" onClick={() => onEnter("canvas")}>{locale === "en" ? "Explore the canvas" : "先看看科研画布"}</button>
+            <button className="home-cta-ghost" onClick={() => onEnter("brain")}>{locale === "en" ? "Open the shared brain" : "打开共享大脑"}</button>
           </div>
         </div>
         {NODES.map((node, index) => (

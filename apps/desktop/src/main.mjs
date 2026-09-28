@@ -7,9 +7,6 @@ import { fileURLToPath } from "node:url";
 
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
 app.commandLine.appendSwitch("enable-webgl");
-app.commandLine.appendSwitch("use-gl", "angle");
-app.commandLine.appendSwitch("use-angle", "swiftshader");
-app.commandLine.appendSwitch("enable-unsafe-swiftshader");
 
 const here = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(here, "..");

@@ -6,7 +6,9 @@
 
 | 能力 | 候选项目 | 许可证 | 使用方式 | Gate 1 结论 |
 |---|---|---|---|---|
-| Agent 内核 | earendil-works/pi | MIT | SDK 嵌入，外包一层适配器 | 采用 |
+| Agent 内核 | earendil-works/pi | MIT | SDK 嵌入。0.87.1 起正式对话使用原生 AgentHarness，业务包仍只依赖 `@xiling/pi-runtime` | 采用（0.87.1） |
+| 执行组件 | FoundationAgents/OpenManus | MIT | 只复用本机、SSH 和虚拟机执行边界。Pi 保持唯一模型与工具循环，执行仍经过现有审批，不把 OpenManus 的规划循环嵌进来 | 采用边界，不内嵌第二套 Agent |
+| Bot 虚拟机窗口 | ConSol/docker-headless-vnc-container 镜像 consol/debian-xfce-vnc | Apache-2.0 | 完整 XFCE 桌面（任务栏、文件、终端、Firefox、Chromium），noVNC 6901 只绑定 127.0.0.1，Bot iframe 打开 `/vnc.html`。Pi 仍是唯一规划循环，用桌面用户在这台虚拟机里打开网页和运行命令。镜像未打进安装包，不替代科研沙箱 | 按需采用 |
 | MCP 适配 | pi-mcp-adapter | MIT | 在独立 Pi Coding Agent Host 子进程中复用单代理工具、惰性连接、目录缓存与审批拦截；Server 不直接加载 Extension | 采用（2.27.0） |
 | Chat UI | assistant-ui | MIT | Custom Runtime 接 Pi 事件 | 采用 |
 | Chat 产品参考 | LibreChat | MIT | 仅参考会话、附件、Artifact 交互 | 参考 |

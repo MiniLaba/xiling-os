@@ -56,6 +56,19 @@ async function waitForStatus(harness: ResearchAgentHarness, runId: string, statu
 }
 
 describe("ResearchAgentHarness durable vertical slice", () => {
+  it("stores the settled desktop reply instead of a link-only answer", async () => {
+    const root = await mkdtemp(join(tmpdir(), "xiling-agent-settle-"));
+    const store = new SqliteAgentSessionStore(join(root, "agent-center.sqlite"));
+    const harness = new ResearchAgentHarness(store, fixtureFactory(), {
+      settleAnswer: async ({ answer }) => `已在当前电脑的桌面浏览器打开。${answer}`,
+    });
+    const session = harness.createSession({ projectId: "ocean-project" });
+    const run = harness.startTurn({ sessionId: session.id, prompt: "打开山东大学官网首页", clientCommandId: "open-site" }).run;
+    await waitForStatus(harness, run.id, "completed");
+    expect(store.listSessionEntries(session.id).find((entry) => entry.kind === "assistant")?.text).toContain("已在当前电脑的桌面浏览器打开");
+    store.close();
+  });
+
   it("persists parent-child delegation lineage without merging child session history", async () => {
     const root = await mkdtemp(join(tmpdir(), "xiling-agent-delegation-"));
     const store = new SqliteAgentSessionStore(join(root, "agent-center.sqlite"));

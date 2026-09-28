@@ -15,9 +15,11 @@ export const scientificCanvasLayoutSchema = z.object({
 });
 export const researchGraphArtifactParamsSchema = researchGraphProjectParamsSchema.extend({ artifactVersionId: z.string().min(1).max(240) });
 export const researchGraphProposalParamsSchema = researchGraphProjectParamsSchema.extend({ proposalId: z.string().uuid() });
+const researchRelationKindSchema = z.enum(["CONTAINS", "HAS_REVISION", "HAS_FRAGMENT", "CITES", "ASSERTS", "BASED_ON", "USED", "GENERATED", "DERIVED_FROM", "EVALUATES", "DOCUMENTS", "SUPERSEDES", "HAS_VERSION", "TRANSITIONED_BY", "ASSOCIATED_WITH", "REFERENCES"]);
 export const researchGraphProposalCreateSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("create_claim"), title: z.string().trim().min(1).max(500), summary: z.string().trim().min(1).max(20_000) }),
   z.object({ type: z.literal("revise_claim"), claimId: z.string().min(1).max(240), title: z.string().trim().min(1).max(500), summary: z.string().trim().min(1).max(20_000) }),
+  z.object({ type: z.literal("link_relation"), kind: researchRelationKindSchema, sourceId: z.string().min(1).max(240), targetId: z.string().min(1).max(240), summary: z.string().trim().min(1).max(2_000) }),
 ]);
 export const researchGraphProposalDecisionSchema = z.object({ decision: z.enum(["accept", "reject"]) });
 
@@ -83,6 +85,22 @@ export const credentialValuesSchema = z.object({ values: z.record(z.string().min
 export const modelProviderIdSchema = z.enum(["openai", "anthropic", "google", "openrouter", "deepseek", "xai", "mistral", "moonshotai", "zai", "groq", "custom"]);
 export const modelRouteSchema = z.object({ providerId: modelProviderIdSchema, modelId: z.string().trim().min(1).max(240), inputModalities: z.array(z.enum(["text", "image"])).min(1).max(2).optional(), reasoning: z.enum(["off", "low", "medium", "high"]) }).refine((value) => !value.inputModalities || value.inputModalities.includes("text"), { message: "text input must remain enabled" });
 export const modelRuntimeSchema = z.object({ primary: modelRouteSchema, roleRoutes: z.record(z.string().min(1).max(80), modelRouteSchema).refine((routes) => Object.keys(routes).length <= 16, { message: "too many role routes" }).default({}) });
+export const workspacePreferencesSchema = z.object({
+  selection: z.enum(["manual", "auto"]).optional(),
+  autoProviders: z.array(modelProviderIdSchema).max(11).optional(),
+  costCapUsd: z.number().nonnegative().max(10_000).optional(),
+  background: z.object({
+    enabled: z.boolean(),
+    startHour: z.number().int().min(0).max(23),
+    endHour: z.number().int().min(1).max(24),
+    taskBudgetUsd: z.number().nonnegative().max(10_000),
+    reminder: z.enum(["none", "desktop"]),
+  }).optional(),
+  execution: z.object({
+    target: z.enum(["local", "ssh", "vm"]),
+    sshHost: z.string().trim().max(240).optional(),
+  }).optional(),
+});
 export const providerTestSchema = z.object({ modelId: z.string().trim().min(1).max(240).optional() });
 
 

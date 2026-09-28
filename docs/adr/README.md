@@ -22,17 +22,18 @@
 
 | 范围 | ADR |
 | --- | --- |
-| Agent/Pi | [0001 嵌入 Pi SDK](0001-embed-pi-sdk.md)、[0022 研究 Agent Harness](0022-research-agent-harness.md)、[0023 Pi 升级兼容](0023-pi-upgrade-and-package-compatibility.md) |
+| Agent/Pi | [0001 嵌入 Pi SDK](0001-embed-pi-sdk.md)、[0023 Pi 升级兼容](0023-pi-upgrade-and-package-compatibility.md)、[0044 Pi 原生 Harness 与四入口](0044-pi-native-harness-and-four-entries.md) |
 | Context/能力 | [0005 上下文经济](0005-context-economy.md)、[0019 Context Assembler](0019-context-assembler-and-lazy-skills.md)、[0024 隔离 MCP Host](0024-isolated-pi-mcp-host.md) |
 | Research Graph | [0025 图数据库](0025-research-graph-database.md)、[0027 耐久投影](0027-durable-research-graph-projection.md)、[0028 画布布局与局部上下文](0028-scientific-canvas-layout-and-context.md)、[0030 Claim/Evidence 来源解析](0030-claim-evidence-source-resolution.md) |
-| 多智能体 | [0032 受控 Pi 多智能体](0032-controlled-pi-multi-agent-orchestration.md)、[0036 隔离 Handoff](0036-isolated-multi-agent-handoffs.md) |
+| 多智能体 | 内置子智能体已退出主路径，见 [0044](0044-pi-native-harness-and-four-entries.md) |
 | 科研内核 | [0034 内容寻址 Artifact](0034-content-addressed-artifact-registry.md)、[0035 通用执行与领域组合](0035-generic-execution-and-domain-composition.md)、[0040 可安装科学领域包](0040-extensible-science-domain-packages.md) |
 | 模型 | [0015 多模态模型连接器](0015-extensible-multimodal-model-connectors.md)、[0037 真实模型路由与角色覆盖](0037-real-model-routing-and-role-overrides.md) |
 | 平台 | [0039 原生 Windows 与 Docker 沙箱](0039-native-windows-control-plane-and-docker-sandbox.md) |
-| 前端壳层 | [0041 两栏应用壳与 Chat 上下文产物面板](0041-two-column-shell-and-contextual-artifact-panel.md)、[0042 三个工作区锁定 27ebdf7](0042-restore-three-workspaces-to-27ebdf7.md)、[0043 Electron 桌面壳与 Bloub 指示球](0043-electron-desktop-shell-and-bloub-pet.md) |
+| 前端壳层 | [0041 两栏应用壳与 Chat 上下文产物面板](0041-two-column-shell-and-contextual-artifact-panel.md)、[0042 文献/项目/Wiki 视觉锁定](0042-restore-three-workspaces-to-27ebdf7.md)、[0043 Electron 桌面壳与 Bloub 指示球](0043-electron-desktop-shell-and-bloub-pet.md)、[0044 四入口](0044-pi-native-harness-and-four-entries.md) |
 
 ## 已替代的主要决策
 
+- [0022 研究 Agent Harness](0022-research-agent-harness.md)中“自研循环作为模型中枢”的部分，以及 [0036 隔离 Handoff](0036-isolated-multi-agent-handoffs.md) 的内置子智能体，已由 [0044](0044-pi-native-harness-and-four-entries.md)替代。
 - [0002 Windows WSL2 后端](0002-windows-wsl2-backend.md)已由 [0039](0039-native-windows-control-plane-and-docker-sandbox.md)替代。
 - [0038 GitHub CI 与 WSL2 边界](0038-github-ci-wsl2-boundary.md)中的当前平台结论已由 [0039](0039-native-windows-control-plane-and-docker-sandbox.md)替代。
 

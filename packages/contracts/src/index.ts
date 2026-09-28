@@ -127,7 +127,8 @@ export type ResearchGraphProposalStatus = "pending" | "accepted" | "rejected";
 
 export type ResearchGraphProposalAction =
   | { type: "create_claim"; title: string; summary: string }
-  | { type: "revise_claim"; claimId: string; title: string; summary: string };
+  | { type: "revise_claim"; claimId: string; title: string; summary: string }
+  | { type: "link_relation"; kind: ResearchRelationKind; sourceId: string; targetId: string; summary: string };
 
 /**
  * A user-reviewable scientific change. Agent and UI authors write proposals;
@@ -664,9 +665,29 @@ export interface ModelRouteSettings {
   reasoning: "off" | "low" | "medium" | "high";
 }
 
+export interface BackgroundRunSettings {
+  enabled: boolean;
+  /** Inclusive local hour, 0–23. */
+  startHour: number;
+  /** Exclusive local hour, 1–24. 24 keeps the window open through the end of the day. */
+  endHour: number;
+  taskBudgetUsd: number;
+  reminder: "none" | "desktop";
+}
+
+export interface ExecutionTargetSettings {
+  target: "local" | "ssh" | "vm";
+  sshHost?: string;
+}
+
 export interface ModelRuntimeSettings {
   primary?: ModelRouteSettings;
   roleRoutes: Record<string, ModelRouteSettings>;
+  selection?: "manual" | "auto";
+  autoProviders?: ModelProviderId[];
+  costCapUsd?: number;
+  background?: BackgroundRunSettings;
+  execution?: ExecutionTargetSettings;
   updatedAt: string;
 }
 
@@ -690,6 +711,7 @@ export type AgentStreamEvent =
   | { type: "run.settled"; runId: string; status: "completed" | "failed" | "cancelled" | "suspended"; assistantEntryId?: string }
   | { type: "session.started"; sessionId: string }
   | { type: "context.ready"; trace: ContextAssemblyTrace }
+  | { type: "model.selected"; providerId: string; modelId: string; selection: "manual" | "auto" }
   | { type: "message.delta"; delta: string }
   | { type: "tool.started"; toolName: string; callId: string; arguments?: unknown }
   | { type: "tool.finished"; toolName: string; callId: string; artifactUri?: ResourceUri; details?: unknown }

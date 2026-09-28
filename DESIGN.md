@@ -3,8 +3,8 @@
 > 本文档是汐灵 OS 当前产品与软件架构的首要入口（living design document）。
 >
 > - 状态：有效
-> - 最后核对：2026-08-31
-> - 对应版本：Research OS Modernization R0–R7 本地实现；通用执行内核、内容寻址 Artifact、隔离多智能体、上下文质量观测和第二科学领域已接入
+> - 最后核对：2026-09-27
+> - 对应版本：四入口（Chat、Brain、Bot、Settings）。正式对话使用 Pi 0.87.1 原生 AgentHarness；内置子智能体已退出主路径。
 > - 代码事实源：`packages/contracts`、`packages/api-contracts` 与各模块的公开接口
 > - 架构宪法：[科研内核架构宪法](docs/architecture/research-os-constitution.md)
 > - 端到端验收：[黄金科研任务与质量基线](docs/quality/golden-research-tasks.md)
@@ -32,11 +32,10 @@
 
 | 工作面 | 主要职责 | 共享对象 |
 |---|---|---|
-| Chat | 提问、分解任务、工具调用、审批入口；在“对话 / Agent 运行图”之间切换 | Project、AgentSession、AgentRun、AgentEntry |
-| 科研画布 | 从总览或文献、证据、溯源、Artifact 分项视图理解项目科研事实 | ResearchGraph、Claim、EvidenceAssertion、Run、ArtifactVersion |
-| 项目 | 目标、事项、实验与科研闭环状态 | Project、ProjectItem、Workflow |
-| Wiki | 像浏览百科一样理解项目并定位结论和产物 | WikiPage、Evidence、Artifact、ProjectItem |
-| 文献工作台 | 搜索关系、发现论文、阅读和标注；将选中内容提升为项目证据 | DiscoveryGraph、Paper、Annotation |
+| Chat | 提问、讨论、追问，并搜索这一条项目长对话 | Project、一条 Pi Session |
+| Brain | 搜索并阅读笔记、聊天片段、论文、图表和报告；按需展开反向链接和邻域图 | Wiki、Research Graph、Paper、Artifact |
+| Bot | 交办任务、查看进度、处理待决定事项和成果；选择本机、SSH 或虚拟机执行。虚拟机目标在页面内嵌桌面窗口 | Workflow、Approval、Proposal |
+| Settings | 模型、工具、后台、隐私与费用，以及项目创建和切换 | ModelRuntime、Project |
 
 ### 当前交付边界
 
@@ -66,7 +65,7 @@
 ```mermaid
 flowchart TB
   subgraph CLIENT["apps/web · React / TypeScript"]
-    VIEWS["Chat / Agent Graph · Scientific Canvas · Project · Wiki · Literature"]
+    VIEWS["Chat · Brain · Bot · Settings"]
     WEBINFRA["API Client · SSE Decoder · Research Session Client"]
     VIEWS --> WEBINFRA
   end
@@ -87,7 +86,7 @@ flowchart TB
     CONTEXT["context"]
     PI["pi-runtime"]
     HARNESS["agent-harness<br/>durable session/run/event"]
-    MULTIAGENT["multi-agent<br/>role/task/scheduler/handoff"]
+    BRAIN["Brain API / MCP<br/>search, source, note, relation"]
     RGCORE["research-graph<br/>typed graph store"]
     KNOWLEDGE["knowledge ports / SQLite adapter"]
     LITCORE["literature providers / graph"]
@@ -106,7 +105,7 @@ flowchart TB
   WEBINFRA -->|"HTTP + SSE"| SERVER
   SERVER --> DOMAIN
   AGENT --> HARNESS
-  AGENT --> MULTIAGENT
+  AGENT --> BRAIN
   RESEARCHGRAPH --> RGCORE
   RGCORE --> LADYBUG["LadybugDB<br/>research-graph.lbdb"]
   AGENT --> MCPHOST
@@ -116,7 +115,7 @@ flowchart TB
 
 部署细节见 [三平台部署设计](docs/architecture/deployment.md)，模块边界的完整说明见 [模块化单体架构](docs/architecture/modular-monolith.md)。
 
-正式 Chat 使用 `/api/agent-center/*`：Server 先建立耐久 Run 与用户 Entry，再执行 Pi Runtime，并以可续传事件流暴露进度。RG-1 已把 Agent Execution Graph 放入 Chat，并从同一 Agent Store 只读投影；新的顶层科研画布只投影 Research Graph。详见 [ADR 0026](docs/adr/0026-agent-execution-graph-in-chat.md)、[Agent 中枢架构纠偏 Gate](docs/gate-4.5-agent-center-correction.md) 和 [Research Graph 架构](docs/architecture/research-graph.md)。
+正式 Chat 使用 `/api/agent-center/*`：Server 先建立耐久 Run 与用户 Entry，再执行 Pi 原生 AgentHarness，并以可续传事件流暴露进度。每个项目只有一条长对话。运行图、沿节点继续和引用分叉不再出现在 Chat。科研画布、Wiki 和文献并入 Brain。详见 [ADR 0044](docs/adr/0044-pi-native-harness-and-four-entries.md) 和 [Research Graph 架构](docs/architecture/research-graph.md)。
 
 ### 3.1 信任与进程边界
 
@@ -303,9 +302,9 @@ draft → probing → pending_approval → approved
 
 系统不再让一个 Canvas 同时承担 Agent 运行监控和科研事实存储：
 
-- **Agent Execution Graph** 属于 Chat。图模式默认展示当前 Session 的低密度对话投影：每轮只呈现研究指令与关键回答，Model、Tool、Tool Result、Usage 与 Compaction 折叠在回答节点的按需详情中；项目全景是次级切换。节点可按“沿节点继续”或“组合引用”进入同一 Composer，完整事实仍来自 Agent Store，拖动只改变当前视图。RG-2 已用稳定 `agent-run://` 与 Artifact URI 在 Research Graph 建立来源引用。
-- **Scientific Canvas** 是 Research Graph 的可视化投影。它支持项目总览以及 `literature`、`evidence`、`provenance`、`artifacts` 分项视图。
-- **Literature Discovery Graph** 只存在于文献工作台，用于搜索和推荐。临时论文不能因出现在搜索图中就成为项目证据。
+- **Chat** 只保留一条项目长对话，并在这条对话里搜索以前的内容。Agent 执行记录仍在 Agent Store，但不再作为 Chat 里的运行图。
+- **Brain** 把 Scientific Canvas、Wiki 和文献放在同一个阅读面。图谱默认只显示当前问题或当前笔记的邻域。文献搜索和推荐仍不能把临时论文直接写成项目证据。
+- **Scientific Canvas** 继续是 Research Graph 的可视化投影，支持项目总览以及 `literature`、`evidence`、`provenance`、`artifacts` 分项视图。
 
 RG-1 撤下旧顶层 Agent Canvas 并删除 Chat 写入；RG-2 删除 Workflow settlement；RG-3 把 Chat context 切换为 Research Graph 局部投影；RG-4 删除旧 Canvas 的 Web、HTTP 与文件仓储。文献证据只通过 Knowledge outbox 投影到 Research Graph。
 
@@ -335,8 +334,8 @@ Wiki Markdown、`[[slug]]`、Research Graph 实体/关系和 Artifact URI 可以
 ## 7. API 与前端基础设施
 
 - 应用壳采用“侧边导航 + 当前工作区”两栏；侧栏位置顺序遵循 `27ebdf7` 的稳定布局，但视觉与组件只以当前设计系统为准。设置入口固定在侧栏左下角；设置页独占全宽并使用“常规—智能体—连接—系统”的局部导航。主题只在“常规 → 外观与主题”中显式选择，工作区侧栏不提供循环切换快捷键。
-- 文献工作台、项目管理和 Wiki 是经用户确认的视觉兼容例外：视图源码与隔离样式锁定 `27ebdf7`，只通过当前应用壳继续访问最新版后端。兼容层不得扩散到 Chat、科研画布、设置页或全局令牌；详见 ADR 0042。
-- Chat 的运行图和 Artifact Viewer 是会话上下文的一部分：运行图在 Chat 内切换，Artifact 在 Chat 内按需停靠、调宽、抽屉或全屏。禁止恢复应用级常驻 `OutputPanel`，避免与 Chat 自有面板形成双重第三栏。
+- 顶栏只有 Chat、Brain、Bot、Settings。文献、Wiki 和科研画布从 Brain 进入；项目管理从 Settings 进入。这些视图仍可沿用既有样式，但不再各自占一个顶层入口。详见 ADR 0044。
+- Chat 的 Artifact Viewer 仍是会话上下文的一部分：产物在 Chat 内按需停靠、调宽、抽屉或全屏。禁止恢复应用级常驻 `OutputPanel`，也禁止把运行图放回 Chat。
 - HTTP 输入由 `@xiling/api-contracts` 校验；修改请求字段时前后端必须在同一变更中升级。
 - `apps/web/src/lib/api-client.ts` 是 JSON 请求和 API 错误的统一入口。
 - `apps/web/src/lib/agent-stream.ts` 是 SSE 解码的统一入口。
@@ -576,6 +575,7 @@ R0–R8 现代化开发同时受[科研内核架构宪法](docs/architecture/res
 
 ## 17. 变更记录
 
+- **2026-09-28**：开发模式手册见 [docs/开发手册.md](docs/开发手册.md)。Brain 里的「打开项目管理」进入设置中的项目管理；邻域图的笔记来源回到笔记，聊天来源回到 Chat。远程 SSH 打开网页时，回复说明是从远程主机取回，虚拟机仍在桌面浏览器中打开。带钟点的 Bot 交办本轮不执行，确认加入定时任务后到点再做。安装包保持不动。
 - **2026-09-14**：桌面端二次启动跳过完整编译；悬浮球默认海洋蓝 idle 球体，Agent 忙碌时切到 orbit。见 ADR 0043。
 - **2026-09-14**：新增 Electron 桌面壳与海洋色 Bloub 悬浮指示球；桌面进程只拉起现有 Server/Web，不改变科研事实源。见 ADR 0043。
 - **2026-09-01**：文献工作台、项目管理与 Wiki 完整回归 `27ebdf7`；三份视图源码以哈希锁定，旧样式机械提取并限制在三个工作区，最新版后端与其余前端不回退。

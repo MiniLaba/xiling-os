@@ -4,6 +4,7 @@ import { z } from "zod";
 import { idParamsSchema, projectWorkflowCreateSchema, toOceanSubsetRequest } from "@xiling/api-contracts";
 import type { ConversationStore, ProjectStore } from "@xiling/knowledge";
 import type { ProjectWorkflowService } from "../../project-workflow.js";
+import { assertOpenManusStep, type OpenManusExecutionTarget } from "../../openmanus-boundary.js";
 
 type Workflow = NonNullable<ReturnType<ProjectWorkflowService["get"]>>;
 
@@ -13,6 +14,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, dependencies: {
   projects: ProjectStore;
   conversations: ConversationStore;
   settle: (workflow: Workflow) => Promise<Workflow>;
+  executionTarget?: () => { target: OpenManusExecutionTarget; sshHost?: string };
 }): void {
   const { workflow, ready, projects, conversations, settle } = dependencies;
   app.get("/api/v1/research-workflows", async (request, reply) => {
@@ -44,7 +46,12 @@ export function registerWorkflowRoutes(app: FastifyInstance, dependencies: {
       if (!current || current.projectId !== scope.data.projectId || !project || project.status === "archived" || !session || session.projectId !== project.id) return reply.code(404).send({ error: "Workflow not found in project" });
       if (name === "cancel") return workflow.cancel(parsed.data.id);
       if (name === "settle") return settle(current);
-      if (name === "run") return settle(await workflow.run(parsed.data.id));
+      if (name === "run") {
+        const execution = dependencies.executionTarget?.() ?? { target: "vm" as const };
+        if (execution.target === "ssh" && !execution.sshHost?.trim()) throw new Error("请先在 Bot 或设置中填写 SSH 主机");
+        assertOpenManusStep({ target: execution.target, approved: true, changesFormalConclusion: false, largeDataDownload: false });
+        return settle(await workflow.run(parsed.data.id));
+      }
       return await workflow[name](parsed.data.id);
     } catch (error) { return reply.code(error instanceof Error && error.message.includes("not found") ? 404 : 409).send({ error: error instanceof Error ? error.message : String(error) }); }
   };

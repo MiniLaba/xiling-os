@@ -18,12 +18,13 @@
 ## 新参与者阅读路径
 
 1. [`README.md`](../README.md)：产品是什么、怎么运行、当前边界。
-2. [`DESIGN.md`](../DESIGN.md)：系统所有权、不变量、关键流程和风险。
-3. [科研内核架构宪法](architecture/research-os-constitution.md)：不可破坏的设计约束。
-4. [模块化单体架构](architecture/modular-monolith.md)：包、Server 模块和依赖方向。
-5. [领域模型](architecture/domain-model.md)：Project、Evidence、Run、Artifact 等对象的语义。
-6. [汐语灵境设计系统](design-system.md)：UI/交互的唯一参照规范与设计令牌。
-7. 根据任务阅读下方专题和对应 ADR。
+2. [开发手册（当前开发模式）](开发手册.md)：四个入口怎么改、Bot 如何执行、开发服务怎么启动。安装包先不要重新打包。
+3. [`DESIGN.md`](../DESIGN.md)：系统所有权、不变量、关键流程和风险。
+4. [科研内核架构宪法](architecture/research-os-constitution.md)：不可破坏的设计约束。
+5. [模块化单体架构](architecture/modular-monolith.md)：包、Server 模块和依赖方向。
+6. [领域模型](architecture/domain-model.md)：Project、Evidence、Run、Artifact 等对象的语义。
+7. [汐语灵境设计系统](design-system.md)：UI/交互的唯一参照规范与设计令牌。
+8. 根据任务阅读下方专题和对应 ADR。
 
 ## 当前架构专题
 

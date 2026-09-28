@@ -6,7 +6,7 @@ import { KnowledgeService } from "@xiling/knowledge";
 import { FileLiteratureCache, LiteratureSearchService, OpenAlexProvider, SemanticScholarProvider } from "@xiling/literature";
 import { ScienceDomainRegistry } from "@xiling/science-domains";
 import { OCEAN_CLIMATE_DOMAIN } from "@xiling/domain-ocean";
-import { agentEntryReaderTool, agentHistorySearchTool, researchCapabilityCatalog, researchCapabilityCatalogFor, roleAllowsCapability, selectDelegationRoles, selectResearchCapabilities, selectResearchTools, shouldOfferResearchDelegation } from "./agent-tools.js";
+import { agentEntryReaderTool, agentHistorySearchTool, researchCapabilityCatalog, researchCapabilityCatalogFor, selectResearchCapabilities, selectResearchTools } from "./agent-tools.js";
 
 describe("project-scoped Pi research tools", () => {
   it("activates only capabilities matched by the current prompt", async () => {
@@ -35,17 +35,7 @@ describe("project-scoped Pi research tools", () => {
     expect(selectResearchCapabilities(query, oceanCatalog).map((capability) => capability.toolName)).toEqual(selectResearchTools(query, services, oceanCatalog).map((tool) => tool.name));
     expect(selectResearchCapabilities(query).map((capability) => capability.id)).not.toContain("ocean.subset.plan");
     expect(new Set(researchCapabilityCatalog.map((capability) => capability.toolName)).size).toBe(researchCapabilityCatalog.length);
-    expect(shouldOfferResearchDelegation("分别检索三个数据库，并请独立审稿人复核")).toBe(true);
-    expect(shouldOfferResearchDelegation("比较两种方法，并检查复现条件")).toBe(true);
-    expect(shouldOfferResearchDelegation("解释一下当前项目")).toBe(false);
-    const roles = domains.resolve(["ocean-climate"]).agentRoles;
-    expect(selectDelegationRoles("系统检索近期文献", roles).map((role) => role.id)).toEqual(["research-explorer"]);
-    expect(selectDelegationRoles("执行海洋数据分析", roles).map((role) => role.id)).toEqual(["domain-executor"]);
-    expect(selectDelegationRoles("独立复现审查", roles).map((role) => role.id)).toEqual(["independent-reviewer"]);
-    expect(selectDelegationRoles("启动多智能体并行任务", roles).map((role) => role.id)).toEqual(["research-explorer", "domain-executor", "independent-reviewer"]);
-    const executor = roles.find((role) => role.id === "domain-executor")!;
-    expect(roleAllowsCapability(executor, "ocean.subset.plan", new Set(["ocean.subset.plan"]))).toBe(true);
-    expect(roleAllowsCapability(executor, "literature.search", new Set(["ocean.subset.plan"]))).toBe(false);
+    expect(selectResearchTools("分别检索三个数据库，并请独立审稿人复核", services).map((tool) => tool.name)).not.toContain("delegate_research_tasks");
     const artifact = selectResearchTools("检查 Artifact 审阅报告", services).find((tool) => tool.name === "read_artifact_excerpt")!;
     await expect(artifact.execute("call-1", { uri: `artifact://sha256/${"a".repeat(64)}`, offsetBytes: 0, maxBytes: 500 }, undefined, undefined)).resolves.toMatchObject({ details: { text: "fixture" } });
     await expect(agentHistorySearchTool(services).execute("call-2", { query: "旧决策", limit: 3 }, undefined, undefined)).resolves.toMatchObject({ details: [{ entryId: "entry-1", excerpt: "旧决策" }] });

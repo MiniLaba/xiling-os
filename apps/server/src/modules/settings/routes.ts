@@ -1,8 +1,8 @@
 import { validationFailure } from "../../http-errors.js";
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { credentialIdSchema, credentialValuesSchema, modelRuntimeSchema, providerTestSchema } from "@xiling/api-contracts";
-import type { InstalledSkillsResponse, ModelProviderId, ModelRouteSettings, ModelRouteStatus, ModelRuntimeSettings, ModelRuntimeStatus } from "@xiling/contracts";
+import { credentialIdSchema, credentialValuesSchema, modelRuntimeSchema, providerTestSchema, workspacePreferencesSchema } from "@xiling/api-contracts";
+import type { ExecutionTargetSettings, InstalledSkillsResponse, ModelProviderId, ModelRouteSettings, ModelRouteStatus, ModelRuntimeSettings, ModelRuntimeStatus } from "@xiling/contracts";
 import type { CredentialStore } from "@xiling/credentials";
 import { PiRuntimeAdapter, createLiveRoute, findKnownModelCatalogEntry, listRecommendedModels, resolveModelCatalogEntry, type CustomProviderRouteConfig, type ModelRuntimeStore } from "@xiling/pi-runtime";
 
@@ -13,7 +13,9 @@ export function humanizeModelFailure(message: string): string {
   if (/\b403\b|not available in your region/.test(lower)) return "该模型在当前区域被限制访问（区域检查发生在密钥校验之前，因此无法据此判断密钥是否有效）；请改用 DeepSeek、Kimi、Qwen 等本区域可用模型重试。";
   if (/\b404\b|model not found|unknown model/.test(lower)) return "服务可达，但模型 ID 不存在或当前账户不可用。";
   if (/\b429\b|rate limit|quota/.test(lower)) return "服务可达，但当前配额不足或请求频率受限。";
-  return message.slice(0, 500);
+  if (/configured tools are unavailable/i.test(message)) return "这一轮的工具没有接上，任务没有发出去。请再交办一次。";
+  if (/supported api model names|you passed sk-|invalid model/i.test(message)) return "模型名无效。请从列表选择 DeepSeek V4 Pro，不要把 API Key 填进模型名。";
+  return message.replace(/sk-[A-Za-z0-9_-]+/g, "（已隐藏）").slice(0, 500);
 }
 
 export class ModelSettingsService {
@@ -28,9 +30,16 @@ export class ModelSettingsService {
       return { ...route, selectedModel, credentialConfigured, ready: credentialConfigured, reason: credentialConfigured ? "ready" : "credential_required" };
     };
     const primary = settings.primary ? resolveStatus(settings.primary) : undefined;
+    const preferences = {
+      ...(settings.selection ? { selection: settings.selection } : {}),
+      ...(settings.autoProviders ? { autoProviders: settings.autoProviders } : {}),
+      ...(settings.costCapUsd !== undefined ? { costCapUsd: settings.costCapUsd } : {}),
+      ...(settings.background ? { background: settings.background } : {}),
+      ...(settings.execution ? { execution: settings.execution } : {}),
+    };
     const roleRoutes = Object.fromEntries(Object.entries(settings.roleRoutes).map(([roleId, route]) => [roleId, resolveStatus(route)]));
     const reason = !primary ? "selection_required" : !primary.ready ? "credential_required" : "ready";
-    return { ...(primary ? { primary } : {}), roleRoutes, updatedAt: settings.updatedAt, ready: reason === "ready", reason };
+    return { ...(primary ? { primary } : {}), roleRoutes, ...preferences, updatedAt: settings.updatedAt, ready: reason === "ready", reason };
   }
   customRouteConfig(): CustomProviderRouteConfig {
     const baseUrl = this.credentials.get("custom", "baseUrl"); const apiStyle = this.credentials.get("custom", "apiStyle");
@@ -45,6 +54,7 @@ export class ModelSettingsService {
     await Promise.all([this.credentialsReady, this.modelRuntimeReady]);
     const previous = this.modelRuntime.get();
     const normalizeRoute = async (route: ModelRouteSettings): Promise<ModelRouteSettings> => {
+      if (/^sk[-_]/i.test(route.modelId)) throw new Error("模型 ID 不能填写 API Key。请从列表选择目录中的模型，例如 deepseek-v4-pro。");
       if (!this.credentials.status(route.providerId).configured) throw new Error(`请先保存 ${route.providerId} 的 API 连接`);
       const requested = [...new Set(route.inputModalities ?? ["text"])] as Array<"text" | "image">;
       let capabilitySource: "pi-catalog" | "native-probe" | undefined;
@@ -71,8 +81,21 @@ export class ModelSettingsService {
     };
     const primary = await normalizeRoute(input.primary!);
     const roleRoutes = Object.fromEntries(await Promise.all(Object.entries(input.roleRoutes).map(async ([roleId, route]) => [roleId, await normalizeRoute(route)] as const)));
-    await this.modelRuntime.set({ primary, roleRoutes });
+    await this.modelRuntime.set({
+      primary,
+      roleRoutes,
+      ...(previous.selection ? { selection: previous.selection } : {}),
+      ...(previous.autoProviders ? { autoProviders: previous.autoProviders } : {}),
+      ...(previous.costCapUsd !== undefined ? { costCapUsd: previous.costCapUsd } : {}),
+      ...(previous.background ? { background: previous.background } : {}),
+      ...(previous.execution ? { execution: previous.execution } : {}),
+    });
     return this.status();
+  }
+
+  async modelRuntimePreferences(patch: Partial<Pick<ModelRuntimeSettings, "selection" | "autoProviders" | "costCapUsd" | "background" | "execution">>): Promise<void> {
+    await Promise.all([this.credentialsReady, this.modelRuntimeReady]);
+    await this.modelRuntime.updatePreferences(patch);
   }
 
   private async probeNativeImage(providerId: ModelProviderId, modelId: string): Promise<void> {
@@ -127,6 +150,24 @@ export function registerSettingsRoutes(app: FastifyInstance, service: ModelSetti
     return reply.code(result.ok ? 200 : 422).send(result);
   });
   app.get("/api/settings/models", async () => ({ catalog: listRecommendedModels(), runtime: await service.status(), configuredProviderIds: credentials.listStatus().filter((provider) => provider.category === "model" && provider.configured).map((provider) => provider.id) }));
+  app.put("/api/settings/workspace", async (request, reply) => {
+    const parsed = workspacePreferencesSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));
+    const preferences = parsed.data;
+    const execution = preferences.execution;
+    const executionSettings: ExecutionTargetSettings | undefined = execution
+      ? (execution.sshHost ? { target: execution.target, sshHost: execution.sshHost } : { target: execution.target })
+      : undefined;
+    const patch: Parameters<ModelSettingsService["modelRuntimePreferences"]>[0] = {
+      ...(preferences.selection !== undefined ? { selection: preferences.selection } : {}),
+      ...(preferences.autoProviders !== undefined ? { autoProviders: preferences.autoProviders } : {}),
+      ...(preferences.costCapUsd !== undefined ? { costCapUsd: preferences.costCapUsd } : {}),
+      ...(preferences.background !== undefined ? { background: preferences.background } : {}),
+      ...(executionSettings ? { execution: executionSettings } : {}),
+    };
+    try { await service.modelRuntimePreferences(patch); return service.status(); }
+    catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : String(error) }); }
+  });
   app.put("/api/settings/models", async (request, reply) => {
     const parsed = modelRuntimeSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send(validationFailure(parsed.error));

@@ -31,7 +31,7 @@ for (const scope of [resolve(root, "apps"), resolve(root, "packages")]) {
   for (const path of sourceFiles(scope)) {
     const source = readFileSync(path, "utf8");
     if (!source.includes("@earendil-works/pi")) continue;
-    const local = relative(root, path);
+    const local = relative(root, path).replaceAll("\\", "/");
     if (!local.startsWith("packages/pi-runtime/")) failures.push(`${local} bypasses @xiling/pi-runtime`);
     if (/[@/]earendil-works\/pi[^"']*\/dist\//.test(source)) failures.push(`${local} imports a private Pi dist path`);
   }

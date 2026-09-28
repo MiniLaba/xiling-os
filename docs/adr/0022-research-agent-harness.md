@@ -2,7 +2,7 @@
 
 ## 状态
 
-**已接受，2026-08-24。**
+**已替代，2026-09-27。** 由 [ADR 0044](0044-pi-native-harness-and-four-entries.md) 取代“自研 ResearchAgentHarness 为模型循环中枢”的部分。领域事实仍然不进入 Pi Session。
 
 ## 背景
 

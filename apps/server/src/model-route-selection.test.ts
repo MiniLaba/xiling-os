@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModelRouteSettings } from "@xiling/contracts";
-import { selectModelRoute } from "./model-route-selection.js";
+import { chooseAutomaticModel, selectModelRoute } from "./model-route-selection.js";
 
 const route = (modelId: string): ModelRouteSettings => ({ providerId: "openrouter", modelId, reasoning: "medium" });
 
@@ -21,5 +21,15 @@ describe("model route selection", () => {
 
   it("returns an explicit missing state instead of selecting a fixture", () => {
     expect(selectModelRoute({ roleRoutes: {} }, {})).toEqual({ source: "missing" });
+  });
+
+  it("picks an affordable model from the user-specified providers that can accept the required modalities", () => {
+    const catalog = [
+      { providerId: "openai" as const, id: "text-only", inputModalities: ["text" as const], outputUsdPerMillion: 1 },
+      { providerId: "anthropic" as const, id: "vision", inputModalities: ["text" as const, "image" as const], outputUsdPerMillion: 2 },
+      { providerId: "google" as const, id: "expensive-vision", inputModalities: ["text" as const, "image" as const], outputUsdPerMillion: 40 },
+    ];
+    expect(chooseAutomaticModel({ providers: ["anthropic", "google"], requiredModalities: ["text", "image"], costCapUsd: 0.05, catalog })).toMatchObject({ providerId: "anthropic", modelId: "vision" });
+    expect(chooseAutomaticModel({ providers: ["openai"], requiredModalities: ["text", "image"], costCapUsd: 10, catalog })).toBeUndefined();
   });
 });

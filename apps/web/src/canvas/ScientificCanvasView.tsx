@@ -208,7 +208,7 @@ function toEdges(graph: ResearchGraphProjection): ScientificEdge[] {
   }));
 }
 
-export function ScientificCanvasView({ projectId, onNavigate }: { projectId: string; onNavigate?: (view: "chat" | "wiki" | "papers") => void }) {
+export function ScientificCanvasView({ projectId, onNavigate, initialFocusId }: { projectId: string; onNavigate?: (view: "chat" | "wiki" | "papers") => void; initialFocusId?: string }) {
   const [view, setView] = useState<ResearchGraphView>("all");
   const [graph, setGraph] = useState<ResearchGraphProjection>();
   const [layout, setLayout] = useState<ScientificCanvasLayout>();
@@ -218,7 +218,7 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
   const [selectedEdgeId, setSelectedEdgeId] = useState("");
   const [quotedIds, setQuotedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const [focusDepth, setFocusDepth] = useState<0 | 1 | 2>(0);
+  const [focusDepth, setFocusDepth] = useState<0 | 1 | 2>(initialFocusId ? 1 : 0);
   const [relationFilter, setRelationFilter] = useState<ResearchRelationKind | "all">("all");
   const [status, setStatus] = useState("正在读取科研图…");
   const [proposals, setProposals] = useState<ResearchGraphProposal[]>([]);
@@ -279,7 +279,11 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
       setNodes(toNodes(nextGraph, nextLayout));
       setEdges(toEdges(nextGraph));
       setProposals(nextProposals);
-      setSelectedId((current) => nextGraph.nodes.some((node) => node.id === current) ? current : nextGraph.nodes.find((node) => node.kind === "ResearchQuestion")?.id ?? nextGraph.nodes[0]?.id ?? "");
+      setSelectedId((current) => {
+        if (initialFocusId && nextGraph.nodes.some((node) => node.id === initialFocusId)) return initialFocusId;
+        return nextGraph.nodes.some((node) => node.id === current) ? current : nextGraph.nodes.find((node) => node.kind === "ResearchQuestion")?.id ?? nextGraph.nodes[0]?.id ?? "";
+      });
+      if (initialFocusId) setFocusDepth(1);
       setQuotedIds([]);
       setStatus(`${nextGraph.nodes.length} 个科研对象 · ${nextGraph.relations.length} 条关系`);
       window.setTimeout(async () => {
@@ -288,7 +292,7 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
         acceptViewportChanges.current = true;
       }, 30);
     } catch (error) { setStatus(error instanceof Error ? error.message : String(error)); }
-  }, [projectId, setEdges, setNodes, view]);
+  }, [initialFocusId, projectId, setEdges, setNodes, view]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -553,6 +557,6 @@ export function ScientificCanvasView({ projectId, onNavigate }: { projectId: str
       {relationKinds.map((kind) => <button key={kind} className={relationFilter === kind ? "active" : ""} onClick={() => setRelationFilter((current) => current === kind ? "all" : kind)}><i style={{ background: relationVar(kind) }} />{relationLabel[kind]}</button>)}
     </div>
     {proposalOpen ? <div className="scientific-proposal-dialog" role="dialog" aria-modal="true" aria-label="科研图变更提案"><div><header><div><small>{selected?.kind === "Claim" ? "创建不可变主张版本" : "创建新科研主张"}</small><h2>预览科研图变更</h2></div><button aria-label="关闭" onClick={() => setProposalOpen(false)}>×</button></header><label><span>主张标题</span><input autoFocus value={proposalTitle} onChange={(event) => setProposalTitle(event.target.value)} /></label><label><span>主张内容与适用边界</span><textarea value={proposalSummary} onChange={(event) => setProposalSummary(event.target.value)} placeholder="写明结论、条件、时间/区域范围和不确定性…" /></label><p>提交只生成待审提案；接受后才会写入 Claim / ClaimRevision，并保留版本关系。</p><footer><button onClick={() => setProposalOpen(false)}>取消</button><button className="primary" disabled={!proposalTitle.trim() || !proposalSummary.trim()} onClick={() => void submitProposal()}>生成提案</button></footer></div></div> : null}
-    {proposals.some((proposal) => proposal.status === "pending") ? <aside className="scientific-proposal-tray"><header><b>待确认变更</b><span>{proposals.filter((proposal) => proposal.status === "pending").length}</span></header>{proposals.filter((proposal) => proposal.status === "pending").map((proposal) => <article key={proposal.id}><small>{proposal.action.type === "create_claim" ? "新建主张" : "修订主张"}</small><b>{proposal.action.title}</b><p>{proposal.action.summary}</p><footer><button onClick={() => void decideProposal(proposal, "reject")}>拒绝</button><button className="primary" onClick={() => void decideProposal(proposal, "accept")}>接受并写入</button></footer></article>)}</aside> : null}
+    {proposals.some((proposal) => proposal.status === "pending") ? <aside className="scientific-proposal-tray"><header><b>待确认变更</b><span>{proposals.filter((proposal) => proposal.status === "pending").length}</span></header>{proposals.filter((proposal) => proposal.status === "pending").map((proposal) => <article key={proposal.id}><small>{proposal.action.type === "create_claim" ? "新建主张" : proposal.action.type === "revise_claim" ? "修订主张" : "建立关系"}</small><b>{proposal.action.type === "link_relation" ? proposal.action.kind : proposal.action.title}</b><p>{proposal.action.summary}</p><footer><button onClick={() => void decideProposal(proposal, "reject")}>拒绝</button><button className="primary" onClick={() => void decideProposal(proposal, "accept")}>接受并写入</button></footer></article>)}</aside> : null}
   </div>;
 }

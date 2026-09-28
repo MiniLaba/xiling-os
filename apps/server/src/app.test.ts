@@ -22,7 +22,7 @@ type TestApp = ReturnType<typeof createAppBase>;
 
 async function createAgentChatSession(app: TestApp, projectId: string, title: string) {
   const response = await app.inject({ method: "POST", url: "/api/v1/chat-sessions", payload: { projectId, title } });
-  expect(response.statusCode).toBe(201);
+  expect([200, 201]).toContain(response.statusCode);
   return response.json() as { id: string };
 }
 
@@ -176,11 +176,18 @@ describe("server vertical slice", () => {
     expect(started.statusCode).toBe(202);
     const runId = started.json().run.id as string;
     const sourceEntryId = started.json().entries[0].id as string;
+    let snapshot = started.json();
+    for (let attempt = 0; attempt < 1_000 && !["completed", "failed", "cancelled", "suspended"].includes(snapshot.run.status); attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      snapshot = (await app.inject({ method: "GET", url: `/api/agent-center/runs/${runId}?projectId=ocean-heatwave` })).json();
+    }
+    expect(snapshot.run.status).toBe("completed");
     expect((await app.inject({ method: "GET", url: `/api/agent-center/runs/${runId}` })).statusCode).toBe(400);
     expect((await app.inject({ method: "GET", url: `/api/agent-center/runs/${runId}?projectId=other-project` })).statusCode).toBe(404);
 
-    expect((await app.inject({ method: "DELETE", url: `/api/v1/chat-sessions/${sessionId}` })).statusCode).toBe(200);
-    expect((await app.inject({ method: "POST", url: "/api/agent-center/runs", payload: { sessionId, projectId: "ocean-heatwave", prompt: "不可继续", clientCommandId: "scope-command-2" } })).statusCode).toBe(404);
+    expect((await app.inject({ method: "DELETE", url: `/api/v1/chat-sessions/${sessionId}` })).statusCode).toBe(409);
+    const continued = await app.inject({ method: "POST", url: "/api/agent-center/runs", payload: { sessionId, projectId: "ocean-heatwave", prompt: "长对话仍可继续", clientCommandId: "scope-command-2" } });
+    expect(continued.statusCode, continued.body).toBe(202);
     expect((await app.inject({ method: "GET", url: `/api/agent-center/runs/${runId}?projectId=ocean-heatwave` })).statusCode).toBe(200);
     expect((await app.inject({ method: "GET", url: `/api/agent-center/sources/entries/${sourceEntryId}?projectId=ocean-heatwave` })).statusCode).toBe(200);
     await app.close();

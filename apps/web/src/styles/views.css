@@ -527,8 +527,10 @@
   box-shadow: var(--xl-shadow-lg);
   animation: xl-tide-rise var(--xl-motion-fast) var(--xl-ease-tide) both;
 }
+.composer-tools { position: relative; overflow: visible; }
 .composer-model-slot { margin-left: auto; }
-.composer-tools .xl-model-capsule-menu { top: auto; bottom: calc(100% + 8px); left: auto; right: 0; }
+.composer-model-slot .xl-model-capsule { position: static; }
+.composer-tools .xl-model-capsule-menu { top: auto; bottom: calc(100% + 8px); left: auto; right: 12px; width: min(320px, calc(100% - 24px)); }
 .xl-model-capsule-menu section { display: grid; gap: 1px; padding: 2px 0; }
 .xl-model-capsule-menu section + section { border-top: 1px solid var(--xl-border); }
 .xl-model-capsule-menu section > small { padding: 4px var(--xl-space-2) 2px; font-size: var(--xl-type-caption); letter-spacing: 0.08em; color: var(--xl-faint); }
@@ -541,9 +543,15 @@
 .xl-model-capsule-reasoning small { flex: none; font-size: var(--xl-type-caption); color: var(--xl-faint); }
 .xl-model-capsule-reasoning button { padding: 2px 8px; border-radius: var(--xl-radius-full); font-size: var(--xl-type-caption); color: var(--xl-muted); }
 .xl-model-capsule-reasoning button.active { background: var(--xl-accent-soft); color: var(--xl-accent); font-weight: 600; }
-.xl-model-capsule-custom { display: flex; gap: 4px; padding: 6px var(--xl-space-2) 2px; border-top: 1px solid var(--xl-border); }
-.xl-model-capsule-custom select, .xl-model-capsule-custom input { min-width: 0; padding: 5px var(--xl-space-2); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-sm); background: var(--xl-bg-secondary); color: var(--xl-text); font-size: var(--xl-type-caption); outline: none; }
-.xl-model-capsule-custom select { flex: none; width: 92px; }
+.xl-model-capsule-custom, .xl-model-capsule-key { display: flex; gap: 4px; padding: 6px var(--xl-space-2) 2px; border-top: 1px solid var(--xl-border); }
+.xl-model-capsule-custom select, .xl-model-capsule-custom input, .xl-model-capsule-key input { min-width: 0; padding: 5px var(--xl-space-2); border: 1px solid var(--xl-border); border-radius: var(--xl-radius-sm); background: var(--xl-bg-secondary); color: var(--xl-text); font-size: var(--xl-type-caption); outline: none; }
+.xl-model-capsule-custom select { flex: 1.1; }
+.xl-model-capsule-key { align-items: center; }
+.xl-model-capsule-key input { flex: 1; }
+.xl-model-capsule-key p, .xl-model-capsule-error { margin: 0; color: var(--xl-muted); font-size: var(--xl-type-caption); line-height: var(--xl-leading-cjk); }
+.xl-model-capsule-error { padding: 6px var(--xl-space-2) 2px; color: var(--xl-warning); }
+.xl-model-capsule-key button { flex: none; padding: 5px var(--xl-space-2); border-radius: var(--xl-radius-sm); background: var(--xl-accent-strong); color: var(--xl-on-accent); font-size: var(--xl-type-caption); }
+.xl-model-capsule-key button:disabled { opacity: 0.5; }
 .xl-model-capsule-custom input { flex: 1; }
 .xl-model-capsule-custom button { flex: none; padding: 5px var(--xl-space-2); border-radius: var(--xl-radius-sm); background: var(--xl-accent-strong); color: var(--xl-on-accent); font-size: var(--xl-type-caption); }
 .xl-model-capsule-custom button:disabled { opacity: 0.5; }

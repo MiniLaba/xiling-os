@@ -1,7 +1,7 @@
 {
-  "agentCore": "0.84.2",
-  "ai": "0.84.2",
-  "codingAgent": "0.84.2",
+  "agentCore": "0.87.1",
+  "ai": "0.87.1",
+  "codingAgent": "0.87.1",
   "mcpAdapter": "2.27.0",
   "sessionFormat": 4,
   "supportedPackageResources": ["skill", "prompt"],
